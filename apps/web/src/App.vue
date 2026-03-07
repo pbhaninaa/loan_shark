@@ -103,7 +103,15 @@
       <v-app-bar flat color="background" elevation="0">
         <v-app-bar-nav-icon @click="drawer = !drawer" />
         <v-toolbar-title class="font-weight-bold">Loan Management Portal</v-toolbar-title>
-        
+        <v-spacer />
+        <v-btn
+          v-if="store.isAuthenticated"
+          :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+          variant="text"
+          size="small"
+          :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleDarkMode"
+        />
       </v-app-bar>
     </template>
 
@@ -118,11 +126,38 @@
 <script setup>
 import { computed, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useTheme } from "vuetify";
 import { useAppStore } from "./store";
+
+const DRAWER_KEY = "loanSharkDarkMode";
 
 const drawer = ref(true);
 const router = useRouter();
 const store = useAppStore();
+const theme = useTheme();
+
+const isDark = computed(() => theme.global.name.value === "loanSharkDark");
+
+function toggleDarkMode() {
+  const next = isDark.value ? "loanSharkTheme" : "loanSharkDark";
+  theme.global.name.value = next;
+  try {
+    localStorage.setItem(DRAWER_KEY, next);
+  } catch (_) {}
+}
+
+function applySavedTheme() {
+  try {
+    const saved = localStorage.getItem(DRAWER_KEY);
+    if (saved === "loanSharkDark" || saved === "loanSharkTheme") {
+      theme.global.name.value = saved;
+    }
+  } catch (_) {}
+}
+
+onMounted(() => {
+  applySavedTheme();
+});
 
 function pendingCount(badgeKey) {
   if (!store.dashboard || !badgeKey) return 0;
