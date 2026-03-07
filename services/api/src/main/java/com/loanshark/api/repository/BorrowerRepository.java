@@ -3,19 +3,20 @@ package com.loanshark.api.repository;
 import com.loanshark.api.entity.Borrower;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface BorrowerRepository extends JpaRepository<Borrower, Long> {
+public interface BorrowerRepository extends JpaRepository<Borrower, UUID> {
 
     Optional<Borrower> findByIdNumber(String idNumber);
 
     Optional<Borrower> findByPhone(String phone);
 
-    Optional<Borrower> findByUserId(Long userId);
+    Optional<Borrower> findByUserId(UUID userId);
 
     long countByAddress(String address);
 

@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
@@ -91,7 +92,7 @@ public class DashboardService {
             ? cashTransactionRepository.findTop50ByOrderByCapturedAtDesc()
             : cashTransactionRepository.searchTop200(normalizedQuery);
 
-        Set<Long> userIds = Stream.concat(
+        Set<UUID> userIds = Stream.concat(
                 auditLogs.stream().map(AuditLog::getUserId),
                 cashTransactions.stream().flatMap(transaction -> Stream.of(
                     transaction.getCapturedBy() == null ? null : transaction.getCapturedBy().getId(),
@@ -101,7 +102,7 @@ public class DashboardService {
             .filter(id -> id != null)
             .collect(Collectors.toSet());
 
-        Map<Long, String> usernames = userRepository.findAllById(userIds).stream()
+        Map<UUID, String> usernames = userRepository.findAllById(userIds).stream()
             .collect(Collectors.toMap(user -> user.getId(), user -> user.getUsername()));
 
         List<ActionResponse> actions = Stream.concat(
@@ -113,7 +114,7 @@ public class DashboardService {
                     null,
                     null,
                     null,
-                    usernames.getOrDefault(log.getUserId(), log.getUserId() == null ? "System" : "User #" + log.getUserId()),
+                    log.getUserId() == null ? "System" : usernames.getOrDefault(log.getUserId(), "User #" + log.getUserId()),
                     null,
                     log.getDetails(),
                     log.getTimestamp()
@@ -122,18 +123,12 @@ public class DashboardService {
                     "TRANSACTION",
                     transaction.getType().name(),
                     "CashTransaction",
-                    transaction.getId(),
+                    transaction.getId().toString(),
                     transaction.getLoan() == null ? null : transaction.getLoan().getId(),
                     transaction.getAmount(),
                     transaction.getReferenceNumber(),
-                    usernames.getOrDefault(
-                        transaction.getCapturedBy() == null ? null : transaction.getCapturedBy().getId(),
-                        "Unknown"
-                    ),
-                    usernames.getOrDefault(
-                        transaction.getAuthorizedBy() == null ? null : transaction.getAuthorizedBy().getId(),
-                        "Unknown"
-                    ),
+                    transaction.getCapturedBy() == null ? "Unknown" : usernames.getOrDefault(transaction.getCapturedBy().getId(), "Unknown"),
+                    transaction.getAuthorizedBy() == null ? "Unknown" : usernames.getOrDefault(transaction.getAuthorizedBy().getId(), "Unknown"),
                     transaction.getType().name() + " for loan #"
                         + (transaction.getLoan() == null ? "-" : transaction.getLoan().getId()),
                     transaction.getCapturedAt()

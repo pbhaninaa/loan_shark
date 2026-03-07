@@ -10,6 +10,7 @@ import com.loanshark.api.entity.UserRole;
 import com.loanshark.api.repository.BorrowerRepository;
 import com.loanshark.api.repository.UserRepository;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -75,12 +76,12 @@ public class UserManagementService {
         user = userRepository.save(user);
 
         User currentUser = currentUserService.requireCurrentUser();
-        auditLogService.record(currentUser.getId(), "CREATE_USER", "User", user.getId(), user.getUsername());
+        auditLogService.record(currentUser.getId(), "CREATE_USER", "User", user.getId().toString(), user.getUsername());
         return toResponse(user);
     }
 
     @Transactional
-    public UserResponse updateUser(Long id, UserRequest request) {
+    public UserResponse updateUser(UUID id, UserRequest request) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "User not found"));
 
@@ -96,12 +97,12 @@ public class UserManagementService {
 
         user = userRepository.save(user);
         User currentUser = currentUserService.requireCurrentUser();
-        auditLogService.record(currentUser.getId(), "UPDATE_USER", "User", user.getId(), user.getUsername());
+        auditLogService.record(currentUser.getId(), "UPDATE_USER", "User", user.getId().toString(), user.getUsername());
         return toResponse(user);
     }
 
     @Transactional
-    public void resetPassword(Long id, ResetPasswordRequest request) {
+    public void resetPassword(UUID id, ResetPasswordRequest request) {
         User currentUser = currentUserService.requireCurrentUser();
         if (currentUser.getRole() != UserRole.OWNER) {
             throw new ResponseStatusException(FORBIDDEN, "Only owner can reset user passwords");
@@ -110,11 +111,11 @@ public class UserManagementService {
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "User not found"));
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
-        auditLogService.record(currentUser.getId(), "RESET_PASSWORD", "User", user.getId(), user.getUsername());
+        auditLogService.record(currentUser.getId(), "RESET_PASSWORD", "User", user.getId().toString(), user.getUsername());
     }
 
     @Transactional
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         User currentUser = currentUserService.requireCurrentUser();
         if (currentUser.getId().equals(id)) {
             throw new ResponseStatusException(FORBIDDEN, "You cannot delete your own account");
@@ -128,7 +129,7 @@ public class UserManagementService {
         }
 
         borrowerRepository.findByUserId(user.getId()).ifPresent(borrower -> detachBorrowerUser(borrower));
-        auditLogService.record(currentUser.getId(), "DELETE_USER", "User", user.getId(), user.getUsername());
+        auditLogService.record(currentUser.getId(), "DELETE_USER", "User", user.getId().toString(), user.getUsername());
         userRepository.delete(user);
     }
 
@@ -137,7 +138,7 @@ public class UserManagementService {
         borrowerRepository.save(borrower);
     }
 
-    private void ensureUsernameAvailable(String username, Long userId) {
+    private void ensureUsernameAvailable(String username, UUID userId) {
         userRepository.findByUsername(username)
             .filter(existing -> !existing.getId().equals(userId))
             .ifPresent(existing -> {
@@ -154,7 +155,7 @@ public class UserManagementService {
     }
 
     private UserResponse toResponse(User user) {
-        Long borrowerId = borrowerRepository.findByUserId(user.getId())
+        UUID borrowerId = borrowerRepository.findByUserId(user.getId())
             .map(Borrower::getId)
             .orElse(null);
 

@@ -6,6 +6,7 @@ import com.loanshark.api.dto.ApiDtos.UserRequest;
 import com.loanshark.api.dto.ApiDtos.UserResponse;
 import com.loanshark.api.service.UserManagementService;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,19 +47,19 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public UserResponse update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
+    public UserResponse update(@PathVariable UUID id, @Valid @RequestBody UserRequest request) {
         return userManagementService.updateUser(id, request);
     }
 
     @PutMapping("/{id}/reset-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void resetPassword(@PathVariable Long id, @Valid @RequestBody ResetPasswordRequest request) {
+    public void resetPassword(@PathVariable UUID id, @Valid @RequestBody ResetPasswordRequest request) {
         userManagementService.resetPassword(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable UUID id) {
         userManagementService.deleteUser(id);
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,7 +50,7 @@ public class BorrowerController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
-    public BorrowerResponse get(@PathVariable Long id) {
+    public BorrowerResponse get(@PathVariable UUID id) {
         return borrowerService.getBorrower(id);
     }
 
@@ -75,26 +76,26 @@ public class BorrowerController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER')")
-    public BorrowerResponse update(@PathVariable Long id, @Valid @RequestBody BorrowerRequest request) {
+    public BorrowerResponse update(@PathVariable UUID id, @Valid @RequestBody BorrowerRequest request) {
         return borrowerService.updateBorrower(id, request);
     }
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('OWNER')")
-    public BorrowerResponse updateStatus(@PathVariable Long id, @Valid @RequestBody BorrowerStatusUpdateRequest request) {
+    public BorrowerResponse updateStatus(@PathVariable UUID id, @Valid @RequestBody BorrowerStatusUpdateRequest request) {
         return borrowerService.updateBorrowerStatus(id, request);
     }
 
     @GetMapping("/{id}/documents")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
-    public List<BorrowerDocumentResponse> listDocuments(@PathVariable Long id) {
+    public List<BorrowerDocumentResponse> listDocuments(@PathVariable UUID id) {
         return borrowerService.listDocuments(id);
     }
 
     @PostMapping("/{id}/documents")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
     @ResponseStatus(HttpStatus.CREATED)
-    public BorrowerDocumentResponse addDocument(@PathVariable Long id, @Valid @RequestBody BorrowerDocumentRequest request) {
+    public BorrowerDocumentResponse addDocument(@PathVariable UUID id, @Valid @RequestBody BorrowerDocumentRequest request) {
         return borrowerService.addDocument(id, request);
     }
 }

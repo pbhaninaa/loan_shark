@@ -2,6 +2,7 @@ package com.loanshark.api.controller;
 
 import com.loanshark.api.dto.ApiDtos.NotificationResponse;
 import com.loanshark.api.dto.ApiDtos.PageResponse;
+import java.util.UUID;
 import com.loanshark.api.service.NotificationService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +34,7 @@ public class NotificationController {
 
     @PostMapping("/{notificationId}/read")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
-    public void markAsRead(@PathVariable Long notificationId) {
+    public void markAsRead(@PathVariable UUID notificationId) {
         notificationService.markAsRead(notificationId);
     }
 }

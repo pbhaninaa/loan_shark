@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -120,9 +121,9 @@ public class LoanService {
         User currentUser = currentUserService.requireCurrentUser();
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
         if (currentUser.getRole() == UserRole.BORROWER) {
-            Long currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
+            UUID currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
                 .map(Borrower::getId)
-                .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
+                .orElseThrow();
             if (!currentBorrowerId.equals(request.borrowerId())) {
                 throw new ResponseStatusException(FORBIDDEN, "Borrowers can only apply for themselves");
             }
@@ -136,7 +137,7 @@ public class LoanService {
             );
         }
 
-        LoanInterestSettings settings = loanInterestSettingsRepository.findById(1L).orElse(null);
+        LoanInterestSettings settings = loanInterestSettingsRepository.findById(com.loanshark.api.entity.UuidConstants.LOAN_INTEREST_SETTINGS_ID).orElse(null);
         if (settings == null) {
             throw new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured; contact the administrator.");
         }
@@ -174,7 +175,7 @@ public class LoanService {
         loanRepository.save(loan);
         riskService.persistAssessment(borrower, loan, result);
 
-        auditLogService.record(currentUser.getId(), "APPLY_LOAN", "Loan", loan.getId(), String.join("; ", result.factors()));
+        auditLogService.record(currentUser.getId(), "APPLY_LOAN", "Loan", loan.getId().toString(), String.join("; ", result.factors()));
         notificationService.notifyLoanStatusChanged(
             loan,
             "Your loan application #" + loan.getId() + " was submitted and is currently " + loan.getStatus().name() + "."
@@ -201,7 +202,7 @@ public class LoanService {
     public PageResponse<LoanResponse> listMyLoans(String query, int page, int size) {
         User currentUser = currentUserService.requireCurrentUser();
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
-        Long borrowerId = borrowerRepository.findByUserId(currentUser.getId())
+        UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
             .map(Borrower::getId)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower profile not found"));
 
@@ -220,7 +221,7 @@ public class LoanService {
     }
 
     @Transactional(readOnly = true)
-    public LoanResponse getLoan(Long loanId) {
+    public LoanResponse getLoan(UUID loanId) {
         Loan loan = findLoan(loanId);
         enforceBorrowerOwnershipIfNeeded(loan);
         return toResponse(loan);
@@ -246,7 +247,7 @@ public class LoanService {
         generateSchedule(loan);
         businessCapitalService.deductForDisbursement(loan.getLoanAmount());
         createCashDisbursement(loan);
-        auditLogService.record(currentUser.getId(), "APPROVE_LOAN", "Loan", loan.getId(), request.note() == null ? "" : request.note());
+        auditLogService.record(currentUser.getId(), "APPROVE_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
         notificationService.notifyLoanStatusChanged(
             loan,
             "Your loan application #" + loan.getId() + " was approved and is now ACTIVE."
@@ -264,7 +265,7 @@ public class LoanService {
         loan.setStatus(LoanStatus.REJECTED);
         loan.setApprovedBy(currentUser);
         loanRepository.save(loan);
-        auditLogService.record(currentUser.getId(), "REJECT_LOAN", "Loan", loan.getId(), request.note() == null ? "" : request.note());
+        auditLogService.record(currentUser.getId(), "REJECT_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
         notificationService.notifyLoanStatusChanged(
             loan,
             "Your loan application #" + loan.getId() + " was rejected."
@@ -273,7 +274,7 @@ public class LoanService {
     }
 
     @Transactional(readOnly = true)
-    public List<ScheduleResponse> listSchedule(Long loanId) {
+    public List<ScheduleResponse> listSchedule(UUID loanId) {
         Loan loan = findLoan(loanId);
         enforceBorrowerOwnershipIfNeeded(loan);
         return repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loanId).stream()
@@ -286,7 +287,7 @@ public class LoanService {
             .toList();
     }
 
-    public Loan findLoan(Long loanId) {
+    public Loan findLoan(UUID loanId) {
         return loanRepository.findById(loanId)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
     }
@@ -298,7 +299,7 @@ public class LoanService {
         }
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
 
-        Long borrowerId = borrowerRepository.findByUserId(currentUser.getId())
+        UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
             .map(Borrower::getId)
             .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
 

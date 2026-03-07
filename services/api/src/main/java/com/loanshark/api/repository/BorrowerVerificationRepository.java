@@ -4,13 +4,14 @@ import com.loanshark.api.entity.BorrowerVerification;
 import com.loanshark.api.entity.VerificationStatus;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface BorrowerVerificationRepository extends JpaRepository<BorrowerVerification, Long> {
+public interface BorrowerVerificationRepository extends JpaRepository<BorrowerVerification, UUID> {
 
-    Optional<BorrowerVerification> findTopByBorrowerIdOrderByCreatedAtDesc(Long borrowerId);
+    Optional<BorrowerVerification> findTopByBorrowerIdOrderByCreatedAtDesc(UUID borrowerId);
 
-    Optional<BorrowerVerification> findTopByBorrowerUserIdOrderByCreatedAtDesc(Long userId);
+    Optional<BorrowerVerification> findTopByBorrowerUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<BorrowerVerification> findTop50ByOrderByCreatedAtDesc();
 

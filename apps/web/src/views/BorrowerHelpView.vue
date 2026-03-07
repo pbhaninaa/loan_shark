@@ -87,10 +87,10 @@ onMounted(async () => {
   try {
     const data = await store.fetchLenderContact();
     contact.value = {
-      name: data.name ?? "",
-      phone: data.phone ?? "",
-      email: data.email ?? "",
-      address: data.address ?? ""
+      name: data.name ?? "Philasande Bhani",
+      phone: data.phone ?? "0782141216",
+      email: data.email ?? "pbhanina@gmail.com",
+      address: data.address ?? "Ewewe P O Box 47, \nQandashe Location\nBizana\n4800"
     };
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Could not load contact details.";

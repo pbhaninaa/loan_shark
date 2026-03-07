@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 public final class ApiDtos {
 
@@ -61,10 +62,10 @@ public final class ApiDtos {
 
     public record AuthResponse(
         String token,
-        Long userId,
+        UUID userId,
         String username,
         UserRole role,
-        Long borrowerId
+        UUID borrowerId
     ) {
     }
 
@@ -86,7 +87,7 @@ public final class ApiDtos {
 
     /** Owner resets another user's password by user id. */
     public record ResetUserPasswordRequest(
-        @NotNull Long userId,
+        @NotNull UUID userId,
         @NotBlank String newPassword
     ) {
     }
@@ -120,7 +121,7 @@ public final class ApiDtos {
     }
 
     public record BorrowerResponse(
-        Long id,
+        UUID id,
         String firstName,
         String lastName,
         String idNumber,
@@ -147,7 +148,7 @@ public final class ApiDtos {
     }
 
     public record BorrowerDocumentResponse(
-        Long id,
+        UUID id,
         DocumentType documentType,
         String fileUrl,
         String originalFileName,
@@ -158,7 +159,7 @@ public final class ApiDtos {
     }
 
     public record NotificationResponse(
-        Long id,
+        UUID id,
         String channel,
         String message,
         String status,
@@ -176,13 +177,13 @@ public final class ApiDtos {
     }
 
     public record VerificationResponse(
-        Long id,
-        Long borrowerId,
+        UUID id,
+        UUID borrowerId,
         VerificationStatus status,
-        Long idDocumentId,
+        UUID idDocumentId,
         String idDocumentName,
         String idDocumentContentType,
-        Long selfieDocumentId,
+        UUID selfieDocumentId,
         String selfieDocumentName,
         String selfieDocumentContentType,
         boolean saIdValid,
@@ -213,7 +214,7 @@ public final class ApiDtos {
     /** Interest rate and period come from admin settings. Borrower only specifies amount; term comes from admin default (repayments reduce balance, interest continues per business rules). */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record LoanApplicationRequest(
-        @NotNull Long borrowerId,
+        @NotNull UUID borrowerId,
         @NotNull @DecimalMin("1.00") BigDecimal loanAmount,
         @Positive Integer loanTermDays
     ) {
@@ -221,14 +222,14 @@ public final class ApiDtos {
     }
 
     public record LoanDecisionRequest(
-        @NotNull Long loanId,
+        @NotNull UUID loanId,
         String note
     ) {
     }
 
     public record LoanResponse(
-        Long id,
-        Long borrowerId,
+        UUID id,
+        UUID borrowerId,
         BigDecimal loanAmount,
         BigDecimal interestRate,
         BigDecimal totalAmount,
@@ -273,7 +274,7 @@ public final class ApiDtos {
     public record BusinessCapitalTopUpRequest(@NotNull @DecimalMin("0.01") BigDecimal amount) {}
 
     public record RepaymentRequest(
-        @NotNull Long loanId,
+        @NotNull UUID loanId,
         @NotNull @DecimalMin("0.01") BigDecimal amountPaid,
         @NotNull PaymentMethod paymentMethod,
         @NotBlank String referenceNumber
@@ -281,8 +282,8 @@ public final class ApiDtos {
     }
 
     public record RepaymentResponse(
-        Long id,
-        Long loanId,
+        UUID id,
+        UUID loanId,
         BigDecimal amountPaid,
         Instant paymentDate,
         PaymentMethod paymentMethod,
@@ -300,7 +301,7 @@ public final class ApiDtos {
     }
 
     public record RiskCheckRequest(
-        @NotNull Long borrowerId,
+        @NotNull UUID borrowerId,
         @NotNull @DecimalMin("1.00") BigDecimal requestedAmount
     ) {
     }
@@ -313,14 +314,14 @@ public final class ApiDtos {
     }
 
     public record BlacklistRequest(
-        @NotNull Long borrowerId,
+        @NotNull UUID borrowerId,
         @NotBlank String reason
     ) {
     }
 
     public record BlacklistResponse(
-        Long id,
-        Long borrowerId,
+        UUID id,
+        UUID borrowerId,
         String reason,
         Instant blacklistedAt
     ) {
@@ -335,12 +336,12 @@ public final class ApiDtos {
     }
 
     public record UserResponse(
-        Long id,
+        UUID id,
         String username,
         UserRole role,
         UserStatus status,
         Instant createdAt,
-        Long borrowerId
+        UUID borrowerId
     ) {
     }
 
@@ -359,8 +360,8 @@ public final class ApiDtos {
         String category,
         String action,
         String entity,
-        Long entityId,
-        Long loanId,
+        String entityId,
+        UUID loanId,
         BigDecimal amount,
         String referenceNumber,
         String performedBy,

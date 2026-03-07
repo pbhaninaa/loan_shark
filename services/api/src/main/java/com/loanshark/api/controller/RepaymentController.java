@@ -5,6 +5,7 @@ import com.loanshark.api.dto.ApiDtos.RepaymentRequest;
 import com.loanshark.api.dto.ApiDtos.RepaymentResponse;
 import com.loanshark.api.service.RepaymentService;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,7 +37,7 @@ public class RepaymentController {
     @GetMapping("/{loanId}")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
     public PageResponse<RepaymentResponse> list(
-        @PathVariable Long loanId,
+        @PathVariable UUID loanId,
         @RequestParam(defaultValue = "") String q,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size

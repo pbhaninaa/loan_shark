@@ -6,6 +6,7 @@ import com.loanshark.api.service.BorrowerVerificationService.VerificationDocumen
 import com.loanshark.api.service.BorrowerVerificationService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -44,7 +45,7 @@ public class BorrowerVerificationController {
 
     @GetMapping("/by-borrower/{borrowerId}")
     @PreAuthorize("hasRole('OWNER')")
-    public VerificationResponse getByBorrowerId(@PathVariable Long borrowerId) {
+    public VerificationResponse getByBorrowerId(@PathVariable UUID borrowerId) {
         return borrowerVerificationService.getByBorrowerId(borrowerId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No verification found for this borrower"));
     }
@@ -52,7 +53,7 @@ public class BorrowerVerificationController {
     @PostMapping("/{verificationId}/approve")
     @PreAuthorize("hasRole('OWNER')")
     public VerificationResponse approve(
-        @PathVariable Long verificationId,
+        @PathVariable UUID verificationId,
         @Valid @RequestBody VerificationReviewRequest request
     ) {
         return borrowerVerificationService.approve(verificationId, request.notes());
@@ -61,7 +62,7 @@ public class BorrowerVerificationController {
     @PostMapping("/{verificationId}/reject")
     @PreAuthorize("hasRole('OWNER')")
     public VerificationResponse reject(
-        @PathVariable Long verificationId,
+        @PathVariable UUID verificationId,
         @Valid @RequestBody VerificationReviewRequest request
     ) {
         return borrowerVerificationService.reject(verificationId, request.notes());
@@ -69,13 +70,13 @@ public class BorrowerVerificationController {
 
     @GetMapping("/{verificationId}/id-document")
     @PreAuthorize("hasRole('OWNER')")
-    public ResponseEntity<byte[]> idDocument(@PathVariable Long verificationId) {
+    public ResponseEntity<byte[]> idDocument(@PathVariable UUID verificationId) {
         return documentResponse(borrowerVerificationService.idDocumentContent(verificationId));
     }
 
     @GetMapping("/{verificationId}/selfie-document")
     @PreAuthorize("hasRole('OWNER')")
-    public ResponseEntity<byte[]> selfieDocument(@PathVariable Long verificationId) {
+    public ResponseEntity<byte[]> selfieDocument(@PathVariable UUID verificationId) {
         return documentResponse(borrowerVerificationService.selfieDocumentContent(verificationId));
     }
 

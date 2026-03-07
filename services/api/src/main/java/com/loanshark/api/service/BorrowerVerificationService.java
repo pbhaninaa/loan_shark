@@ -31,6 +31,7 @@ import java.text.Normalizer;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -139,7 +140,7 @@ public class BorrowerVerificationService {
         borrower.setStatus(mapBorrowerStatus(result.status()));
         borrowerRepository.save(borrower);
 
-        auditLogService.record(user.getId(), "REGISTER_BORROWER_KYC", "Borrower", borrower.getId(), result.notes());
+        auditLogService.record(user.getId(), "REGISTER_BORROWER_KYC", "Borrower", borrower.getId().toString(), result.notes());
         notificationService.notifyBorrowerProfileCreated(borrower, false);
         notificationService.notifyUser(user.getId(), "KYC", result.notes());
 
@@ -204,7 +205,7 @@ public class BorrowerVerificationService {
         borrowerVerificationRepository.save(verification);
 
         User currentUser = currentUserService.requireCurrentUser();
-        auditLogService.record(currentUser.getId(), "CREATE_BORROWER_WITH_DOCS", "Borrower", borrower.getId(),
+        auditLogService.record(currentUser.getId(), "CREATE_BORROWER_WITH_DOCS", "Borrower", borrower.getId().toString(),
                 "Pending owner verification");
         notificationService.notifyBorrowerProfileCreated(borrower, true);
         notificationService.notifyUser(user.getId(), "KYC",
@@ -243,7 +244,7 @@ public class BorrowerVerificationService {
     }
 
     @Transactional
-    public VerificationResponse approve(Long verificationId, String notes) {
+    public VerificationResponse approve(UUID verificationId, String notes) {
         BorrowerVerification verification = requireOwnerReview(verificationId);
         verification.setStatus(VerificationStatus.APPROVED);
         verification.setReviewNotes(notes);
@@ -254,12 +255,12 @@ public class BorrowerVerificationService {
         borrowerRepository.save(borrower);
         notificationService.notifyUser(borrower.getUser().getId(), "KYC", "Your verification has been approved.");
         auditLogService.record(verification.getReviewedBy().getId(), "APPROVE_VERIFICATION", "BorrowerVerification",
-                verification.getId(), notes);
+                verification.getId().toString(), notes);
         return toResponse(borrowerVerificationRepository.save(verification));
     }
 
     @Transactional
-    public VerificationResponse reject(Long verificationId, String notes) {
+    public VerificationResponse reject(UUID verificationId, String notes) {
         BorrowerVerification verification = requireOwnerReview(verificationId);
         verification.setStatus(VerificationStatus.REJECTED);
         verification.setReviewNotes(notes);
@@ -271,12 +272,12 @@ public class BorrowerVerificationService {
         notificationService.notifyUser(borrower.getUser().getId(), "KYC",
                 "Your verification has been rejected. " + notes);
         auditLogService.record(verification.getReviewedBy().getId(), "REJECT_VERIFICATION", "BorrowerVerification",
-                verification.getId(), notes);
+                verification.getId().toString(), notes);
         return toResponse(borrowerVerificationRepository.save(verification));
     }
 
     @Transactional(readOnly = true)
-    public Optional<VerificationResponse> getByBorrowerId(Long borrowerId) {
+    public Optional<VerificationResponse> getByBorrowerId(UUID borrowerId) {
         User currentUser = currentUserService.requireCurrentUser();
         if (currentUser.getRole() != UserRole.OWNER) {
             throw new ResponseStatusException(FORBIDDEN, "Only owner can view borrower verification");
@@ -286,13 +287,13 @@ public class BorrowerVerificationService {
     }
 
     @Transactional(readOnly = true)
-    public VerificationDocumentPayload idDocumentContent(Long verificationId) {
+    public VerificationDocumentPayload idDocumentContent(UUID verificationId) {
         BorrowerVerification verification = requireOwnerReview(verificationId);
         return readDocument(verification.getIdDocument());
     }
 
     @Transactional(readOnly = true)
-    public VerificationDocumentPayload selfieDocumentContent(Long verificationId) {
+    public VerificationDocumentPayload selfieDocumentContent(UUID verificationId) {
         BorrowerVerification verification = requireOwnerReview(verificationId);
         return readDocument(verification.getSelfieDocument());
     }
@@ -308,7 +309,7 @@ public class BorrowerVerificationService {
         }
     }
 
-    private BorrowerVerification requireOwnerReview(Long verificationId) {
+    private BorrowerVerification requireOwnerReview(UUID verificationId) {
         User currentUser = currentUserService.requireCurrentUser();
         if (currentUser.getRole() != UserRole.OWNER) {
             throw new ResponseStatusException(FORBIDDEN, "Only owner can review verifications");

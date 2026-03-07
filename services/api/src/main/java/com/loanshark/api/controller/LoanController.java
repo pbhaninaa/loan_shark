@@ -8,6 +8,7 @@ import com.loanshark.api.dto.ApiDtos.ScheduleResponse;
 import com.loanshark.api.service.LoanService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,7 +59,7 @@ public class LoanController {
 
     @GetMapping("/{loanId}")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
-    public LoanResponse get(@PathVariable Long loanId) {
+    public LoanResponse get(@PathVariable UUID loanId) {
         return loanService.getLoan(loanId);
     }
 
@@ -76,7 +77,7 @@ public class LoanController {
 
     @GetMapping("/{loanId}/schedule")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
-    public List<ScheduleResponse> schedule(@PathVariable Long loanId) {
+    public List<ScheduleResponse> schedule(@PathVariable UUID loanId) {
         return loanService.listSchedule(loanId);
     }
 }

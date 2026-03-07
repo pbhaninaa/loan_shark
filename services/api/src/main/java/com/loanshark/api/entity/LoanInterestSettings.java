@@ -8,7 +8,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.Getter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
@@ -24,7 +27,9 @@ import lombok.Setter;
 public class LoanInterestSettings {
 
     @Id
-    private Long id = 1L;
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(columnDefinition = "CHAR(36)")
+    private UUID id = UuidConstants.LOAN_INTEREST_SETTINGS_ID;
 
     @Column(name = "default_interest_rate", nullable = false, precision = 5, scale = 2)
     private BigDecimal defaultInterestRate;

@@ -4,6 +4,7 @@ import com.loanshark.api.dto.ApiDtos.LoanInterestSettingsResponse;
 import com.loanshark.api.dto.ApiDtos.LoanInterestSettingsUpdateRequest;
 import com.loanshark.api.entity.InterestType;
 import com.loanshark.api.entity.LoanInterestSettings;
+import com.loanshark.api.entity.UuidConstants;
 import com.loanshark.api.repository.LoanInterestSettingsRepository;
 import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
@@ -11,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LoanInterestSettingsService {
-
-    private static final Long SETTINGS_ID = 1L;
 
     private final LoanInterestSettingsRepository repository;
 
@@ -22,7 +21,7 @@ public class LoanInterestSettingsService {
 
     @Transactional
     public LoanInterestSettingsResponse get() {
-        LoanInterestSettings settings = repository.findById(SETTINGS_ID)
+        LoanInterestSettings settings = repository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
             .orElseGet(this::createDefaultSettings);
         return new LoanInterestSettingsResponse(
             settings.getDefaultInterestRate(),
@@ -36,7 +35,7 @@ public class LoanInterestSettingsService {
 
     private LoanInterestSettings createDefaultSettings() {
         LoanInterestSettings s = new LoanInterestSettings();
-        s.setId(SETTINGS_ID);
+        s.setId(UuidConstants.LOAN_INTEREST_SETTINGS_ID);
         s.setDefaultInterestRate(new BigDecimal("30.00"));
         s.setInterestType(InterestType.SIMPLE);
         s.setInterestPeriodDays(30);
@@ -48,9 +47,9 @@ public class LoanInterestSettingsService {
 
     @Transactional
     public LoanInterestSettingsResponse update(LoanInterestSettingsUpdateRequest request) {
-        LoanInterestSettings settings = repository.findById(SETTINGS_ID).orElseGet(() -> {
+        LoanInterestSettings settings = repository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID).orElseGet(() -> {
             LoanInterestSettings newSettings = new LoanInterestSettings();
-            newSettings.setId(SETTINGS_ID);
+            newSettings.setId(UuidConstants.LOAN_INTEREST_SETTINGS_ID);
             newSettings.setDefaultInterestRate(request.defaultInterestRate());
             newSettings.setInterestType(request.interestType());
             newSettings.setInterestPeriodDays(request.interestPeriodDays());

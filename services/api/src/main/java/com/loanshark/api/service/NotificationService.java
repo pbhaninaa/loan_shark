@@ -8,6 +8,7 @@ import com.loanshark.api.entity.Notification;
 import com.loanshark.api.entity.User;
 import com.loanshark.api.repository.NotificationRepository;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -52,7 +53,7 @@ public class NotificationService {
     }
 
     @Transactional
-    public Notification notifyUser(Long userId, String channel, String message) {
+    public Notification notifyUser(UUID userId, String channel, String message) {
         Notification notification = new Notification();
         notification.setUserId(userId);
         notification.setChannel(channel);
@@ -62,7 +63,7 @@ public class NotificationService {
     }
 
     @Transactional
-    public void markAsRead(Long notificationId) {
+    public void markAsRead(UUID notificationId) {
         User currentUser = currentUserService.requireCurrentUser();
         Notification notification = notificationRepository.findById(notificationId)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Notification not found"));

@@ -3,19 +3,20 @@ package com.loanshark.api.repository;
 import com.loanshark.api.entity.BlacklistEntry;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface BlacklistEntryRepository extends JpaRepository<BlacklistEntry, Long> {
+public interface BlacklistEntryRepository extends JpaRepository<BlacklistEntry, UUID> {
 
-    Optional<BlacklistEntry> findTopByBorrowerIdOrderByBlacklistedAtDesc(Long borrowerId);
+    Optional<BlacklistEntry> findTopByBorrowerIdOrderByBlacklistedAtDesc(UUID borrowerId);
 
     List<BlacklistEntry> findAllByOrderByBlacklistedAtDesc();
 
-    boolean existsByBorrowerId(Long borrowerId);
+    boolean existsByBorrowerId(UUID borrowerId);
 
     @Query("""
         select b from BlacklistEntry b

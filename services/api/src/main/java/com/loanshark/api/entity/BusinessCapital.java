@@ -6,7 +6,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.Getter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
@@ -18,7 +21,9 @@ import lombok.Setter;
 public class BusinessCapital {
 
     @Id
-    private Long id = 1L;
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(columnDefinition = "CHAR(36)")
+    private UUID id = UuidConstants.BUSINESS_CAPITAL_ID;
 
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal balance = BigDecimal.ZERO;

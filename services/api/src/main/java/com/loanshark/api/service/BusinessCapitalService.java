@@ -3,6 +3,7 @@ package com.loanshark.api.service;
 import com.loanshark.api.dto.ApiDtos.BusinessCapitalResponse;
 import com.loanshark.api.entity.BusinessCapital;
 import com.loanshark.api.entity.CashTransactionType;
+import com.loanshark.api.entity.UuidConstants;
 import com.loanshark.api.entity.Loan;
 import com.loanshark.api.entity.LoanStatus;
 import com.loanshark.api.entity.UserRole;
@@ -20,8 +21,6 @@ import static org.springframework.http.HttpStatus.FORBIDDEN;
 
 @Service
 public class BusinessCapitalService {
-
-    private static final Long CAPITAL_ID = 1L;
 
     private final BusinessCapitalRepository businessCapitalRepository;
     private final CashTransactionRepository cashTransactionRepository;
@@ -48,7 +47,7 @@ public class BusinessCapitalService {
 
     @Transactional(readOnly = true)
     public BigDecimal getBalance() {
-        return businessCapitalRepository.findById(CAPITAL_ID)
+        return businessCapitalRepository.findById(UuidConstants.BUSINESS_CAPITAL_ID)
             .map(BusinessCapital::getBalance)
             .orElse(BigDecimal.ZERO);
     }
@@ -84,7 +83,7 @@ public class BusinessCapitalService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(BAD_REQUEST, "Amount must be greater than zero");
         }
-        BusinessCapital cap = businessCapitalRepository.findByIdForUpdate()
+        BusinessCapital cap = businessCapitalRepository.findByIdForUpdate(UuidConstants.BUSINESS_CAPITAL_ID)
             .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Business capital record not found"));
         cap.setBalance(cap.getBalance().add(amount));
         cap.setUpdatedAt(Instant.now());
@@ -93,7 +92,7 @@ public class BusinessCapitalService {
             currentUserService.requireCurrentUser().getId(),
             "ADD_FUNDS",
             "BusinessCapital",
-            CAPITAL_ID,
+            cap.getId().toString(),
             "Added " + amount + " to lending pool. New balance: " + cap.getBalance()
         );
     }
@@ -106,7 +105,7 @@ public class BusinessCapitalService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }
-        BusinessCapital cap = businessCapitalRepository.findByIdForUpdate()
+        BusinessCapital cap = businessCapitalRepository.findByIdForUpdate(UuidConstants.BUSINESS_CAPITAL_ID)
             .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Business capital record not found"));
         if (cap.getBalance().compareTo(amount) < 0) {
             throw new ResponseStatusException(
@@ -127,7 +126,7 @@ public class BusinessCapitalService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }
-        BusinessCapital cap = businessCapitalRepository.findByIdForUpdate()
+        BusinessCapital cap = businessCapitalRepository.findByIdForUpdate(UuidConstants.BUSINESS_CAPITAL_ID)
             .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Business capital record not found"));
         cap.setBalance(cap.getBalance().add(amount));
         cap.setUpdatedAt(Instant.now());

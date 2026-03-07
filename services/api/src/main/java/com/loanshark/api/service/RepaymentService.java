@@ -19,6 +19,7 @@ import com.loanshark.api.repository.RepaymentRepository;
 import com.loanshark.api.repository.RepaymentScheduleRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -74,7 +75,7 @@ public class RepaymentService {
 
         User currentUser = currentUserService.requireCurrentUser();
         if (currentUser.getRole() == UserRole.BORROWER) {
-            Long borrowerId = borrowerRepository.findByUserId(currentUser.getId())
+            UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
                 .map(com.loanshark.api.entity.Borrower::getId)
                 .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
             if (!loan.getBorrower().getId().equals(borrowerId)) {
@@ -103,7 +104,7 @@ public class RepaymentService {
 
         businessCapitalService.addRepayment(request.amountPaid());
 
-        auditLogService.record(currentUser.getId(), "RECORD_REPAYMENT", "Repayment", repayment.getId(), request.referenceNumber());
+        auditLogService.record(currentUser.getId(), "RECORD_REPAYMENT", "Repayment", repayment.getId().toString(), request.referenceNumber());
         return new RepaymentResponse(
             repayment.getId(),
             loan.getId(),
@@ -116,12 +117,12 @@ public class RepaymentService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<RepaymentResponse> listByLoan(Long loanId, String query, int page, int size) {
+    public PageResponse<RepaymentResponse> listByLoan(UUID loanId, String query, int page, int size) {
         Loan loan = loanService.findLoan(loanId);
         User currentUser = currentUserService.requireCurrentUser();
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
         if (currentUser.getRole() == UserRole.BORROWER) {
-            Long borrowerId = borrowerRepository.findByUserId(currentUser.getId())
+            UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
                 .map(com.loanshark.api.entity.Borrower::getId)
                 .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
             if (!loan.getBorrower().getId().equals(borrowerId)) {

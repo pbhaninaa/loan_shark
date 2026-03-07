@@ -49,7 +49,7 @@ public class BlacklistService {
         entry.setBlacklistedBy(currentUser);
         entry = blacklistEntryRepository.save(entry);
 
-        auditLogService.record(currentUser.getId(), "BLACKLIST_BORROWER", "BlacklistEntry", entry.getId(), request.reason());
+        auditLogService.record(currentUser.getId(), "BLACKLIST_BORROWER", "BlacklistEntry", entry.getId().toString(), request.reason());
         notificationService.notifyBorrowerStatusChanged(borrower);
         return toResponse(entry);
     }

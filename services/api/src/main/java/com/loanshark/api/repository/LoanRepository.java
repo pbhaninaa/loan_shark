@@ -4,23 +4,24 @@ import com.loanshark.api.entity.Loan;
 import com.loanshark.api.entity.LoanStatus;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface LoanRepository extends JpaRepository<Loan, Long> {
+public interface LoanRepository extends JpaRepository<Loan, UUID> {
 
-    List<Loan> findByBorrowerIdOrderByCreatedAtDesc(Long borrowerId);
+    List<Loan> findByBorrowerIdOrderByCreatedAtDesc(UUID borrowerId);
 
-    List<Loan> findByBorrowerIdAndStatus(Long borrowerId, LoanStatus status);
+    List<Loan> findByBorrowerIdAndStatus(UUID borrowerId, LoanStatus status);
 
-    long countByBorrowerIdAndStatusIn(Long borrowerId, List<LoanStatus> statuses);
+    long countByBorrowerIdAndStatusIn(UUID borrowerId, List<LoanStatus> statuses);
 
     List<Loan> findAllByStatusOrderByCreatedAtAsc(LoanStatus status);
 
-    List<Loan> findTop5ByBorrowerIdOrderByCreatedAtDesc(Long borrowerId);
+    List<Loan> findTop5ByBorrowerIdOrderByCreatedAtDesc(UUID borrowerId);
 
     @Query("SELECT COALESCE(SUM(l.totalAmount), 0) FROM Loan l WHERE l.status = :status")
     BigDecimal sumTotalAmountByStatus(@Param("status") LoanStatus status);
@@ -48,5 +49,5 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
               lower(str(l.riskBand)) like lower(concat('%', :query, '%'))
           )
         """)
-    Page<Loan> searchMyLoans(@Param("borrowerId") Long borrowerId, @Param("query") String query, Pageable pageable);
+    Page<Loan> searchMyLoans(@Param("borrowerId") UUID borrowerId, @Param("query") String query, Pageable pageable);
 }

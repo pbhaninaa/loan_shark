@@ -76,7 +76,7 @@ public class AuthService {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Invalid credentials"));
 
-        Long borrowerId = borrowerRepository.findByUserId(user.getId())
+        UUID borrowerId = borrowerRepository.findByUserId(user.getId())
                 .map(Borrower::getId)
                 .orElse(null);
 

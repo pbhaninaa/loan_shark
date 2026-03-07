@@ -15,6 +15,7 @@ import com.loanshark.api.repository.BlacklistEntryRepository;
 import com.loanshark.api.repository.BorrowerDocumentRepository;
 import com.loanshark.api.repository.BorrowerRepository;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -71,7 +72,7 @@ public class BorrowerService {
         );
     }
 
-    public BorrowerResponse getBorrower(Long id) {
+    public BorrowerResponse getBorrower(UUID id) {
         Borrower borrower = findBorrower(id);
         enforceBorrowerOwnershipIfNeeded(borrower);
         return toResponse(borrower);
@@ -105,7 +106,7 @@ public class BorrowerService {
             currentUser.getId(),
             "CREATE_BORROWER",
             "Borrower",
-            saved.getId(),
+            saved.getId().toString(),
             saved.getUser() == null ? saved.getIdNumber() : "Borrower account created without image verification"
         );
         notificationService.notifyBorrowerProfileCreated(saved, saved.getUser() != null);
@@ -113,28 +114,28 @@ public class BorrowerService {
     }
 
     @Transactional
-    public BorrowerResponse updateBorrower(Long id, BorrowerRequest request) {
+    public BorrowerResponse updateBorrower(UUID id, BorrowerRequest request) {
         Borrower borrower = findBorrower(id);
         ensureUnique(request.idNumber(), request.phone(), borrower.getId());
         applyRequest(borrower, request);
         User currentUser = currentUserService.requireCurrentUser();
-        auditLogService.record(currentUser.getId(), "UPDATE_BORROWER", "Borrower", borrower.getId(), borrower.getIdNumber());
+        auditLogService.record(currentUser.getId(), "UPDATE_BORROWER", "Borrower", borrower.getId().toString(), borrower.getIdNumber());
         return toResponse(borrowerRepository.save(borrower));
     }
 
     @Transactional
-    public BorrowerResponse updateBorrowerStatus(Long id, BorrowerStatusUpdateRequest request) {
+    public BorrowerResponse updateBorrowerStatus(UUID id, BorrowerStatusUpdateRequest request) {
         Borrower borrower = findBorrower(id);
         borrower.setStatus(request.status());
         User currentUser = currentUserService.requireCurrentUser();
-        auditLogService.record(currentUser.getId(), "UPDATE_BORROWER_STATUS", "Borrower", borrower.getId(), request.status().name());
+        auditLogService.record(currentUser.getId(), "UPDATE_BORROWER_STATUS", "Borrower", borrower.getId().toString(), request.status().name());
         Borrower saved = borrowerRepository.save(borrower);
         notificationService.notifyBorrowerStatusChanged(saved);
         return toResponse(saved);
     }
 
     @Transactional
-    public BorrowerDocumentResponse addDocument(Long borrowerId, BorrowerDocumentRequest request) {
+    public BorrowerDocumentResponse addDocument(UUID borrowerId, BorrowerDocumentRequest request) {
         Borrower borrower = findBorrower(borrowerId);
         enforceBorrowerOwnershipIfNeeded(borrower);
         BorrowerDocument document = new BorrowerDocument();
@@ -143,7 +144,7 @@ public class BorrowerService {
         document.setFileUrl(request.fileUrl());
         BorrowerDocument saved = borrowerDocumentRepository.save(document);
         User currentUser = currentUserService.requireCurrentUser();
-        auditLogService.record(currentUser.getId(), "UPLOAD_DOCUMENT", "BorrowerDocument", saved.getId(), request.documentType().name());
+        auditLogService.record(currentUser.getId(), "UPLOAD_DOCUMENT", "BorrowerDocument", saved.getId().toString(), request.documentType().name());
         return new BorrowerDocumentResponse(
             saved.getId(),
             saved.getDocumentType(),
@@ -155,7 +156,7 @@ public class BorrowerService {
         );
     }
 
-    public List<BorrowerDocumentResponse> listDocuments(Long borrowerId) {
+    public List<BorrowerDocumentResponse> listDocuments(UUID borrowerId) {
         Borrower borrower = findBorrower(borrowerId);
         enforceBorrowerOwnershipIfNeeded(borrower);
         return borrowerDocumentRepository.findByBorrowerId(borrowerId).stream()
@@ -172,17 +173,17 @@ public class BorrowerService {
     }
 
     @Transactional
-    public Borrower blacklistBorrower(Long borrowerId) {
+    public Borrower blacklistBorrower(UUID borrowerId) {
         Borrower borrower = findBorrower(borrowerId);
         borrower.setStatus(BorrowerStatus.BLACKLISTED);
         return borrowerRepository.save(borrower);
     }
 
-    public boolean isBlacklisted(Long borrowerId) {
+    public boolean isBlacklisted(UUID borrowerId) {
         return blacklistEntryRepository.existsByBorrowerId(borrowerId);
     }
 
-    public Borrower findBorrower(Long id) {
+    public Borrower findBorrower(UUID id) {
         return borrowerRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower not found"));
     }
@@ -193,7 +194,7 @@ public class BorrowerService {
             return;
         }
 
-        Long currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
+        UUID currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
             .map(Borrower::getId)
             .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
 
@@ -202,7 +203,7 @@ public class BorrowerService {
         }
     }
 
-    private void ensureUnique(String idNumber, String phone, Long borrowerId) {
+    private void ensureUnique(String idNumber, String phone, UUID borrowerId) {
         borrowerRepository.findByIdNumber(idNumber)
             .filter(existing -> !existing.getId().equals(borrowerId))
             .ifPresent(existing -> {
