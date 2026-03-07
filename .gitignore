@@ -1,0 +1,24 @@
+# Node
+node_modules/
+dist/
+
+# Java / Spring
+target/
+.mvn/
+
+# Android / Gradle
+.gradle/
+build/
+local.properties
+captures/
+*.iml
+
+# IDE / OS
+.idea/
+.vscode/
+Thumbs.db
+
+# Uploads / env
+uploads/
+.env
+.env.local

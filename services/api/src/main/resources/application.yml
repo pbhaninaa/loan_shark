@@ -1,0 +1,40 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/loan_shark
+    username: root
+    password: Philas@12
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+  flyway:
+    enabled: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+security:
+  jwt:
+    secret: change-me-before-production-change-me-before-production
+    expiration-ms: 86400000
+
+app:
+  loan:
+    default-installments: 4
+    max-loan-multiplier: 0.5
+  storage:
+    kyc-dir: uploads/kyc
+  password-reset:
+    base-url: http://localhost:5174
+    token-valid-hours: 24
+  lender:
+    name: Loan Shark Lending
+    phone: "+27 11 123 4567"
+    email: support@loanshark.example.com
+    address: "123 Finance Street, Johannesburg, South Africa"

@@ -1,0 +1,359 @@
+<template>
+  <div class="page-shell">
+    <AppPageHeader
+      title="Client Management"
+      description="Onboard customers with identity, income, and contact details ready for loan assessment."
+    >
+      <template #actions>
+        <AppActionButton text="Create Client" prepend-icon="mdi-account-plus-outline" @click="showCreateDialog = true" />
+      </template>
+    </AppPageHeader>
+
+    <v-alert v-if="message" type="success" variant="tonal" class="mb-4">
+      {{ message }}
+    </v-alert>
+
+    <AppTableCard title="Client Portfolio" :count-label="`${borrowers.length} records`">
+      <template #header-actions>
+        <AppSearchField v-model="search" label="Search clients" style="min-width: 260px;" @update:model-value="handleSearch" />
+      </template>
+      <v-table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Status</th>
+            <th>Risk</th>
+            <th>Income</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="borrower in borrowers" :key="borrower.id">
+            <td>{{ borrower.firstName }} {{ borrower.lastName }}</td>
+            <td>{{ borrower.phone }}</td>
+            <td>
+              <template v-if="store.isOwner">
+                <AppSelectField
+                  :model-value="borrower.status"
+                  :items="statusOptions"
+                  density="compact"
+                  hide-details
+                  style="min-width: 160px;"
+                  @update:model-value="updateBorrowerStatus(borrower.id, $event)"
+                />
+              </template>
+              <template v-else>
+                <v-chip :color="borrower.status === 'BLACKLISTED' ? 'error' : 'success'" size="small" variant="tonal">
+                  {{ borrower.status }}
+                </v-chip>
+              </template>
+            </td>
+            <td>
+              <v-chip color="info" size="small" variant="tonal">{{ borrower.riskScore }}</v-chip>
+            </td>
+            <td>{{ formatCurrency(borrower.monthlyIncome) }}</td>
+            <td>
+              <AppActionButton size="small" variant="tonal" text="View profile" prepend-icon="mdi-account-eye-outline" @click="openProfileDialog(borrower.id)" />
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+      <AppPaginationFooter v-model="page" :total-pages="borrowersPage.totalPages" :total-elements="borrowersPage.totalElements" @update:model-value="loadBorrowers" />
+    </AppTableCard>
+
+    <AppDialogCard v-model="showProfileDialog" title="Client Profile" :max-width="560">
+      <v-progress-linear v-if="profileLoading" indeterminate color="primary" class="mb-4" />
+      <template v-else-if="selectedProfile">
+        <div class="text-h6">{{ selectedProfile.firstName }} {{ selectedProfile.lastName }}</div>
+        <div class="text-body-2 text-medium-emphasis mb-3">Client #{{ selectedProfile.id }}</div>
+        <v-list density="comfortable" class="py-0">
+          <v-list-item title="ID number" :subtitle="selectedProfile.idNumber || '—'" />
+          <v-list-item title="Phone" :subtitle="selectedProfile.phone || '—'" />
+          <v-list-item title="Email" :subtitle="selectedProfile.email || '—'" />
+          <v-list-item title="Address" :subtitle="selectedProfile.address || '—'" />
+          <v-list-item title="Employment status" :subtitle="selectedProfile.employmentStatus || '—'" />
+          <v-list-item title="Monthly income" :subtitle="formatCurrency(selectedProfile.monthlyIncome)" />
+          <v-list-item title="Employer" :subtitle="selectedProfile.employerName || '—'" />
+        </v-list>
+        <div class="d-flex ga-2 flex-wrap mt-3">
+          <v-chip :color="selectedProfile.status === 'BLACKLISTED' ? 'error' : 'success'" variant="tonal">
+            {{ selectedProfile.status }}
+          </v-chip>
+          <v-chip color="info" variant="tonal">Risk score: {{ selectedProfile.riskScore ?? 'N/A' }}</v-chip>
+        </div>
+        <template v-if="store.isOwner && borrowerVerification">
+          <v-divider class="my-3" />
+          <div class="text-subtitle-2 text-medium-emphasis mb-2">KYC documents</div>
+          <div class="d-flex ga-2 flex-wrap">
+            <AppActionButton
+              size="small"
+              variant="tonal"
+              text="Download ID (PDF)"
+              prepend-icon="mdi-file-download-outline"
+              :loading="downloadLoading === 'id'"
+              @click="downloadDocument(borrowerVerification.id, 'id', borrowerVerification.idDocumentName)"
+            />
+            <AppActionButton
+              size="small"
+              variant="tonal"
+              text="Download selfie"
+              prepend-icon="mdi-image-download-outline"
+              :loading="downloadLoading === 'selfie'"
+              @click="downloadDocument(borrowerVerification.id, 'selfie', borrowerVerification.selfieDocumentName)"
+            />
+          </div>
+        </template>
+        <v-alert v-else-if="store.isOwner && selectedProfile && !profileLoading && !borrowerVerification" type="info" variant="tonal" density="compact" class="mt-3">
+          No KYC documents on file for this client.
+        </v-alert>
+      </template>
+      <template v-else-if="profileError">
+        <v-alert type="error" variant="tonal">{{ profileError }}</v-alert>
+      </template>
+    </AppDialogCard>
+
+    <AppDialogCard v-model="showCreateDialog" title="Create Client Profile" :max-width="720">
+      <v-form @submit.prevent="createBorrower">
+        <v-alert type="info" variant="tonal" class="mb-4">
+          Upload the client's ID (PDF) and photo. The client will be created and must go through verification before they can use the system. You can upload files from your PC since the client may not be present.
+        </v-alert>
+        <v-row>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="form.username" label="Client username" prepend-inner-icon="mdi-account-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="form.password" label="Client password" type="password" prepend-inner-icon="mdi-lock-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="form.firstName" label="First name" prepend-inner-icon="mdi-account-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="form.lastName" label="Last name" prepend-inner-icon="mdi-account-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="form.idNumber" label="ID number" prepend-inner-icon="mdi-card-account-details-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="form.phone" label="Phone" prepend-inner-icon="mdi-phone-outline" required />
+          </v-col>
+          <v-col cols="12">
+            <AppTextField v-model="form.email" label="Email" prepend-inner-icon="mdi-email-outline" />
+          </v-col>
+          <v-col cols="12">
+            <AppTextField v-model="form.address" label="Address" prepend-inner-icon="mdi-map-marker-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppSelectField
+              v-model="form.employmentStatus"
+              label="Employment type"
+              prepend-inner-icon="mdi-briefcase-outline"
+              :items="employmentTypeOptions"
+              required
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model.number="form.monthlyIncome" label="Monthly income" type="number" prepend-inner-icon="mdi-cash" required />
+          </v-col>
+          <v-col cols="12">
+            <AppTextField v-model="form.employerName" label="Employer name" prepend-inner-icon="mdi-domain" />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-file-input
+              v-model="form.idDocument"
+              label="ID document (PDF)"
+              accept="application/pdf,.pdf"
+              prepend-inner-icon="mdi-file-pdf-box"
+              density="compact"
+              show-size
+              clearable
+              required
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-file-input
+              v-model="form.selfieImage"
+              label="Client photo (image)"
+              accept="image/jpeg,image/jpg,image/png"
+              prepend-inner-icon="mdi-camera"
+              density="compact"
+              show-size
+              clearable
+              required
+            />
+          </v-col>
+        </v-row>
+
+        <div class="d-flex ga-2">
+          <AppActionButton text="Save Client" type="submit" prepend-icon="mdi-content-save-outline" class="flex-1-1" :loading="createLoading" />
+          <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="closeCreateDialog" />
+        </div>
+      </v-form>
+    </AppDialogCard>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref } from "vue";
+import AppActionButton from "../components/ui/AppActionButton.vue";
+import AppDialogCard from "../components/ui/AppDialogCard.vue";
+import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
+import AppPageHeader from "../components/ui/AppPageHeader.vue";
+import AppSearchField from "../components/ui/AppSearchField.vue";
+import AppSelectField from "../components/ui/AppSelectField.vue";
+import AppTableCard from "../components/ui/AppTableCard.vue";
+import AppTextField from "../components/ui/AppTextField.vue";
+import api from "../services/api";
+import { useAppStore } from "../store";
+import { formatCurrency } from "../utils/formatters";
+
+const store = useAppStore();
+const message = ref("");
+const statusOptions = ["ACTIVE", "BLACKLISTED"];
+const showCreateDialog = ref(false);
+const showProfileDialog = ref(false);
+const selectedProfile = ref(null);
+const borrowerVerification = ref(null);
+const profileLoading = ref(false);
+const profileError = ref("");
+const downloadLoading = ref(null);
+const search = ref("");
+const page = ref(0);
+
+const employmentTypeOptions = [
+  "Employed",
+  "Self-employed",
+  "Unemployed",
+  "Student",
+  "Part-time",
+  "Contract",
+  "Freelance",
+  "Pensioner",
+  "Other"
+];
+
+const initialForm = () => ({
+  username: "",
+  password: "",
+  firstName: "",
+  lastName: "",
+  idNumber: "",
+  phone: "",
+  email: "",
+  address: "",
+  employmentStatus: "",
+  monthlyIncome: 0,
+  employerName: "",
+  idDocument: null,
+  selfieImage: null
+});
+
+const form = reactive(initialForm());
+const createLoading = ref(false);
+const borrowers = computed(() => store.borrowers);
+const borrowersPage = computed(() => store.borrowersPage);
+
+onMounted(async () => {
+  await loadBorrowers();
+});
+
+async function createBorrower() {
+  const idFile = Array.isArray(form.idDocument) ? form.idDocument?.[0] : form.idDocument;
+  const selfieFile = Array.isArray(form.selfieImage) ? form.selfieImage?.[0] : form.selfieImage;
+  if (!idFile || !selfieFile) {
+    message.value = "";
+    return;
+  }
+  const fd = new FormData();
+  fd.append("username", form.username);
+  fd.append("password", form.password);
+  fd.append("firstName", form.firstName);
+  fd.append("lastName", form.lastName);
+  fd.append("idNumber", form.idNumber);
+  fd.append("phone", form.phone);
+  if (form.email) fd.append("email", form.email);
+  fd.append("address", form.address);
+  fd.append("employmentStatus", form.employmentStatus);
+  fd.append("monthlyIncome", String(form.monthlyIncome ?? 0));
+  if (form.employerName) fd.append("employerName", form.employerName);
+  fd.append("idDocument", idFile);
+  fd.append("selfieImage", selfieFile);
+  createLoading.value = true;
+  try {
+    await api.post("/borrowers/with-documents", fd, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    Object.assign(form, initialForm());
+    showCreateDialog.value = false;
+    message.value = "Client created. They must complete verification (owner review) before using the system.";
+    await loadBorrowers();
+  } catch (e) {
+    message.value = e.response?.data?.message || e.message || "Failed to create client.";
+  } finally {
+    createLoading.value = false;
+  }
+}
+
+async function updateBorrowerStatus(id, status) {
+  await api.put(`/borrowers/${id}/status`, { status });
+  message.value = `Client status updated to ${status}.`;
+  await loadBorrowers();
+}
+
+function closeCreateDialog() {
+  showCreateDialog.value = false;
+  Object.assign(form, initialForm());
+}
+
+async function openProfileDialog(borrowerId) {
+  showProfileDialog.value = true;
+  selectedProfile.value = null;
+  borrowerVerification.value = null;
+  profileError.value = "";
+  profileLoading.value = true;
+  try {
+    selectedProfile.value = await store.fetchBorrowerById(borrowerId);
+    if (store.isOwner) {
+      try {
+        borrowerVerification.value = await store.fetchVerificationByBorrowerId(borrowerId);
+      } catch {
+        borrowerVerification.value = null;
+      }
+    }
+  } catch (e) {
+    profileError.value = e.response?.data?.message || e.message || "Failed to load client profile.";
+  } finally {
+    profileLoading.value = false;
+  }
+}
+
+async function downloadDocument(verificationId, type, suggestedName) {
+  const endpoint = type === "id" ? "id-document" : "selfie-document";
+  const fallbackName = type === "id" ? "id-document.pdf" : "selfie.png";
+  downloadLoading.value = type;
+  try {
+    const { data, headers } = await api.get(`/verifications/${verificationId}/${endpoint}`, { responseType: "blob" });
+    const name = suggestedName || fallbackName;
+    const url = URL.createObjectURL(data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    message.value = e.response?.data?.message || e.message || "Download failed.";
+  } finally {
+    downloadLoading.value = null;
+  }
+}
+
+async function loadBorrowers(nextPage = page.value) {
+  page.value = nextPage;
+  await store.fetchBorrowers({ q: search.value, page: page.value, size: 8 });
+}
+
+async function handleSearch() {
+  page.value = 0;
+  await loadBorrowers(0);
+}
+</script>
