@@ -1,6 +1,8 @@
 # Deploy: Railway (DB + Backend) + Vercel (Frontend)
 
-This guide sets up **MySQL and Backend on Railway**, and **Frontend on Vercel**, so they work together.
+**Full guide:** See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the same deployment pattern as Mechanic-Management (exact variable names, checklist, JSON reference). See **ENVIRONMENTS.md** for SIT / UAT / PROD.
+
+Short version below.
 
 ---
 

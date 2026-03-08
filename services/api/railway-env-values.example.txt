@@ -1,0 +1,12 @@
+# Railway Backend (services/api) – example variable names and values
+# Copy into Railway → Your Backend Service → Variables
+# Replace placeholders with your real values or use references like ${{ MySQL.MYSQL_PUBLIC_URL }}
+
+SPRING_PROFILES_ACTIVE=prod
+MYSQL_PUBLIC_URL=${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}
+JWT_SECRET=your_64_char_secret_min_for_hs512
+APP_FRONTEND_URL=https://your-loan-shark-app.vercel.app
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_FROM=
+STRIPE_SECRET_KEY=
