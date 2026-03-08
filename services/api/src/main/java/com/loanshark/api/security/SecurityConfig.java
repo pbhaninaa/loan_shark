@@ -1,8 +1,10 @@
 package com.loanshark.api.security;
 
 import java.util.List;
+import org.springframework.core.Ordered;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -15,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -35,6 +38,30 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.rateLimitFilter = rateLimitFilter;
         this.userDetailsService = userDetailsService;
+    }
+
+    /** Public auth paths: matched by path so this chain runs first and permits without JWT. */
+    private static final RequestMatcher PUBLIC_AUTH_MATCHER = request -> {
+        String path = normalizePath(request);
+        if (path == null) return false;
+        String method = request.getMethod();
+        if ("POST".equalsIgnoreCase(method)) {
+            return isPublicAuthPath(path, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
+                "/auth/register/owner", "/auth/register/borrower");
+        }
+        return "GET".equalsIgnoreCase(method) && "/auth/setup-status".equals(path);
+    };
+
+    /** Chain 1: public auth only — no JWT, no rate limit; permits and continues to controller. */
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public SecurityFilterChain publicAuthFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .securityMatcher(PUBLIC_AUTH_MATCHER)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .build();
     }
 
     @Bean
