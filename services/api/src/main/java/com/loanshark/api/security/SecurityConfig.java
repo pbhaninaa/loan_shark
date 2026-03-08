@@ -3,6 +3,7 @@ package com.loanshark.api.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
@@ -52,16 +53,12 @@ public class SecurityConfig {
 
     private AuthenticationEntryPoint json401EntryPoint() {
         return (HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) -> {
-            try {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.setCharacterEncoding("UTF-8");
-                response.getWriter().write(objectMapper.writeValueAsString(Map.of(
-                    "message", authException != null ? authException.getMessage() : "Unauthorized"
-                )));
-            } catch (Exception e) {
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            }
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write(objectMapper.writeValueAsString(Map.of(
+                "message", authException != null ? authException.getMessage() : "Unauthorized"
+            )));
         };
     }
 
@@ -75,29 +72,27 @@ public class SecurityConfig {
                 // OPTIONS for CORS preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Health check
-                .requestMatchers("/actuator/health", "/actuator/health/").permitAll()
-                // Public auth endpoints (with and without trailing slash for proxy compatibility)
-                .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/login/").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/forgot-password", "/auth/forgot-password/").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/reset-password", "/auth/reset-password/").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/register/owner", "/auth/register/owner/").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/register/borrower", "/auth/register/borrower/").permitAll()
-                .requestMatchers(HttpMethod.GET, "/auth/setup-status", "/auth/setup-status/").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
+                // Public auth endpoints - no JWT required (path is /auth/... with server.forward-headers-strategy=framework)
+                .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/forgot-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/reset-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/register/owner").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/register/borrower").permitAll()
+                .requestMatchers(HttpMethod.GET, "/auth/setup-status").permitAll()
                 // Authenticated endpoints
-                .requestMatchers(HttpMethod.GET, "/auth/me", "/auth/me/").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/auth/me/email", "/auth/me/email/").authenticated()
-                .requestMatchers(HttpMethod.GET, "/auth/business-capital", "/auth/business-capital/").authenticated()
-                .requestMatchers(HttpMethod.POST, "/auth/business-capital/top-up", "/auth/business-capital/top-up/").hasRole("OWNER")
-                .requestMatchers(HttpMethod.POST, "/auth/change-password", "/auth/change-password/").authenticated()
-                .requestMatchers(HttpMethod.POST, "/auth/reset-user-password", "/auth/reset-user-password/").hasRole("OWNER")
-                .requestMatchers(HttpMethod.POST, "/auth/register/staff", "/auth/register/staff/").hasRole("OWNER")
-                .requestMatchers("/settings/loan-interest", "/settings/loan-interest/").permitAll()
-                .requestMatchers("/settings/loan-interest/expected-amount", "/settings/loan-interest/expected-amount/").authenticated()
+                .requestMatchers(HttpMethod.GET, "/auth/me").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/auth/me/email").authenticated()
+                .requestMatchers(HttpMethod.GET, "/auth/business-capital").authenticated()
+                .requestMatchers(HttpMethod.POST, "/auth/business-capital/top-up").hasRole("OWNER")
+                .requestMatchers(HttpMethod.POST, "/auth/change-password").authenticated()
+                .requestMatchers(HttpMethod.POST, "/auth/reset-user-password").hasRole("OWNER")
+                .requestMatchers(HttpMethod.POST, "/auth/register/staff").hasRole("OWNER")
+                .requestMatchers("/settings/loan-interest").permitAll()
                 .requestMatchers("/settings/**").authenticated()
                 // Everything else requires authentication
                 .anyRequest().authenticated()
             )
-            .exceptionHandling(ex -> ex.authenticationEntryPoint(json401EntryPoint()))
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
