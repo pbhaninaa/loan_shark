@@ -4,6 +4,23 @@ Same deployment pattern as **Mechanic-Management**: Railway for backend + MySQL,
 
 ---
 
+## Backend won’t start: “railway.internal not reachable” or “add MYSQL_PUBLIC_URL”
+
+If the backend fails with **“MYSQL_URL points to Railway's private host (railway.internal), which is not reachable”**:
+
+1. Open your **Railway project** → select the **Backend** service (the Java/Spring one).
+2. Go to **Variables**.
+3. **Add** a variable (do not replace `MYSQL_URL`):
+   - **Name:** `MYSQL_PUBLIC_URL`
+   - **Value:** `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}`  
+     Replace `YourMySQLServiceName` with your MySQL service name (e.g. `MySQL-Q-C2` or `mysql`). Use the exact name shown in the Variables dropdown when you type `${{`.
+4. Fix **SPRING_PROFILES_ACTIVE** if needed: set it to **exactly** `prod` or `uat` or `sit` (one value only, not e.g. `prod or sit`).
+5. **Redeploy** the Backend (Deployments → ⋮ → Redeploy, or push a commit).
+
+The app uses `MYSQL_PUBLIC_URL` when the private URL is not reachable, so the backend can connect to MySQL.
+
+---
+
 ## 1. Railway (Backend + Database)
 
 **Repo layout:** Backend lives in **`services/api`**. In Railway, set **Root Directory** to **`services/api`** (Dockerfile there).

@@ -10,58 +10,82 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * When MYSQL_URL is set (e.g. Railway reference like ${{ MySQL-Q-C2.MYSQL_URL }}),
- * parses it and sets SPRING_DATASOURCE_* so the app connects to that database.
- * Handles both "mysql://user:password@host:port/database" and "jdbc:mysql://..." formats.
+ * When Railway MySQL env vars are set, parses them and sets spring.datasource.*
+ * so Spring's DataSource auto-config picks them up (same as the working backend using SPRING_DATASOURCE_*).
+ * Prefers MYSQL_PUBLIC_URL over MYSQL_URL so the private host (railway.internal) is never used.
+ * Handles "mysql://user:password@host:port/database" and "jdbc:mysql://..." formats.
  */
 public class RailwayMysqlEnvConfig implements EnvironmentPostProcessor {
 
-    private static final String MYSQL_URL = "MYSQL_URL";
-
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        // Prefer Spring env, then system env (Railway injects refs as env vars)
-        String mysqlUrl = environment.getProperty(MYSQL_URL);
-        if (mysqlUrl == null || mysqlUrl.isBlank()) {
-            mysqlUrl = System.getenv(MYSQL_URL);
+        // Prefer public URL so connection works when private host does not resolve
+        String mysqlUrl = firstNonBlank(
+            environment.getProperty("MYSQL_PUBLIC_URL"),
+            System.getenv("MYSQL_PUBLIC_URL"),
+            environment.getProperty("MYSQL_URL"),
+            System.getenv("MYSQL_URL")
+        );
+        if (mysqlUrl != null && mysqlUrl.contains("railway.internal")) {
+            String publicUrl = firstNonBlank(
+                environment.getProperty("MYSQL_PUBLIC_URL"),
+                System.getenv("MYSQL_PUBLIC_URL")
+            );
+            if (publicUrl != null && !publicUrl.isBlank()) {
+                mysqlUrl = publicUrl;
+            } else {
+                // Don't set spring.datasource.* from private URL; fallback config will throw clear error
+                mysqlUrl = null;
+            }
         }
-        if (mysqlUrl == null || mysqlUrl.isBlank()) {
-            // Fallback: build from Railway's separate vars (e.g. MYSQLHOST, MYSQLUSER, ...)
-            String host = envOrProp(environment, "MYSQLHOST");
-            String port = envOrProp(environment, "MYSQLPORT");
-            String user = envOrProp(environment, "MYSQLUSER");
-            String pass = envOrProp(environment, "MYSQLPASSWORD");
-            String database = envOrProp(environment, "MYSQLDATABASE");
-            if (host != null && user != null && pass != null && database != null) {
-                String url = "jdbc:mysql://" + host + ":" + (port != null ? port : "3306") + "/" + database + "?useSSL=true";
-                Map<String, Object> props = new HashMap<>();
-                props.put("spring.datasource.url", url);
-                props.put("spring.datasource.username", user);
-                props.put("spring.datasource.password", pass);
-                environment.getPropertySources().addFirst(new MapPropertySource("railwayMysql", props));
+        if (mysqlUrl != null && !mysqlUrl.isBlank()) {
+            Map<String, Object> props = parseToSpringDatasource(mysqlUrl, environment);
+            if (!props.isEmpty()) {
+                environment.getPropertySources().addFirst(
+                    new MapPropertySource("railwayMysql", props)
+                );
             }
             return;
         }
+        // Fallback: build from Railway's separate vars (MYSQLHOST, MYSQLUSER, ...)
+        String host = envOrProp(environment, "MYSQLHOST");
+        String port = envOrProp(environment, "MYSQLPORT");
+        String user = envOrProp(environment, "MYSQLUSER");
+        String pass = envOrProp(environment, "MYSQLPASSWORD");
+        String database = envOrProp(environment, "MYSQLDATABASE");
+        if (host != null && user != null && pass != null && database != null && !host.contains("railway.internal")) {
+            String url = "jdbc:mysql://" + host + ":" + (port != null ? port : "3306") + "/" + database + "?useSSL=true";
+            Map<String, Object> props = new HashMap<>();
+            props.put("spring.datasource.url", url);
+            props.put("spring.datasource.username", user);
+            props.put("spring.datasource.password", pass);
+            environment.getPropertySources().addFirst(new MapPropertySource("railwayMysql", props));
+        }
+    }
 
+    private static String firstNonBlank(String... values) {
+        for (String v : values) {
+            if (v != null && !v.isBlank()) return v;
+        }
+        return null;
+    }
+
+    private static Map<String, Object> parseToSpringDatasource(String mysqlUrl, ConfigurableEnvironment environment) {
         Map<String, Object> props = new HashMap<>();
         if (mysqlUrl.startsWith("jdbc:mysql:")) {
             props.put("spring.datasource.url", mysqlUrl);
-            // Railway may still set user/pass separately; if not, leave to user
-            String user = environment.getProperty("MYSQL_USER");
-            String pass = environment.getProperty("MYSQL_PASSWORD");
+            String user = firstNonBlank(environment.getProperty("MYSQLUSER"), System.getenv("MYSQLUSER"));
+            String pass = firstNonBlank(environment.getProperty("MYSQLPASSWORD"), System.getenv("MYSQLPASSWORD"));
             if (user != null) props.put("spring.datasource.username", user);
             if (pass != null) props.put("spring.datasource.password", pass);
         } else if (mysqlUrl.startsWith("mysql://")) {
             try {
-                // mysql://user:password@host:port/database
-                String jdbcUrl = "jdbc:" + mysqlUrl;
-                URI uri = URI.create(jdbcUrl.replace("jdbc:mysql://", "http://"));
+                URI uri = URI.create(mysqlUrl.replace("mysql://", "http://"));
                 String userInfo = uri.getUserInfo();
                 String host = uri.getHost();
                 int port = uri.getPort() > 0 ? uri.getPort() : 3306;
                 String path = uri.getPath();
                 String database = path != null && path.length() > 1 ? path.substring(1) : "railway";
-
                 props.put("spring.datasource.url", "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=true");
                 if (userInfo != null && !userInfo.isEmpty()) {
                     int colon = userInfo.indexOf(':');
@@ -73,15 +97,10 @@ public class RailwayMysqlEnvConfig implements EnvironmentPostProcessor {
                     }
                 }
             } catch (Exception e) {
-                throw new IllegalStateException("Invalid " + MYSQL_URL + ": " + e.getMessage(), e);
+                throw new IllegalStateException("Invalid MYSQL URL: " + e.getMessage(), e);
             }
         }
-
-        if (!props.isEmpty()) {
-            environment.getPropertySources().addFirst(
-                new MapPropertySource("railwayMysql", props)
-            );
-        }
+        return props;
     }
 
     private static String envOrProp(ConfigurableEnvironment environment, String name) {

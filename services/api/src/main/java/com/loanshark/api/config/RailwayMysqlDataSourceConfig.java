@@ -13,13 +13,13 @@ import javax.sql.DataSource;
 import java.net.URI;
 
 /**
- * Creates a DataSource from Railway MySQL env vars (MYSQL_URL or MYSQLHOST/MYSQLUSER/...)
- * so DataSource auto-config does not require spring.datasource.url to be set.
- * On Railway BackEnd: set MYSQL_URL = ${{ YourMySQLService.MYSQL_URL }} (or reference individual vars).
+ * Fallback: creates a DataSource from MYSQL_* when RailwayMysqlEnvConfig did not set spring.datasource.*
+ * (e.g. no MYSQL_URL/MYSQL_PUBLIC_URL at env post-process time). When those are set, the env
+ * post-processor sets spring.datasource.* and Spring's DataSource auto-config is used instead.
  */
 @Configuration
 @AutoConfigureBefore(DataSourceAutoConfiguration.class)
-@ConditionalOnExpression("!'${MYSQL_URL:}'.isEmpty() || !'${MYSQL_PUBLIC_URL:}'.isEmpty()")
+@ConditionalOnExpression("'${spring.datasource.url:}'.isEmpty() && (!'${MYSQL_URL:}'.isEmpty() || !'${MYSQL_PUBLIC_URL:}'.isEmpty())")
 public class RailwayMysqlDataSourceConfig {
 
     @Bean

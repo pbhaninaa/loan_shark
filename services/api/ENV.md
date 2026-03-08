@@ -4,9 +4,11 @@ Used when running locally or when deploying to Railway. See **DEPLOYMENT.md** at
 
 ## Required for deployment (Railway)
 
+When the Backend is linked to a Railway MySQL service, Railway injects `MYSQL_URL`, `MYSQL_PUBLIC_URL`, `MYSQLHOST`, `MYSQLUSER`, etc. The app **prefers `MYSQL_PUBLIC_URL`** and sets `spring.datasource.*` from it (same behaviour as the working backend that uses `SPRING_DATASOURCE_*`). No need to add `SPRING_DATASOURCE_URL` manually.
+
 | Variable | Description |
 |----------|-------------|
-| `MYSQL_PUBLIC_URL` | **Required.** MySQL connection URL. On Railway Backend: add variable `MYSQL_PUBLIC_URL` = `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}`. Do not use only `MYSQL_URL` (private host `*.railway.internal` often does not resolve). |
+| `MYSQL_PUBLIC_URL` | From MySQL service. Ensure the Backend has it (e.g. reference `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}` or link the MySQL service so Railway injects it). The app uses this over `MYSQL_URL` so the private host is never used. |
 | `JWT_SECRET` | Secret for JWT signing (min 64 characters). |
 
 ## Optional
