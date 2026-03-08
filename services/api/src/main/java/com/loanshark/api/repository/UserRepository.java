@@ -14,6 +14,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByUsername(String username);
 
+    /** Case-insensitive lookup for login (handles "Mxo" vs "mxo"). */
+    Optional<User> findByUsernameIgnoreCase(String username);
+
     boolean existsByRole(UserRole role);
 
     long countByRole(UserRole role);

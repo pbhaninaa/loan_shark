@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
@@ -46,6 +48,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleAccessDenied(Exception exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
             .body(error("Access Denied", null));
+    }
+
+    @ExceptionHandler({ UsernameNotFoundException.class, BadCredentialsException.class })
+    public ResponseEntity<Map<String, Object>> handleBadCredentials(Exception exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body(error("Invalid username or password", null));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
