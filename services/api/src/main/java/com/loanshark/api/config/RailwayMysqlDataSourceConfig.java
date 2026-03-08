@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -19,7 +19,7 @@ import java.net.URI;
  */
 @Configuration
 @AutoConfigureBefore(DataSourceAutoConfiguration.class)
-@ConditionalOnProperty(name = "MYSQL_URL")
+@ConditionalOnExpression("!'${MYSQL_URL:}'.isEmpty() || !'${MYSQL_PUBLIC_URL:}'.isEmpty()")
 public class RailwayMysqlDataSourceConfig {
 
     @Bean
@@ -33,6 +33,19 @@ public class RailwayMysqlDataSourceConfig {
         );
         if (mysqlUrl == null || mysqlUrl.isBlank()) {
             throw new IllegalStateException("MYSQL_URL (or MYSQL_PUBLIC_URL) must be set on the BackEnd service. In Railway: BackEnd → Variables → MYSQL_URL = ${{ YourMySQLService.MYSQL_URL }}");
+        }
+        // Private host only resolves inside Railway's network; use public URL so the app can connect.
+        if (mysqlUrl.contains("railway.internal")) {
+            String publicUrl = firstNonBlank(
+                env.getProperty("MYSQL_PUBLIC_URL"),
+                System.getenv("MYSQL_PUBLIC_URL")
+            );
+            if (publicUrl == null || publicUrl.isBlank()) {
+                throw new IllegalStateException(
+                    "MYSQL_URL points to Railway's private host (railway.internal), which is not reachable from here. "
+                    + "On Railway: BackEnd → Variables → add MYSQL_PUBLIC_URL = ${{ YourMySQLService.MYSQL_PUBLIC_URL }}");
+            }
+            mysqlUrl = publicUrl;
         }
 
         String jdbcUrl;

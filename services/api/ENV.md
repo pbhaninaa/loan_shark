@@ -6,14 +6,14 @@ Used when running locally or when deploying to Railway. See **DEPLOYMENT.md** at
 
 | Variable | Description |
 |----------|-------------|
-| `MYSQL_PUBLIC_URL` | MySQL connection URL (e.g. from Railway MySQL → Variables → MYSQL_PUBLIC_URL). Use reference `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}` when backend is on Railway. |
+| `MYSQL_PUBLIC_URL` | **Required.** MySQL connection URL. On Railway Backend: add variable `MYSQL_PUBLIC_URL` = `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}`. Do not use only `MYSQL_URL` (private host `*.railway.internal` often does not resolve). |
 | `JWT_SECRET` | Secret for JWT signing (min 64 characters). |
 
 ## Optional
 
 | Variable | Description |
 |----------|-------------|
-| `SPRING_PROFILES_ACTIVE` | `sit`, `uat`, or `prod`. |
+| `SPRING_PROFILES_ACTIVE` | Exactly one of: `sit`, `uat`, or `prod` (e.g. `prod` for production). Do not use `prod or sit`. |
 | `APP_FRONTEND_URL` | Frontend base URL (e.g. Vercel URL) for password reset links. |
 | `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | SMTP / mail sender. |
 | `STRIPE_SECRET_KEY` | Stripe API secret key. |
