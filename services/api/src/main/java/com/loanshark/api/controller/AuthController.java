@@ -1,11 +1,13 @@
 package com.loanshark.api.controller;
 
+import com.loanshark.api.dto.ApiDtos.AuthMeResponse;
 import com.loanshark.api.dto.ApiDtos.AuthRequest;
 import com.loanshark.api.dto.ApiDtos.AuthResponse;
 import com.loanshark.api.dto.ApiDtos.ChangePasswordRequest;
 import com.loanshark.api.dto.ApiDtos.ForgotPasswordRequest;
 import com.loanshark.api.dto.ApiDtos.ForgotPasswordResponse;
 import com.loanshark.api.dto.ApiDtos.OwnerRegistrationRequest;
+import com.loanshark.api.dto.ApiDtos.UpdateEmailRequest;
 import com.loanshark.api.dto.ResetPasswordWithTokenRequest;
 import com.loanshark.api.dto.ApiDtos.ResetUserPasswordRequest;
 import com.loanshark.api.dto.ApiDtos.SetupStatusResponse;
@@ -24,6 +26,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -49,6 +52,19 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody AuthRequest request) {
         return authService.login(request);
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public AuthMeResponse getMe() {
+        return authService.getMe();
+    }
+
+    @PutMapping("/me/email")
+    @PreAuthorize("isAuthenticated()")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateMyEmail(@Valid @RequestBody UpdateEmailRequest request) {
+        authService.updateMyEmail(request.email());
     }
 
     @PostMapping("/change-password")

@@ -33,6 +33,7 @@ export const useAppStore = defineStore("app", {
     notifications: [],
     notificationsPage: { page: 0, size: 8, totalElements: 0, totalPages: 0 },
     borrowerProfile: null,
+    authMe: null,
     verification: null,
     loanSchedule: [],
     setup: {
@@ -80,6 +81,7 @@ export const useAppStore = defineStore("app", {
       this.dashboard = null;
       this.actions = [];
       this.borrowerProfile = null;
+      this.authMe = null;
       this.verification = null;
       this.notifications = [];
       this.loanSchedule = [];
@@ -107,6 +109,15 @@ export const useAppStore = defineStore("app", {
     async forgotPassword(username) {
       const { data } = await api.post("/auth/forgot-password", { username });
       return data;
+    },
+    async fetchMe() {
+      const { data } = await api.get("/auth/me");
+      this.authMe = data;
+      return data;
+    },
+    async updateMyEmail(email) {
+      await api.put("/auth/me/email", { email: email || "" });
+      if (this.authMe) this.authMe = { ...this.authMe, email: email || null };
     },
     async resetPasswordWithToken(token, newPassword) {
       await api.post("/auth/reset-password", { token, newPassword });
