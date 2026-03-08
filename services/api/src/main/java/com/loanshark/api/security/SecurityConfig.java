@@ -48,13 +48,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Health check
                 .requestMatchers("/actuator/health").permitAll()
-                // Public auth endpoints - no JWT required
-                .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/forgot-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/reset-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/register/owner").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/register/borrower").permitAll()
-                .requestMatchers(HttpMethod.GET, "/auth/setup-status").permitAll()
+                // Public auth endpoints - no JWT required (/** allows path behind proxy/context path)
+                .requestMatchers(HttpMethod.POST, "/auth/login", "**/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/forgot-password", "**/auth/forgot-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/reset-password", "**/auth/reset-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/register/owner", "**/auth/register/owner").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/register/borrower", "**/auth/register/borrower").permitAll()
+                .requestMatchers(HttpMethod.GET, "/auth/setup-status", "**/auth/setup-status").permitAll()
                 // Authenticated endpoints
                 .requestMatchers(HttpMethod.GET, "/auth/business-capital").authenticated()
                 .requestMatchers(HttpMethod.POST, "/auth/business-capital/top-up").hasRole("OWNER")
