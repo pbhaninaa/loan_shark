@@ -253,6 +253,13 @@ public final class ApiDtos {
     ) {
     }
 
+    /** Expected amount due at end of default loan term for a given principal using current loan interest settings. */
+    public record ExpectedAmountAtEndOfTermResponse(
+        BigDecimal principal,
+        BigDecimal expectedAmountDue,
+        int termDays
+    ) {}
+
     public record BusinessCapitalResponse(
         BigDecimal balance,
         BigDecimal totalMoneyOut,

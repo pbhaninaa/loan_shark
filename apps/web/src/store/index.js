@@ -253,6 +253,11 @@ export const useAppStore = defineStore("app", {
       const { data } = await api.get("/settings/loan-interest");
       return data;
     },
+    async fetchExpectedAmountAtEndOfTerm(principal = null) {
+      const params = principal != null ? { principal: Number(principal) } : {};
+      const { data } = await api.get("/settings/loan-interest/expected-amount", { params });
+      return data;
+    },
     async updateLoanInterestSettings(payload) {
       const { data } = await api.put("/settings/loan-interest", payload);
       return data;
