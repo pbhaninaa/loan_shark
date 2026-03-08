@@ -1,7 +1,10 @@
 import axios from "axios";
 
-// Use Railway (or other) backend URL in production; localhost when developing
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+// Build-time: VITE_API_URL (set on Vercel). Runtime fallback: if we're not on localhost, use Railway so deployed app works even if env wasn't set.
+const buildTimeApiUrl = import.meta.env.VITE_API_URL;
+const isDeployed = typeof window !== "undefined" && !/localhost|127\.0\.0\.1/.test(window.location?.hostname || "");
+const defaultApiUrl = isDeployed ? "https://backend-production-8d8d.up.railway.app" : "http://localhost:8080";
+const baseURL = buildTimeApiUrl || defaultApiUrl;
 
 const api = axios.create({
   baseURL
