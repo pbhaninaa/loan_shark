@@ -102,7 +102,8 @@ public class RequireEmailFilter extends OncePerRequestFilter {
 
     private static String normalizePath(String path) {
         if (path == null) return "";
-        if (path.startsWith("/")) return path;
-        return "/" + path;
+        if (!path.startsWith("/")) path = "/" + path;
+        if (path.length() > 1 && path.endsWith("/")) path = path.substring(0, path.length() - 1);
+        return path;
     }
 }
