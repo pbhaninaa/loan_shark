@@ -16,27 +16,6 @@
       {{ error }}
     </v-alert>
 
-    <v-card v-if="expectedAmount != null" class="mb-4">
-      <v-card-title class="d-flex align-center text-primary">
-        <v-icon start>mdi-cash-check</v-icon>
-        Expected amount at end of term
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <p class="text-body-2 text-medium-emphasis mb-2">
-          Using current loan interest &amp; term settings, a loan of
-          <strong>{{ formatCurrency(expectedAmount.principal) }}</strong>
-          over <strong>{{ expectedAmount.termDays }} days</strong> would result in:
-        </p>
-        <div class="text-h4 font-weight-bold text-primary">
-          {{ formatCurrency(expectedAmount.expectedAmountDue) }} due at end of term
-        </div>
-        <p class="text-caption text-medium-emphasis mt-2 mb-0">
-          This uses your current business capital as principal when you have not specified an amount. After you add or top up capital, the value updates here.
-        </p>
-      </v-card-text>
-    </v-card>
-
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-cog-outline</v-icon>
@@ -94,6 +73,17 @@
                 prepend-inner-icon="mdi-calendar-range"
                 hint="Used when client only specifies amount (nominal term for due date; actual payoff by repayments)."
               />
+            </v-col>
+            <v-col cols="12" md="6">
+              <div v-if="expectedAmount != null" class="expected-amount-box pa-4 rounded border">
+                <div class="text-caption text-medium-emphasis mb-1">Expected amount at end of term</div>
+                <div class="text-h5 font-weight-bold text-primary">
+                  {{ formatCurrency(expectedAmount.expectedAmountDue) }}
+                </div>
+                <p class="text-caption text-medium-emphasis mt-2 mb-0">
+                  For principal {{ formatCurrency(expectedAmount.principal) }} over {{ expectedAmount.termDays }} days (using rate, type, period &amp; grace above).
+                </p>
+              </div>
             </v-col>
           </v-row>
           <div class="mt-4 d-flex ga-2">
