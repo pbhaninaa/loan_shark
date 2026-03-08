@@ -92,7 +92,7 @@ api.interceptors.request.use((config) => {
     path.startsWith("/auth/setup-status") ||
     path.startsWith("/auth/forgot-password") ||
     path.startsWith("/auth/reset-password") ||
-    ((config.method || "").toLowerCase() === "get" && path.startsWith("/settings/loan-interest"));
+    ((config.method || "").toLowerCase() === "get" && path === "/settings/loan-interest");
 
   if (token && !isPublic) {
     config.headers.Authorization = `Bearer ${token}`;
