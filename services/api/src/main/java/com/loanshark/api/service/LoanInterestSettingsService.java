@@ -1,5 +1,6 @@
 package com.loanshark.api.service;
 
+import com.loanshark.api.dto.ApiDtos.ExpectedAmountAtEndOfTermResponse;
 import com.loanshark.api.dto.ApiDtos.LoanInterestSettingsResponse;
 import com.loanshark.api.dto.ApiDtos.LoanInterestSettingsUpdateRequest;
 import com.loanshark.api.entity.InterestType;
@@ -14,9 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class LoanInterestSettingsService {
 
     private final LoanInterestSettingsRepository repository;
+    private final InterestCalculationService interestCalculationService;
 
-    public LoanInterestSettingsService(LoanInterestSettingsRepository repository) {
+    public LoanInterestSettingsService(
+        LoanInterestSettingsRepository repository,
+        InterestCalculationService interestCalculationService
+    ) {
         this.repository = repository;
+        this.interestCalculationService = interestCalculationService;
     }
 
     @Transactional
@@ -73,5 +79,25 @@ public class LoanInterestSettingsService {
             settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365,
             settings.getUpdatedAt()
         );
+    }
+
+    /**
+     * Compute expected amount due at end of default loan term for a given principal using current settings.
+     * Used to show owners what a loan of X (e.g. current business capital) would yield at term end.
+     */
+    @Transactional(readOnly = true)
+    public ExpectedAmountAtEndOfTermResponse getExpectedAmountAtEndOfTerm(BigDecimal principal) {
+        LoanInterestSettings settings = repository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
+            .orElseGet(this::createDefaultSettings);
+        if (principal == null || principal.compareTo(BigDecimal.ZERO) <= 0) {
+            return new ExpectedAmountAtEndOfTermResponse(
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365
+            );
+        }
+        int termDays = settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365;
+        BigDecimal expectedDue = interestCalculationService.computeTotalAmount(principal, termDays, settings);
+        return new ExpectedAmountAtEndOfTermResponse(principal, expectedDue, termDays);
     }
 }

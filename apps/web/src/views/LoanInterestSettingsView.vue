@@ -16,6 +16,27 @@
       {{ error }}
     </v-alert>
 
+    <v-card v-if="expectedAmount != null" class="mb-4">
+      <v-card-title class="d-flex align-center text-primary">
+        <v-icon start>mdi-cash-check</v-icon>
+        Expected amount at end of term
+      </v-card-title>
+      <v-divider />
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-2">
+          Using current loan interest &amp; term settings, a loan of
+          <strong>{{ formatCurrency(expectedAmount.principal) }}</strong>
+          over <strong>{{ expectedAmount.termDays }} days</strong> would result in:
+        </p>
+        <div class="text-h4 font-weight-bold text-primary">
+          {{ formatCurrency(expectedAmount.expectedAmountDue) }} due at end of term
+        </div>
+        <p class="text-caption text-medium-emphasis mt-2 mb-0">
+          This uses your current business capital as principal when you have not specified an amount. After you add or top up capital, the value updates here.
+        </p>
+      </v-card-text>
+    </v-card>
+
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-cog-outline</v-icon>
@@ -94,6 +115,7 @@ import AppActionButton from "../components/ui/AppActionButton.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
 import AppSelectField from "../components/ui/AppSelectField.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
+import { formatCurrency } from "../utils/formatters";
 import { useAppStore } from "../store";
 
 const store = useAppStore();
@@ -102,6 +124,7 @@ const error = ref("");
 const loading = ref(true);
 const saving = ref(false);
 const settings = ref(null);
+const expectedAmount = ref(null);
 
 const form = reactive({
   defaultInterestRate: 30,
@@ -122,11 +145,20 @@ function assignForm() {
 
 watch(settings, assignForm, { immediate: true });
 
+async function loadExpectedAmount() {
+  try {
+    expectedAmount.value = await store.fetchExpectedAmountAtEndOfTerm();
+  } catch {
+    expectedAmount.value = null;
+  }
+}
+
 onMounted(async () => {
   loading.value = true;
   error.value = "";
   try {
     settings.value = await store.fetchLoanInterestSettings();
+    await loadExpectedAmount();
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to load settings";
   } finally {
@@ -148,6 +180,7 @@ async function save() {
     });
     settings.value = updated;
     message.value = "Settings saved.";
+    await loadExpectedAmount();
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to save settings";
   } finally {
