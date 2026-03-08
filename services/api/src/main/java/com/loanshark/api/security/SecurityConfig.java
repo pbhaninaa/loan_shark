@@ -46,12 +46,16 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                // Public auth: match by path so no other rule can take precedence.
-                // Normalize path for proxy/context path (e.g. Railway): use servlet path, or strip context path from URI.
+                // Explicit public auth paths (checked first; works with default path resolution on Railway).
+                .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
+                    "/auth/register/owner", "/auth/register/borrower").permitAll()
+                .requestMatchers(HttpMethod.GET, "/auth/setup-status").permitAll()
+                // Public auth fallback: match by normalized path for proxy/context path (e.g. Railway).
                 .requestMatchers(request -> {
-                    String path = normalizePath(request);
+                    jakarta.servlet.http.HttpServletRequest req = request;
+                    String path = normalizePath(req);
                     if (path == null) return false;
-                    String method = request.getMethod();
+                    String method = req.getMethod();
                     if ("POST".equalsIgnoreCase(method)) {
                         return isPublicAuthPath(path, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
                             "/auth/register/owner", "/auth/register/borrower");
