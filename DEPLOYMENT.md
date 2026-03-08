@@ -4,20 +4,15 @@ Same deployment pattern as **Mechanic-Management**: Railway for backend + MySQL,
 
 ---
 
-## Backend won’t start: “railway.internal not reachable” or “add MYSQL_PUBLIC_URL”
+## Backend won’t start: “Failed to configure a DataSource”
 
-If the backend fails with **“MYSQL_URL points to Railway's private host (railway.internal), which is not reachable”**:
+DB is configured **only via properties** (like Mechanic Management). Set these on the Backend service in Railway:
 
-1. Open your **Railway project** → select the **Backend** service (the Java/Spring one).
-2. Go to **Variables**.
-3. **Add** a variable (do not replace `MYSQL_URL`):
-   - **Name:** `MYSQL_PUBLIC_URL`
-   - **Value:** `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}`  
-     Replace `YourMySQLServiceName` with your MySQL service name (e.g. `MySQL-Q-C2` or `mysql`). Use the exact name shown in the Variables dropdown when you type `${{`.
-4. Fix **SPRING_PROFILES_ACTIVE** if needed: set it to **exactly** `prod` or `uat` or `sit` (one value only, not e.g. `prod or sit`).
-5. **Redeploy** the Backend (Deployments → ⋮ → Redeploy, or push a commit).
+- **SPRING_DATASOURCE_URL** – JDBC URL, e.g. `jdbc:mysql://host:port/railway?useSSL=true`. Use the **public** host from your Railway MySQL service (e.g. `roundhouse.proxy.rlwy.net:12345`), not the private `*.railway.internal` host.
+- **SPRING_DATASOURCE_USERNAME** – e.g. from MySQL service Variables (often `root`).
+- **SPRING_DATASOURCE_PASSWORD** – from MySQL service Variables.
 
-The app uses `MYSQL_PUBLIC_URL` when the private URL is not reachable, so the backend can connect to MySQL.
+Set **SPRING_PROFILES_ACTIVE** to exactly one value: `prod`, `uat`, or `sit`.
 
 ---
 
@@ -25,22 +20,16 @@ The app uses `MYSQL_PUBLIC_URL` when the private URL is not reachable, so the ba
 
 **Repo layout:** Backend lives in **`services/api`**. In Railway, set **Root Directory** to **`services/api`** (Dockerfile there).
 
-In your **Railway project** (backend service), open **Variables** and set:
+DB is configured only via **properties / env** (same as Mechanic Management). In your **Railway project** (backend service), open **Variables** and set:
 
 ### Required
 
 | Variable | Where to get it | Example |
 |----------|-----------------|---------|
-| `MYSQL_PUBLIC_URL` | Railway MySQL → **Variables** → copy value of **MYSQL_PUBLIC_URL**, or reference: `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}` | `mysql://root:xxx@gondola.proxy.rlwy.net:49401/railway` |
+| `SPRING_DATASOURCE_URL` | JDBC URL. From Railway MySQL use the **public** URL: convert `mysql://user:pass@host:port/db` to `jdbc:mysql://host:port/db?useSSL=true` (same host/port as in MySQL service Variables). | `jdbc:mysql://roundhouse.proxy.rlwy.net:12345/railway?useSSL=true` |
+| `SPRING_DATASOURCE_USERNAME` | Railway MySQL → Variables (e.g. `root`) | `root` |
+| `SPRING_DATASOURCE_PASSWORD` | Railway MySQL → Variables | (value from MySQL service) |
 | `JWT_SECRET` | Generate a long random string (min 64 chars). E.g. `openssl rand -base64 48` | `your_64_char_secret_...` |
-
-### Optional (DB – if not using MYSQL_PUBLIC_URL)
-
-| Variable | Where to get it |
-|----------|-----------------|
-| `SPRING_DATASOURCE_URL` | JDBC URL from Railway MySQL (Connect / Variables). Use **public** URL when private host does not resolve. |
-| `SPRING_DATASOURCE_USERNAME` | Railway MySQL → Variables (often `root`) |
-| `SPRING_DATASOURCE_PASSWORD` | Railway MySQL → Variables |
 
 ### Frontend URL (for emails and links)
 
@@ -94,7 +83,9 @@ In your **Vercel project** → **Settings** → **Environment Variables**, add:
 **Railway (backend service)**
 - [ ] Root Directory = **`services/api`**
 - [ ] `SPRING_PROFILES_ACTIVE` = `sit` or `prod`
-- [ ] `MYSQL_PUBLIC_URL` = `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}` (or paste value)
+- [ ] `SPRING_DATASOURCE_URL` = JDBC URL (public MySQL host, e.g. `jdbc:mysql://host:port/db?useSSL=true`)
+- [ ] `SPRING_DATASOURCE_USERNAME` = MySQL username (e.g. from MySQL service)
+- [ ] `SPRING_DATASOURCE_PASSWORD` = MySQL password (from MySQL service)
 - [ ] `JWT_SECRET` (min 64 chars)
 - [ ] `APP_FRONTEND_URL` = your Vercel app URL (optional but recommended)
 - [ ] Generate **public domain** in Settings → Networking
@@ -117,7 +108,9 @@ Copy each **Variable** name into the platform’s “Name” field and the descr
 | Variable (Name) | Value / What to put in the field |
 |-----------------|----------------------------------|
 | `SPRING_PROFILES_ACTIVE` | `prod` |
-| `MYSQL_PUBLIC_URL` | `${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}` — or paste the value from Railway MySQL → Variables → MYSQL_PUBLIC_URL. |
+| `SPRING_DATASOURCE_URL` | JDBC URL, e.g. `jdbc:mysql://YOUR_PUBLIC_MYSQL_HOST:PORT/railway?useSSL=true` (use public host from MySQL service). |
+| `SPRING_DATASOURCE_USERNAME` | MySQL username (e.g. `root` from MySQL service). |
+| `SPRING_DATASOURCE_PASSWORD` | MySQL password (from MySQL service Variables). |
 | `JWT_SECRET` | Your own long secret, at least 64 characters. |
 | `MAIL_USERNAME` | Your Gmail address, e.g. `you@gmail.com`. (optional) |
 | `MAIL_PASSWORD` | Gmail App Password. (optional) |
