@@ -24,12 +24,12 @@ public class RailwayMysqlDataSourceConfig {
 
     @Bean
     public DataSource dataSource(Environment env) {
-        // Prefer MYSQL_URL (private, for BackEnd on Railway). Use MYSQL_PUBLIC_URL when BackEnd runs elsewhere.
+        // Prefer MYSQL_PUBLIC_URL so connection works when private host (*.railway.internal) does not resolve.
         String mysqlUrl = firstNonBlank(
-            env.getProperty("MYSQL_URL"),
-            System.getenv("MYSQL_URL"),
             env.getProperty("MYSQL_PUBLIC_URL"),
-            System.getenv("MYSQL_PUBLIC_URL")
+            System.getenv("MYSQL_PUBLIC_URL"),
+            env.getProperty("MYSQL_URL"),
+            System.getenv("MYSQL_URL")
         );
         if (mysqlUrl == null || mysqlUrl.isBlank()) {
             throw new IllegalStateException("MYSQL_URL (or MYSQL_PUBLIC_URL) must be set on the BackEnd service. In Railway: BackEnd → Variables → MYSQL_URL = ${{ YourMySQLService.MYSQL_URL }}");
