@@ -45,7 +45,7 @@ api.interceptors.response.use(
     if (isTimeout) {
       error.message = "Request timeout. The backend took too long to respond. Check your connection.";
     } else if (isUnreachable) {
-      error.message = "Backend is unreachable. Check that the API is running ";
+      error.message = "Server is down, please try again later.";
     }
 
     if (!error.config?.skipGlobalToast && typeof toast !== "undefined") {
