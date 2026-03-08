@@ -5,6 +5,9 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -15,6 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
@@ -37,6 +42,15 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Map<String, Object>> handleConstraint(ConstraintViolationException exception) {
         return ResponseEntity.badRequest().body(error(exception.getMessage(), null));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleOther(Exception exception) {
+        log.error("Unhandled exception", exception);
+        String message = exception.getMessage() != null && exception.getMessage().contains("JWT")
+            ? "Server configuration error: check JWT_SECRET (min 64 characters)."
+            : "An error occurred. Please try again.";
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error(message, null));
     }
 
     private Map<String, Object> error(String message, Map<String, String> details) {
