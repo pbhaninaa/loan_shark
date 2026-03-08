@@ -74,10 +74,11 @@ public class AuthService {
     }
 
     public AuthResponse login(AuthRequest request) {
+        String username = request.username() != null ? request.username().trim() : "";
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.username(), request.password()));
+                new UsernamePasswordAuthenticationToken(username, request.password()));
 
-        User user = userRepository.findByUsername(request.username())
+        User user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Invalid credentials"));
 
         UUID borrowerId = borrowerRepository.findByUserId(user.getId())

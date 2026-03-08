@@ -18,14 +18,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Blocks all authenticated requests except GET /auth/me, PUT /auth/me/email, and GET /settings/loan-interest/expected-amount
+ * Blocks all authenticated requests except GET /auth/me, PUT /auth/me/email, GET /borrowers/me, and GET /settings/loan-interest/expected-amount
  * when the current user has no email in the database. Forces users to add their email first.
+ * GET /borrowers/me is allowed so the app can load borrower profile/status and redirect to the page where they can set email.
  */
 @Component
 public class RequireEmailFilter extends OncePerRequestFilter {
 
     private static final String GET_ME = "/auth/me";
     private static final String PUT_ME_EMAIL = "/auth/me/email";
+    private static final String GET_BORROWERS_ME = "/borrowers/me";
     private static final String GET_EXPECTED_AMOUNT = "/settings/loan-interest/expected-amount";
 
     private final UserRepository userRepository;
@@ -56,6 +58,9 @@ public class RequireEmailFilter extends OncePerRequestFilter {
             return true;
         }
         if ("PUT".equalsIgnoreCase(request.getMethod()) && PUT_ME_EMAIL.equals(path)) {
+            return true;
+        }
+        if ("GET".equalsIgnoreCase(request.getMethod()) && GET_BORROWERS_ME.equals(path)) {
             return true;
         }
         if ("GET".equalsIgnoreCase(request.getMethod()) && GET_EXPECTED_AMOUNT.equals(path)) {
