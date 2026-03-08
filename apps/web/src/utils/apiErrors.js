@@ -1,5 +1,5 @@
 const BACKEND_UNREACHABLE_MESSAGE =
-  "Backend is unreachable, Check that the API is running.";
+  "Server is down, please try again later.";
 
 function isBackendUnreachable(err) {
   if (!err) return false;
