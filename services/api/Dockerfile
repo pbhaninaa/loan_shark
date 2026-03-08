@@ -21,5 +21,7 @@ COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
+# Limit heap so the container stays within Railway memory (e.g. 512MB). Override with JAVA_OPTS in Railway if needed.
+ENV JAVA_OPTS="-Xms256m -Xmx384m -XX:MaxMetaspaceSize=96m"
 # Use PORT so Cloud Run and other hosts can override
-CMD ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
+CMD ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT} -jar app.jar"]
