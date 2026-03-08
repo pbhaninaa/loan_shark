@@ -46,9 +46,11 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                // Public auth: match by path so no other rule can take precedence
+                // Public auth: match by path so no other rule can take precedence.
+                // Use getServletPath() so matching works with or without context path (e.g. Railway/proxy).
                 .requestMatchers(request -> {
-                    String path = request.getRequestURI();
+                    String path = request.getServletPath();
+                    if (path == null) path = request.getRequestURI();
                     if (path != null && path.endsWith("/") && path.length() > 1) {
                         path = path.substring(0, path.length() - 1);
                     }
@@ -60,8 +62,12 @@ public class SecurityConfig {
                     }
                     return "GET".equalsIgnoreCase(method) && "/auth/setup-status".equals(path);
                 }).permitAll()
-                .requestMatchers(request -> "GET".equalsIgnoreCase(request.getMethod())
-                    && "/settings/loan-interest".equals(request.getRequestURI())).permitAll()
+                .requestMatchers(request -> {
+                    if (!"GET".equalsIgnoreCase(request.getMethod())) return false;
+                    String path = request.getServletPath();
+                    if (path == null) path = request.getRequestURI();
+                    return "/settings/loan-interest".equals(path);
+                }).permitAll()
                 // Authenticated / owner-only auth endpoints (checked before /auth/** so JWT is enforced)
                 .requestMatchers(HttpMethod.GET, "/auth/business-capital").authenticated()
                 .requestMatchers(HttpMethod.POST, "/auth/business-capital/top-up").hasRole("OWNER")
