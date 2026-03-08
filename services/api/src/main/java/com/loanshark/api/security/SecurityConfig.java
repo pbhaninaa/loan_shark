@@ -46,9 +46,20 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
-                    "/auth/register/owner", "/auth/register/borrower").permitAll()
-                .requestMatchers(HttpMethod.GET, "/auth/setup-status").permitAll()
+                // Public auth: match by path so no other rule can take precedence
+                .requestMatchers(request -> {
+                    String path = request.getRequestURI();
+                    if (path != null && path.endsWith("/") && path.length() > 1) {
+                        path = path.substring(0, path.length() - 1);
+                    }
+                    String method = request.getMethod();
+                    if ("POST".equalsIgnoreCase(method)) {
+                        return "/auth/login".equals(path) || "/auth/forgot-password".equals(path)
+                            || "/auth/reset-password".equals(path) || "/auth/register/owner".equals(path)
+                            || "/auth/register/borrower".equals(path);
+                    }
+                    return "GET".equalsIgnoreCase(method) && "/auth/setup-status".equals(path);
+                }).permitAll()
                 .requestMatchers(request -> "GET".equalsIgnoreCase(request.getMethod())
                     && "/settings/loan-interest".equals(request.getRequestURI())).permitAll()
                 // Authenticated / owner-only auth endpoints (checked before /auth/** so JWT is enforced)
