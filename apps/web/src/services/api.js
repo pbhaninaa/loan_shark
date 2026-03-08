@@ -45,7 +45,7 @@ api.interceptors.response.use(
     if (isTimeout) {
       error.message = "Request timeout. The backend took too long to respond. Check your connection.";
     } else if (isUnreachable) {
-      error.message = "Backend is unreachable. Check that the API is running and that VITE_API_URL (or the connection URL) is correct.";
+      error.message = "Backend is unreachable. Check that the API is running ";
     }
 
     if (!error.config?.skipGlobalToast && typeof toast !== "undefined") {

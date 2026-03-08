@@ -1,5 +1,5 @@
 const BACKEND_UNREACHABLE_MESSAGE =
-  "Backend is unreachable. Check that the API is running and that VITE_API_URL (or the connection URL) is correct.";
+  "Backend is unreachable, Check that the API is running.";
 
 function isBackendUnreachable(err) {
   if (!err) return false;
