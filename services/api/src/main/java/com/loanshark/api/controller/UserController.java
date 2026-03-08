@@ -1,7 +1,7 @@
 package com.loanshark.api.controller;
 
 import com.loanshark.api.dto.ApiDtos.PageResponse;
-import com.loanshark.api.dto.ApiDtos.ResetPasswordRequest;
+import com.loanshark.api.dto.ResetPasswordRequest;
 import com.loanshark.api.dto.ApiDtos.UserRequest;
 import com.loanshark.api.dto.ApiDtos.UserResponse;
 import com.loanshark.api.service.UserManagementService;

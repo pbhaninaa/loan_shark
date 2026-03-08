@@ -80,11 +80,6 @@ public final class ApiDtos {
     ) {
     }
 
-    public record ResetPasswordRequest(
-        @NotBlank String newPassword
-    ) {
-    }
-
     /** Owner resets another user's password by user id. */
     public record ResetUserPasswordRequest(
         @NotNull UUID userId,
@@ -97,12 +92,6 @@ public final class ApiDtos {
     public record ForgotPasswordResponse(
         String message,
         String resetLink
-    ) {}
-
-    /** Reset password using token from forgot-password flow (no auth). */
-    public record ResetPasswordWithTokenRequest(
-        @NotBlank String token,
-        @NotBlank String newPassword
     ) {}
 
     public record BorrowerRequest(

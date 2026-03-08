@@ -1,5 +1,6 @@
 # Loan Shark API – same deployment setup as TestAppBackEnd (Railway, same DB env vars)
 # Set SPRING_PROFILES_ACTIVE on Railway: sit | uat | prod
+# On Railway: set MYSQL_URL to ${{ YourMySQLService.MYSQL_URL }} for the DB connection (see RailwayMysqlEnvConfig).
 
 spring:
   application:

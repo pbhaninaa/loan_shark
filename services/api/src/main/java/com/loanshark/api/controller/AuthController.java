@@ -6,7 +6,7 @@ import com.loanshark.api.dto.ApiDtos.ChangePasswordRequest;
 import com.loanshark.api.dto.ApiDtos.ForgotPasswordRequest;
 import com.loanshark.api.dto.ApiDtos.ForgotPasswordResponse;
 import com.loanshark.api.dto.ApiDtos.OwnerRegistrationRequest;
-import com.loanshark.api.dto.ApiDtos.ResetPasswordWithTokenRequest;
+import com.loanshark.api.dto.ResetPasswordWithTokenRequest;
 import com.loanshark.api.dto.ApiDtos.ResetUserPasswordRequest;
 import com.loanshark.api.dto.ApiDtos.SetupStatusResponse;
 import com.loanshark.api.dto.ApiDtos.StaffRegistrationRequest;
@@ -62,7 +62,7 @@ public class AuthController {
     @PreAuthorize("hasRole('OWNER')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetUserPassword(@Valid @RequestBody ResetUserPasswordRequest request) {
-        userManagementService.resetPassword(request.userId(), new com.loanshark.api.dto.ApiDtos.ResetPasswordRequest(request.newPassword()));
+        userManagementService.resetPassword(request.userId(), new com.loanshark.api.dto.ResetPasswordRequest(request.newPassword()));
     }
 
     @PostMapping("/forgot-password")

@@ -7,7 +7,7 @@ import com.loanshark.api.dto.ApiDtos.ChangePasswordRequest;
 import com.loanshark.api.dto.ApiDtos.ForgotPasswordRequest;
 import com.loanshark.api.dto.ApiDtos.ForgotPasswordResponse;
 import com.loanshark.api.dto.ApiDtos.OwnerRegistrationRequest;
-import com.loanshark.api.dto.ApiDtos.ResetPasswordWithTokenRequest;
+import com.loanshark.api.dto.ResetPasswordWithTokenRequest;
 import com.loanshark.api.dto.ApiDtos.SetupStatusResponse;
 import com.loanshark.api.dto.ApiDtos.StaffRegistrationRequest;
 import com.loanshark.api.entity.Borrower;
