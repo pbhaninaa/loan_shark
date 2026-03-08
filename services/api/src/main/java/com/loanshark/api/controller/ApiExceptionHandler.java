@@ -15,6 +15,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.dao.DataAccessException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
@@ -38,6 +40,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleStatus(ResponseStatusException exception) {
         return ResponseEntity.status(exception.getStatusCode())
             .body(error(exception.getReason() == null ? "Request failed" : exception.getReason(), null));
+    }
+
+    @ExceptionHandler({ AuthorizationDeniedException.class, AccessDeniedException.class })
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(Exception exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(error("Access Denied", null));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
