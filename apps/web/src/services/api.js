@@ -1,14 +1,26 @@
 import axios from "axios";
 
-// Build-time: VITE_API_URL (set on Vercel). Runtime fallback: if we're not on localhost, use Railway so deployed app works even if env wasn't set.
+// Build-time: VITE_API_URL (set on Vercel). Runtime fallback: if not on localhost, use Railway so deployed app works.
+const RAILWAY_API_URL = "https://backend-production-8d8d.up.railway.app";
 const buildTimeApiUrl = import.meta.env.VITE_API_URL;
 const isDeployed = typeof window !== "undefined" && !/localhost|127\.0\.0\.1/.test(window.location?.hostname || "");
-const defaultApiUrl = isDeployed ? "https://backend-production-8d8d.up.railway.app" : "http://localhost:8080";
+const defaultApiUrl = isDeployed ? RAILWAY_API_URL : "http://localhost:8080";
 const baseURL = buildTimeApiUrl || defaultApiUrl;
 
 const api = axios.create({
   baseURL
 });
+
+// Force deployed app to use Railway: if we're not on localhost but baseURL is localhost (e.g. old cache), fix it per request
+api.interceptors.request.use((config) => {
+  const onDeployedHost = typeof window !== "undefined" && !/localhost|127\.0\.0\.1/.test(window.location?.hostname || "");
+  const pointingToLocal = !config.baseURL || /localhost|127\.0\.0\.1/.test(config.baseURL || "");
+  if (onDeployedHost && pointingToLocal) {
+    config.baseURL = RAILWAY_API_URL;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => {
     if (response.config?.skipGlobalToast) return response;
