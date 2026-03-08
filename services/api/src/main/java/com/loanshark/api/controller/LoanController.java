@@ -64,13 +64,13 @@ public class LoanController {
     }
 
     @PostMapping("/approve")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'CASHIER')")
     public LoanResponse approve(@Valid @RequestBody LoanDecisionRequest request) {
         return loanService.approve(request);
     }
 
     @PostMapping("/reject")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'CASHIER')")
     public LoanResponse reject(@Valid @RequestBody LoanDecisionRequest request) {
         return loanService.reject(request);
     }

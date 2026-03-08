@@ -49,6 +49,10 @@ public class LoanInterestSettings {
     @Column(name = "default_loan_term_days", nullable = false)
     private Integer defaultLoanTermDays = 365;
 
+    /** Max loan amount as % of borrower's monthly salary (e.g. 25 = client can borrow up to 25% of monthly income). */
+    @Column(name = "borrower_limit_percentage", nullable = false, precision = 5, scale = 2)
+    private BigDecimal borrowerLimitPercentage = new BigDecimal("100.00");
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
