@@ -46,6 +46,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/auth/login", "/auth/forgot-password", "/auth/reset-password", "/auth/setup-status",
+                    "/auth/register/owner", "/auth/register/borrower").permitAll()
                 .requestMatchers(request -> "GET".equalsIgnoreCase(request.getMethod())
                     && "/settings/loan-interest".equals(request.getRequestURI())).permitAll()
                 // Authenticated / owner-only auth endpoints (checked before /auth/** so JWT is enforced)
