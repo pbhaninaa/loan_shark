@@ -8,7 +8,7 @@ See **DEPLOYMENT.md** at repo root for full Railway + Vercel setup.
 
 | Variable | Description |
 |----------|-------------|
-| `SPRING_DATASOURCE_URL` | JDBC URL, e.g. `jdbc:mysql://host:port/database?useSSL=true`. On Railway: use the **public** MySQL URL from your MySQL service (convert `mysql://...` to `jdbc:mysql://...` or set from Railway Variables). |
+| `SPRING_DATASOURCE_URL` | JDBC URL: `jdbc:mysql://host:port/database?useSSL=true`. If Railway injects the raw `mysql://...` connection URL (e.g. when you link the Backend to the MySQL service), the app converts it to JDBC automatically. |
 | `SPRING_DATASOURCE_USERNAME` | MySQL username (e.g. from Railway MySQL service). |
 | `SPRING_DATASOURCE_PASSWORD` | MySQL password (e.g. from Railway MySQL service). |
 | `JWT_SECRET` | Secret for JWT signing (min 64 characters). |
