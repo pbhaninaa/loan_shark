@@ -173,11 +173,8 @@ public class SecurityConfig {
             .map(String::trim)
             .filter(s -> !s.isEmpty())
             .collect(Collectors.toList());
-        if (!origins.isEmpty()) {
-            configuration.setAllowedOrigins(origins);
-        } else {
-            configuration.setAllowedOriginPatterns(List.of("*"));
-        }
+        // Use patterns so we can allow "https://*.vercel.app" for all Vercel preview URLs
+        configuration.setAllowedOriginPatterns(origins.isEmpty() ? List.of("*") : origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
