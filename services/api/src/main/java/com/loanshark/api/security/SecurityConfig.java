@@ -1,10 +1,8 @@
 package com.loanshark.api.security;
 
 import java.util.List;
-import org.springframework.core.Ordered;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -17,7 +15,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -40,36 +37,6 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
-    /** Public auth paths: exact path match so this chain runs first and permits without JWT. */
-    private static final RequestMatcher PUBLIC_AUTH_MATCHER = request -> {
-        String path = normalizePath(request);
-        if (path == null) return false;
-        String method = request.getMethod();
-        if ("OPTIONS".equalsIgnoreCase(method)) {
-            return path.startsWith("/auth/");
-        }
-        if ("POST".equalsIgnoreCase(method)) {
-            return path.equals("/auth/login")
-                || path.equals("/auth/forgot-password")
-                || path.equals("/auth/reset-password")
-                || path.equals("/auth/register/owner")
-                || path.equals("/auth/register/borrower");
-        }
-        return "GET".equalsIgnoreCase(method) && path.equals("/auth/setup-status");
-    };
-
-    /** Chain 1: public auth only — no JWT, no rate limit; permits and continues to controller. */
-    @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain publicAuthFilterChain(HttpSecurity http) throws Exception {
-        return http
-            .securityMatcher(PUBLIC_AUTH_MATCHER)
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-            .build();
-    }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -77,49 +44,26 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // OPTIONS for CORS preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Health check
                 .requestMatchers("/actuator/health").permitAll()
-                // Explicit public auth paths (checked first; works with default path resolution on Railway).
-                .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
-                    "/auth/register/owner", "/auth/register/borrower").permitAll()
+                // Public auth endpoints - no JWT required
+                .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/forgot-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/reset-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/register/owner").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/register/borrower").permitAll()
                 .requestMatchers(HttpMethod.GET, "/auth/setup-status").permitAll()
-                // Fallback: allow GET if path contains setup-status (Railway/proxy path quirks).
-                .requestMatchers(request -> "GET".equalsIgnoreCase(request.getMethod())
-                    && (request.getRequestURI() != null && request.getRequestURI().contains("setup-status"))).permitAll()
-                // Fallback: allow POST if URI contains public auth path (e.g. register/owner on Railway).
-                .requestMatchers(request -> {
-                    if (!"POST".equalsIgnoreCase(request.getMethod())) return false;
-                    String uri = request.getRequestURI();
-                    if (uri == null) return false;
-                    return uri.contains("register/owner") || uri.contains("register/borrower")
-                        || uri.contains("/auth/login") || uri.contains("forgot-password") || uri.contains("reset-password");
-                }).permitAll()
-                // Public auth fallback: match by normalized path for proxy/context path (e.g. Railway).
-                .requestMatchers(request -> {
-                    jakarta.servlet.http.HttpServletRequest req = request;
-                    String path = normalizePath(req);
-                    if (path == null) return false;
-                    String method = req.getMethod();
-                    if ("POST".equalsIgnoreCase(method)) {
-                        return isPublicAuthPath(path, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
-                            "/auth/register/owner", "/auth/register/borrower");
-                    }
-                    return "GET".equalsIgnoreCase(method) && isPublicAuthPath(path, "/auth/setup-status");
-                }).permitAll()
-                .requestMatchers(request -> {
-                    if (!"GET".equalsIgnoreCase(request.getMethod())) return false;
-                    String path = normalizePath(request);
-                    return path != null && "/settings/loan-interest".equals(path);
-                }).permitAll()
-                // Authenticated / owner-only auth endpoints (checked before /auth/** so JWT is enforced)
+                // Authenticated endpoints
                 .requestMatchers(HttpMethod.GET, "/auth/business-capital").authenticated()
                 .requestMatchers(HttpMethod.POST, "/auth/business-capital/top-up").hasRole("OWNER")
                 .requestMatchers(HttpMethod.POST, "/auth/change-password").authenticated()
                 .requestMatchers(HttpMethod.POST, "/auth/reset-user-password").hasRole("OWNER")
                 .requestMatchers(HttpMethod.POST, "/auth/register/staff").hasRole("OWNER")
-                // Public auth (login, register, forgot-password, reset-password, setup-status)
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/settings/loan-interest").permitAll()
                 .requestMatchers("/settings/**").authenticated()
+                // Everything else requires authentication
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
@@ -127,31 +71,6 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    /** Path as seen by the app: servlet path, or request URI with context path stripped (for Railway/proxy). */
-    private static String normalizePath(jakarta.servlet.http.HttpServletRequest request) {
-        String path = request.getServletPath();
-        if (path != null && !path.isEmpty()) {
-            if (path.endsWith("/") && path.length() > 1) path = path.substring(0, path.length() - 1);
-            return path;
-        }
-        path = request.getRequestURI();
-        if (path == null) return null;
-        String ctx = request.getContextPath();
-        if (ctx != null && !ctx.isEmpty() && path.startsWith(ctx)) {
-            path = path.length() == ctx.length() ? "/" : path.substring(ctx.length());
-        }
-        if (path.endsWith("/") && path.length() > 1) path = path.substring(0, path.length() - 1);
-        return path.isEmpty() ? "/" : path;
-    }
-
-    /** True if path equals or ends with any of the given public paths (handles context path / proxy prefix). */
-    private static boolean isPublicAuthPath(String path, String... allowed) {
-        for (String a : allowed) {
-            if (path.equals(a) || path.endsWith("/" + a.substring(1))) return true;
-        }
-        return false;
     }
 
     @Bean
