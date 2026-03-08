@@ -22,3 +22,4 @@ Thumbs.db
 uploads/
 .env
 .env.local
+application-local.properties

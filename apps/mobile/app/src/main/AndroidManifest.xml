@@ -10,7 +10,7 @@
         android:allowBackup="true"
         android:label="Loan Shark"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:theme="@style/Theme.LoanShark"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
