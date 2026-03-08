@@ -1,4 +1,6 @@
 <template>
+  <div class="viewport-scaler-outer">
+    <div class="viewport-scaler-inner" :style="scalerStyle">
   <v-app>
     <template v-if="store.isAuthenticated">
       <v-navigation-drawer v-model="drawer" color="secondary" theme="dark" rail-width="88">
@@ -121,16 +123,22 @@
       </v-container>
     </v-main>
   </v-app>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useTheme } from "vuetify";
 import { useAppStore } from "./store";
 
 const DRAWER_KEY = "loanSharkDarkMode";
 
+const REF_WIDTH = 1280;
+const REF_HEIGHT = 800;
+
+const scale = ref(1);
 const drawer = ref(true);
 const router = useRouter();
 const store = useAppStore();
@@ -157,6 +165,11 @@ function applySavedTheme() {
 
 onMounted(() => {
   applySavedTheme();
+  updateScale();
+  window.addEventListener("resize", updateScale);
+});
+onUnmounted(() => {
+  window.removeEventListener("resize", updateScale);
 });
 
 function pendingCount(badgeKey) {
@@ -290,6 +303,20 @@ const navItems = computed(() => {
 
   return items;
 });
+
+function updateScale() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const s = Math.min(1, w / REF_WIDTH, h / REF_HEIGHT);
+  scale.value = Math.max(0.5, Math.round(s * 100) / 100);
+}
+
+const scalerStyle = computed(() => ({
+  transform: `scale(${scale.value})`,
+  transformOrigin: "0 0",
+  width: `${100 / scale.value}vw`,
+  height: `${100 / scale.value}vh`
+}));
 
 const displayName = computed(() => {
   const name = store.username;
