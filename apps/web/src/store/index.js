@@ -91,8 +91,12 @@ export const useAppStore = defineStore("app", {
       localStorage.removeItem("loanSharkBorrowerStatus");
     },
     async fetchSetupStatus() {
-      const { data } = await api.get("/auth/setup-status");
-      this.setup = data;
+      try {
+        const { data } = await api.get("/auth/setup-status");
+        this.setup = data;
+      } catch {
+        this.setup = { ownerExists: true };
+      }
       this.setupLoaded = true;
     },
     async login(credentials) {

@@ -46,7 +46,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const store = useAppStore();
   if (!store.setupLoaded) {
-    await store.fetchSetupStatus();
+    await store.fetchSetupStatus(); // never blocks: on API failure still sets setupLoaded
   }
 
   if (to.meta.auth && !store.isAuthenticated) {
