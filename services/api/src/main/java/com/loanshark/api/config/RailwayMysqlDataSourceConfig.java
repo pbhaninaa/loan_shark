@@ -24,7 +24,7 @@ public class RailwayMysqlDataSourceConfig {
 
     @Bean
     public DataSource dataSource(Environment env) {
-        // Prefer MYSQL_URL, then MYSQL_PUBLIC_URL (Railway external URL)
+        // Prefer MYSQL_URL (private, for BackEnd on Railway). Use MYSQL_PUBLIC_URL when BackEnd runs elsewhere.
         String mysqlUrl = firstNonBlank(
             env.getProperty("MYSQL_URL"),
             System.getenv("MYSQL_URL"),
