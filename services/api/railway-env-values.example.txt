@@ -3,6 +3,7 @@
 # Replace placeholders with your real values or use references like ${{ MySQL.MYSQL_PUBLIC_URL }}
 
 SPRING_PROFILES_ACTIVE=prod
+# Optional: if you get OOM, increase memory in Railway plan or set e.g. JAVA_OPTS=-Xmx512m
 MYSQL_PUBLIC_URL=${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}
 JWT_SECRET=your_64_char_secret_min_for_hs512
 APP_FRONTEND_URL=https://your-loan-shark-app.vercel.app
