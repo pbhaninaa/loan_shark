@@ -45,6 +45,10 @@ public class SecurityConfig {
         String path = normalizePath(request);
         if (path == null) return false;
         String method = request.getMethod();
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return isPublicAuthPath(path, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
+                "/auth/register/owner", "/auth/register/borrower", "/auth/setup-status");
+        }
         if ("POST".equalsIgnoreCase(method)) {
             return isPublicAuthPath(path, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
                 "/auth/register/owner", "/auth/register/borrower");
