@@ -36,6 +36,10 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
+    /** Email for password reset (owner/cashier/staff). Optional; can be set after login. */
+    @Column(length = 160)
+    private String email;
+
     @Column(nullable = false)
     private String password;
 

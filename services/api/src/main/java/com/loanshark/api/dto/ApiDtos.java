@@ -94,6 +94,17 @@ public final class ApiDtos {
         String resetLink
     ) {}
 
+    /** Current user info (for account page); email used for password reset. */
+    public record AuthMeResponse(
+        UUID userId,
+        String username,
+        UserRole role,
+        String email,
+        UUID borrowerId
+    ) {}
+
+    public record UpdateEmailRequest(String email) {}
+
     public record BorrowerRequest(
         @NotBlank String firstName,
         @NotBlank String lastName,

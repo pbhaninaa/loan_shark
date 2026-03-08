@@ -1,5 +1,6 @@
 package com.loanshark.api.service;
 
+import com.loanshark.api.dto.ApiDtos.AuthMeResponse;
 import com.loanshark.api.dto.ApiDtos.AuthRequest;
 import com.loanshark.api.dto.ApiDtos.AuthResponse;
 import com.loanshark.api.dto.ApiDtos.BorrowerRegistrationRequest;
@@ -19,10 +20,10 @@ import com.loanshark.api.repository.BorrowerRepository;
 import com.loanshark.api.repository.PasswordResetTokenRepository;
 import com.loanshark.api.repository.UserRepository;
 import com.loanshark.api.security.JwtService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,6 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final CurrentUserService currentUserService;
+    private final EmailNotificationService emailNotificationService;
 
     @Value("${app.password-reset.base-url:http://localhost:5174}")
     private String passwordResetBaseUrl;
@@ -55,7 +57,8 @@ public class AuthService {
             PasswordResetTokenRepository passwordResetTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            EmailNotificationService emailNotificationService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.borrowerRepository = borrowerRepository;
@@ -63,6 +66,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.currentUserService = currentUserService;
+        this.emailNotificationService = emailNotificationService;
     }
 
     public SetupStatusResponse setupStatus() {
@@ -81,6 +85,41 @@ public class AuthService {
                 .orElse(null);
 
         return new AuthResponse(jwtService.generateToken(user), user.getId(), user.getUsername(), user.getRole(), borrowerId);
+    }
+
+    /** Current user info for account page; email is used for password reset. */
+    @Transactional(readOnly = true)
+    public AuthMeResponse getMe() {
+        User user = currentUserService.requireCurrentUser();
+        String email = null;
+        UUID borrowerId = null;
+        if (user.getRole() == UserRole.BORROWER) {
+            Borrower b = borrowerRepository.findByUserId(user.getId()).orElse(null);
+            if (b != null) {
+                email = b.getEmail();
+                borrowerId = b.getId();
+            }
+        } else {
+            email = user.getEmail();
+        }
+        if (email != null && email.isBlank()) email = null;
+        return new AuthMeResponse(user.getId(), user.getUsername(), user.getRole(), email, borrowerId);
+    }
+
+    /** Update current user's email (for password reset). Borrowers update borrowers.email; staff update users.email. */
+    @Transactional
+    public void updateMyEmail(String email) {
+        User user = currentUserService.requireCurrentUser();
+        String trimmed = email != null ? email.trim() : "";
+        if (user.getRole() == UserRole.BORROWER) {
+            Borrower b = borrowerRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
+            b.setEmail(trimmed.isEmpty() ? null : trimmed);
+            borrowerRepository.save(b);
+        } else {
+            user.setEmail(trimmed.isEmpty() ? null : trimmed);
+            userRepository.save(user);
+        }
     }
 
     @Transactional
@@ -152,6 +191,23 @@ public class AuthService {
             prt.setExpiresAt(Instant.now().plusSeconds(tokenValidHours * 3600L));
             passwordResetTokenRepository.save(prt);
             resetLink = passwordResetBaseUrl + "/#/reset-password?token=" + token;
+
+            String email = null;
+            if (user.getRole() == UserRole.BORROWER) {
+                email = borrowerRepository.findByUserId(user.getId())
+                    .map(Borrower::getEmail).orElse(null);
+            } else {
+                email = user.getEmail();
+            }
+            if (email != null && !email.isBlank()) {
+                emailNotificationService.send(
+                    email,
+                    "Password reset – Loan Shark",
+                    "Use this link to reset your password (valid for " + tokenValidHours + " hours):\n\n" + resetLink + "\n\nIf you did not request this, ignore this email."
+                );
+                resetLink = null;
+                message = "If an account exists for that username and has an email, a reset link has been sent.";
+            }
         }
         return new ForgotPasswordResponse(message, resetLink);
     }

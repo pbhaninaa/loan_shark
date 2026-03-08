@@ -229,6 +229,7 @@ const navItems = computed(() => {
           ]
         : [
             { title: "My Profile", to: "/my-portal/profile", icon: "mdi-account-circle-outline" },
+            { title: "My account", to: "/account", icon: "mdi-account-cog-outline" },
             { title: "My Loans", to: "/my-portal/loans", icon: "mdi-cash-multiple" },
             { title: "Repayment Schedule", to: "/my-portal/schedule", icon: "mdi-calendar-clock-outline" },
             { title: "Notifications", to: "/my-portal/notifications", icon: "mdi-bell-outline" },
@@ -265,6 +266,12 @@ const navItems = computed(() => {
       title: "Users",
       to: "/users",
       icon: "mdi-account-tie-outline"
+    });
+
+    items.push({
+      title: "My account",
+      to: "/account",
+      icon: "mdi-account-cog-outline"
     });
 
     // System settings

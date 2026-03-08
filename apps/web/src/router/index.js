@@ -15,6 +15,7 @@ import BorrowerScheduleView from "../views/BorrowerScheduleView.vue";
 import BorrowerNotificationsView from "../views/BorrowerNotificationsView.vue";
 import BorrowerHelpView from "../views/BorrowerHelpView.vue";
 import BorrowerVerificationStatusView from "../views/BorrowerVerificationStatusView.vue";
+import AccountView from "../views/AccountView.vue";
 import ResetPasswordView from "../views/ResetPasswordView.vue";
 import { useAppStore } from "../store";
 
@@ -23,6 +24,7 @@ const router = createRouter({
   routes: [
     { path: "/login", name: "login", component: LoginView },
     { path: "/reset-password", name: "reset-password", component: ResetPasswordView },
+    { path: "/account", name: "account", component: AccountView, meta: { auth: true } },
     { path: "/", redirect: "/dashboard" },
     { path: "/dashboard", name: "dashboard", component: DashboardView, meta: { auth: true } },
     { path: "/my-portal", redirect: "/my-portal/profile" },

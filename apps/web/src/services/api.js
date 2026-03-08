@@ -67,6 +67,13 @@ api.interceptors.response.use(
       }
     }
 
+    if (error.response?.status === 403 && error.response?.data?.code === "EMAIL_REQUIRED") {
+      if (!error.config?.url?.includes("/auth/me")) {
+        if (typeof toast !== "undefined") toast.warning(error.response?.data?.message || "Please add your email to continue.");
+        window.location.hash = "#/account";
+      }
+    }
+
     return Promise.reject(error);
   }
 );

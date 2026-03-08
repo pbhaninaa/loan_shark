@@ -459,6 +459,11 @@ async function submit() {
   infoMessage.value = "";
   try {
     const session = await store.login(form);
+    const me = await store.fetchMe();
+    if (!me?.email?.trim()) {
+      router.push("/account");
+      return;
+    }
     if (session.role === "BORROWER") {
       const borrower = await store.fetchMyBorrower();
       router.push(borrower.status === "ACTIVE" ? "/my-portal/profile" : "/my-portal/verification");
@@ -496,7 +501,7 @@ async function createOwner() {
   infoMessage.value = "";
   try {
     await store.createOwner(ownerForm);
-    router.push("/dashboard");
+    router.push("/account");
   } catch (requestError) {
     error.value = extractApiError(requestError, "Owner setup failed");
   } finally {

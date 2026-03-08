@@ -28,6 +28,10 @@
           </v-chip>
           <v-chip color="info" variant="tonal">Risk Score: {{ profile.riskScore ?? "N/A" }}</v-chip>
         </div>
+        <p class="text-caption text-medium-emphasis mt-3 mb-0">
+          To receive password reset links by email, add or update your email in
+          <router-link to="/account">My account</router-link>.
+        </p>
       </v-card-text>
     </v-card>
   </div>
