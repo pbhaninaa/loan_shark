@@ -40,20 +40,22 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
-    /** Public auth paths: matched by path so this chain runs first and permits without JWT. */
+    /** Public auth paths: exact path match so this chain runs first and permits without JWT. */
     private static final RequestMatcher PUBLIC_AUTH_MATCHER = request -> {
         String path = normalizePath(request);
         if (path == null) return false;
         String method = request.getMethod();
         if ("OPTIONS".equalsIgnoreCase(method)) {
-            return isPublicAuthPath(path, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
-                "/auth/register/owner", "/auth/register/borrower", "/auth/setup-status");
+            return path.startsWith("/auth/");
         }
         if ("POST".equalsIgnoreCase(method)) {
-            return isPublicAuthPath(path, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
-                "/auth/register/owner", "/auth/register/borrower");
+            return path.equals("/auth/login")
+                || path.equals("/auth/forgot-password")
+                || path.equals("/auth/reset-password")
+                || path.equals("/auth/register/owner")
+                || path.equals("/auth/register/borrower");
         }
-        return "GET".equalsIgnoreCase(method) && "/auth/setup-status".equals(path);
+        return "GET".equalsIgnoreCase(method) && path.equals("/auth/setup-status");
     };
 
     /** Chain 1: public auth only — no JWT, no rate limit; permits and continues to controller. */
