@@ -81,9 +81,17 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
                     "/auth/register/owner", "/auth/register/borrower").permitAll()
                 .requestMatchers(HttpMethod.GET, "/auth/setup-status").permitAll()
-                // Fallback: allow GET if path ends with /auth/setup-status (Railway/proxy path quirks).
+                // Fallback: allow GET if path contains setup-status (Railway/proxy path quirks).
                 .requestMatchers(request -> "GET".equalsIgnoreCase(request.getMethod())
                     && (request.getRequestURI() != null && request.getRequestURI().contains("setup-status"))).permitAll()
+                // Fallback: allow POST if URI contains public auth path (e.g. register/owner on Railway).
+                .requestMatchers(request -> {
+                    if (!"POST".equalsIgnoreCase(request.getMethod())) return false;
+                    String uri = request.getRequestURI();
+                    if (uri == null) return false;
+                    return uri.contains("register/owner") || uri.contains("register/borrower")
+                        || uri.contains("/auth/login") || uri.contains("forgot-password") || uri.contains("reset-password");
+                }).permitAll()
                 // Public auth fallback: match by normalized path for proxy/context path (e.g. Railway).
                 .requestMatchers(request -> {
                     jakarta.servlet.http.HttpServletRequest req = request;
