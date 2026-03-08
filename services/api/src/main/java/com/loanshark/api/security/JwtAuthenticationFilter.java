@@ -16,12 +16,35 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String[] PUBLIC_PATHS = {
+        "/auth/login", "/auth/forgot-password", "/auth/reset-password",
+        "/auth/register/owner", "/auth/register/borrower", "/auth/setup-status"
+    };
+
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userDetailsService;
 
     public JwtAuthenticationFilter(JwtService jwtService, UserDetailsServiceImpl userDetailsService) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        if (path == null || path.isEmpty()) {
+            path = request.getRequestURI();
+            String ctx = request.getContextPath();
+            if (ctx != null && !ctx.isEmpty() && path != null && path.startsWith(ctx)) {
+                path = path.length() == ctx.length() ? "/" : path.substring(ctx.length());
+            }
+        }
+        if (path == null) return false;
+        if (path.endsWith("/") && path.length() > 1) path = path.substring(0, path.length() - 1);
+        for (String p : PUBLIC_PATHS) {
+            if (path.equals(p) || path.endsWith("/" + p.substring(1))) return true;
+        }
+        return false;
     }
 
     @Override
