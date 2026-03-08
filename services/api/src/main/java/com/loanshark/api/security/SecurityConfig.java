@@ -47,26 +47,21 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 // Public auth: match by path so no other rule can take precedence.
-                // Use getServletPath() so matching works with or without context path (e.g. Railway/proxy).
+                // Normalize path for proxy/context path (e.g. Railway): use servlet path, or strip context path from URI.
                 .requestMatchers(request -> {
-                    String path = request.getServletPath();
-                    if (path == null) path = request.getRequestURI();
-                    if (path != null && path.endsWith("/") && path.length() > 1) {
-                        path = path.substring(0, path.length() - 1);
-                    }
+                    String path = normalizePath(request);
+                    if (path == null) return false;
                     String method = request.getMethod();
                     if ("POST".equalsIgnoreCase(method)) {
-                        return "/auth/login".equals(path) || "/auth/forgot-password".equals(path)
-                            || "/auth/reset-password".equals(path) || "/auth/register/owner".equals(path)
-                            || "/auth/register/borrower".equals(path);
+                        return isPublicAuthPath(path, "/auth/login", "/auth/forgot-password", "/auth/reset-password",
+                            "/auth/register/owner", "/auth/register/borrower");
                     }
-                    return "GET".equalsIgnoreCase(method) && "/auth/setup-status".equals(path);
+                    return "GET".equalsIgnoreCase(method) && isPublicAuthPath(path, "/auth/setup-status");
                 }).permitAll()
                 .requestMatchers(request -> {
                     if (!"GET".equalsIgnoreCase(request.getMethod())) return false;
-                    String path = request.getServletPath();
-                    if (path == null) path = request.getRequestURI();
-                    return "/settings/loan-interest".equals(path);
+                    String path = normalizePath(request);
+                    return path != null && "/settings/loan-interest".equals(path);
                 }).permitAll()
                 // Authenticated / owner-only auth endpoints (checked before /auth/** so JWT is enforced)
                 .requestMatchers(HttpMethod.GET, "/auth/business-capital").authenticated()
@@ -84,6 +79,31 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /** Path as seen by the app: servlet path, or request URI with context path stripped (for Railway/proxy). */
+    private static String normalizePath(jakarta.servlet.http.HttpServletRequest request) {
+        String path = request.getServletPath();
+        if (path != null && !path.isEmpty()) {
+            if (path.endsWith("/") && path.length() > 1) path = path.substring(0, path.length() - 1);
+            return path;
+        }
+        path = request.getRequestURI();
+        if (path == null) return null;
+        String ctx = request.getContextPath();
+        if (ctx != null && !ctx.isEmpty() && path.startsWith(ctx)) {
+            path = path.length() == ctx.length() ? "/" : path.substring(ctx.length());
+        }
+        if (path.endsWith("/") && path.length() > 1) path = path.substring(0, path.length() - 1);
+        return path.isEmpty() ? "/" : path;
+    }
+
+    /** True if path equals or ends with any of the given public paths (handles context path / proxy prefix). */
+    private static boolean isPublicAuthPath(String path, String... allowed) {
+        for (String a : allowed) {
+            if (path.equals(a) || path.endsWith("/" + a.substring(1))) return true;
+        }
+        return false;
     }
 
     @Bean
