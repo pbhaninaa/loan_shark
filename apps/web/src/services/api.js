@@ -8,7 +8,8 @@ const defaultApiUrl = isDeployed ? RAILWAY_API_URL : "http://localhost:8080";
 const baseURL = buildTimeApiUrl || defaultApiUrl;
 
 const api = axios.create({
-  baseURL
+  baseURL,
+  headers: { Accept: "application/json" }
 });
 
 // Force deployed app to use Railway: if we're not on localhost but baseURL is localhost (e.g. old cache), fix it per request
