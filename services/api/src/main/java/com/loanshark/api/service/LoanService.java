@@ -60,6 +60,8 @@ public class LoanService {
     private final RepaymentRepository repaymentRepository;
 
     private static final BigDecimal EIGHTY_PERCENT = new BigDecimal("0.80");
+    /** Loans below this amount can be approved/rejected by CASHIER; above require OWNER. */
+    private static final BigDecimal CASHIER_APPROVAL_LIMIT = new BigDecimal("10000");
 
     @Value("${app.loan.default-installments}")
     private int defaultInstallments;
@@ -140,6 +142,15 @@ public class LoanService {
         LoanInterestSettings settings = loanInterestSettingsRepository.findById(com.loanshark.api.entity.UuidConstants.LOAN_INTEREST_SETTINGS_ID).orElse(null);
         if (settings == null) {
             throw new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured; contact the administrator.");
+        }
+        BigDecimal limitPct = settings.getBorrowerLimitPercentage() != null ? settings.getBorrowerLimitPercentage() : BigDecimal.valueOf(100);
+        BigDecimal monthlyIncome = borrower.getMonthlyIncome() != null ? borrower.getMonthlyIncome() : BigDecimal.ZERO;
+        BigDecimal maxAllowed = monthlyIncome.multiply(limitPct).divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
+        if (request.loanAmount().compareTo(maxAllowed) > 0) {
+            throw new ResponseStatusException(
+                BAD_REQUEST,
+                "Loan amount exceeds the limit. Maximum allowed is " + limitPct + "% of monthly income (R" + maxAllowed + "). Your monthly income: R" + monthlyIncome + "."
+            );
         }
         BigDecimal rate = settings.getDefaultInterestRate();
         InterestType interestType = settings.getInterestType();
@@ -231,8 +242,12 @@ public class LoanService {
     public LoanResponse approve(LoanDecisionRequest request) {
         Loan loan = findLoan(request.loanId());
         User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() != UserRole.OWNER) {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can approve loans");
+        if (currentUser.getRole() == UserRole.OWNER) {
+            // owner can approve any loan
+        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(CASHIER_APPROVAL_LIMIT) < 0) {
+            // cashier can approve loans under the limit
+        } else {
+            throw new ResponseStatusException(FORBIDDEN, "Only owner can approve loans over " + CASHIER_APPROVAL_LIMIT + "; cashiers may approve loans under that amount.");
         }
         if (loan.getStatus() != LoanStatus.PENDING) {
             throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be approved");
@@ -259,8 +274,12 @@ public class LoanService {
     public LoanResponse reject(LoanDecisionRequest request) {
         Loan loan = findLoan(request.loanId());
         User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() != UserRole.OWNER) {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can reject loans");
+        if (currentUser.getRole() == UserRole.OWNER) {
+            // owner can reject any loan
+        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(CASHIER_APPROVAL_LIMIT) < 0) {
+            // cashier can reject loans under the limit
+        } else {
+            throw new ResponseStatusException(FORBIDDEN, "Only owner can reject loans over " + CASHIER_APPROVAL_LIMIT + "; cashiers may reject loans under that amount.");
         }
         loan.setStatus(LoanStatus.REJECTED);
         loan.setApprovedBy(currentUser);

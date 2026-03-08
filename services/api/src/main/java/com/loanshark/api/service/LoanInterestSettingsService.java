@@ -35,6 +35,7 @@ public class LoanInterestSettingsService {
             settings.getInterestPeriodDays(),
             settings.getGracePeriodDays() != null ? settings.getGracePeriodDays() : 0,
             settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365,
+            settings.getBorrowerLimitPercentage() != null ? settings.getBorrowerLimitPercentage() : new BigDecimal("100.00"),
             settings.getUpdatedAt()
         );
     }
@@ -47,6 +48,7 @@ public class LoanInterestSettingsService {
         s.setInterestPeriodDays(30);
         s.setGracePeriodDays(0);
         s.setDefaultLoanTermDays(365);
+        s.setBorrowerLimitPercentage(new BigDecimal("100.00"));
         s.touch();
         return repository.save(s);
     }
@@ -61,6 +63,7 @@ public class LoanInterestSettingsService {
             newSettings.setInterestPeriodDays(request.interestPeriodDays());
             newSettings.setGracePeriodDays(request.gracePeriodDays() != null ? request.gracePeriodDays() : 0);
             newSettings.setDefaultLoanTermDays(request.defaultLoanTermDays() != null ? request.defaultLoanTermDays() : 365);
+            newSettings.setBorrowerLimitPercentage(request.borrowerLimitPercentage() != null ? request.borrowerLimitPercentage() : new BigDecimal("100.00"));
             newSettings.touch();
             return repository.save(newSettings);
         });
@@ -69,6 +72,7 @@ public class LoanInterestSettingsService {
         settings.setInterestPeriodDays(request.interestPeriodDays());
         settings.setGracePeriodDays(request.gracePeriodDays() != null ? request.gracePeriodDays() : 0);
         settings.setDefaultLoanTermDays(request.defaultLoanTermDays() != null ? request.defaultLoanTermDays() : 365);
+        settings.setBorrowerLimitPercentage(request.borrowerLimitPercentage() != null ? request.borrowerLimitPercentage() : new BigDecimal("100.00"));
         settings.touch();
         repository.save(settings);
         return new LoanInterestSettingsResponse(
@@ -77,6 +81,7 @@ public class LoanInterestSettingsService {
             settings.getInterestPeriodDays(),
             settings.getGracePeriodDays() != null ? settings.getGracePeriodDays() : 0,
             settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365,
+            settings.getBorrowerLimitPercentage() != null ? settings.getBorrowerLimitPercentage() : new BigDecimal("100.00"),
             settings.getUpdatedAt()
         );
     }

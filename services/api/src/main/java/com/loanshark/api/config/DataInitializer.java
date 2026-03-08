@@ -65,6 +65,7 @@ public class DataInitializer implements ApplicationRunner {
             s.setInterestPeriodDays(30);
             s.setGracePeriodDays(0);
             s.setDefaultLoanTermDays(365);
+            s.setBorrowerLimitPercentage(new BigDecimal("100.00"));
             s.touch();
             loanInterestSettingsRepository.save(s);
             log.info("Created default loan_interest_settings row");

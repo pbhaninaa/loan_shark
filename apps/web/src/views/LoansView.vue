@@ -20,8 +20,9 @@
             <th>Client</th>
             <th>Status</th>
             <th>Risk</th>
+            <th>Amount</th>
             <th>Total</th>
-            <th v-if="store.isOwner">Actions</th>
+            <th v-if="canSeeLoanActions">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -38,9 +39,10 @@
                 {{ loan.riskBand }} / {{ loan.riskScore }}
               </v-chip>
             </td>
+            <td>{{ formatCurrency(loan.loanAmount) }}</td>
             <td>{{ formatCurrency(loan.totalAmount) }}</td>
-            <td v-if="store.isOwner">
-              <div class="d-flex ga-2">
+            <td v-if="canSeeLoanActions">
+              <div v-if="canActOnLoan(loan)" class="d-flex ga-2">
                 <AppActionButton
                   v-if="loan.status === 'PENDING'"
                   size="small"
@@ -203,5 +205,14 @@ function statusColor(status) {
 function borrowerName(borrowerId) {
   const borrower = borrowers.value.find((item) => item.id === borrowerId);
   return borrower ? `${borrower.firstName} ${borrower.lastName}` : `Client #${borrowerId}`;
+}
+
+const canSeeLoanActions = computed(() => store.isOwner || store.isCashier);
+
+function canActOnLoan(loan) {
+  if (loan.status !== "PENDING") return false;
+  if (store.isOwner) return true;
+  if (store.isCashier) return Number(loan.loanAmount) < 10000;
+  return false;
 }
 </script>

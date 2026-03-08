@@ -11,6 +11,7 @@ import com.loanshark.api.entity.UserRole;
 import com.loanshark.api.entity.UserStatus;
 import com.loanshark.api.entity.VerificationStatus;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -251,6 +252,7 @@ public final class ApiDtos {
         Integer interestPeriodDays,
         Integer gracePeriodDays,
         Integer defaultLoanTermDays,
+        BigDecimal borrowerLimitPercentage,
         Instant updatedAt
     ) {
     }
@@ -260,7 +262,8 @@ public final class ApiDtos {
         @NotNull InterestType interestType,
         @NotNull @Positive Integer interestPeriodDays,
         @NotNull @jakarta.validation.constraints.Min(0) Integer gracePeriodDays,
-        @NotNull @Positive Integer defaultLoanTermDays
+        @NotNull @Positive Integer defaultLoanTermDays,
+        @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal borrowerLimitPercentage
     ) {
     }
 

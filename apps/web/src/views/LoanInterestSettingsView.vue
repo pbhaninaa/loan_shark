@@ -75,6 +75,18 @@
               />
             </v-col>
             <v-col cols="12" md="6">
+              <AppTextField
+                v-model.number="form.borrowerLimitPercentage"
+                label="Borrower limit (% of salary)"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                prepend-inner-icon="mdi-percent"
+                hint="Maximum loan amount as % of client's monthly income (e.g. 25 = client can borrow up to 25% of their salary)."
+              />
+            </v-col>
+            <v-col cols="12" md="6">
               <div v-if="expectedAmount != null" class="expected-amount-box pa-4 rounded border">
                 <div class="text-caption text-medium-emphasis mb-1">Expected amount at end of term</div>
                 <div class="text-h5 font-weight-bold text-primary">
@@ -121,7 +133,8 @@ const form = reactive({
   interestType: "SIMPLE",
   interestPeriodDays: 30,
   gracePeriodDays: 0,
-  defaultLoanTermDays: 365
+  defaultLoanTermDays: 365,
+  borrowerLimitPercentage: 100
 });
 
 function assignForm() {
@@ -131,7 +144,9 @@ function assignForm() {
   form.interestPeriodDays = Number(settings.value.interestPeriodDays) || 30;
   form.gracePeriodDays = Number(settings.value.gracePeriodDays) ?? 0;
   form.defaultLoanTermDays = Number(settings.value.defaultLoanTermDays) ?? 365;
+  form.borrowerLimitPercentage = Number(settings.value.borrowerLimitPercentage) ?? 100;
 }
+
 
 watch(settings, assignForm, { immediate: true });
 
@@ -166,7 +181,8 @@ async function save() {
       interestType: form.interestType,
       interestPeriodDays: form.interestPeriodDays,
       gracePeriodDays: form.gracePeriodDays,
-      defaultLoanTermDays: form.defaultLoanTermDays
+      defaultLoanTermDays: form.defaultLoanTermDays,
+      borrowerLimitPercentage: form.borrowerLimitPercentage
     });
     settings.value = updated;
     message.value = "Settings saved.";
