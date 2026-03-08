@@ -30,24 +30,55 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = getRequestPath(request);
+        
+        // Skip OPTIONS requests (CORS preflight)
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        String path = request.getServletPath();
-        if (path == null || path.isEmpty()) {
-            path = request.getRequestURI();
-            String ctx = request.getContextPath();
-            if (ctx != null && !ctx.isEmpty() && path != null && path.startsWith(ctx)) {
-                path = path.length() == ctx.length() ? "/" : path.substring(ctx.length());
+        
+        // Check if path is in public paths list
+        for (String publicPath : PUBLIC_PATHS) {
+            if (path.equals(publicPath)) {
+                return true;
             }
         }
-        if (path == null) return false;
-        if (path.endsWith("/") && path.length() > 1) path = path.substring(0, path.length() - 1);
-        for (String p : PUBLIC_PATHS) {
-            if (path.equals(p) || path.endsWith("/" + p.substring(1))) return true;
-        }
+        
         return false;
+    }
+
+    private String getRequestPath(HttpServletRequest request) {
+        // Try servlet path first
+        String path = request.getServletPath();
+        if (path != null && !path.isEmpty()) {
+            return normalizePath(path);
+        }
+        
+        // Fall back to request URI
+        path = request.getRequestURI();
+        if (path == null) {
+            return "";
+        }
+        
+        // Strip context path if present
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isEmpty() && path.startsWith(contextPath)) {
+            path = path.substring(contextPath.length());
+        }
+        
+        return normalizePath(path);
+    }
+
+    private String normalizePath(String path) {
+        if (path == null || path.isEmpty()) {
+            return "/";
+        }
+        // Remove trailing slash (except for root)
+        if (path.endsWith("/") && path.length() > 1) {
+            path = path.substring(0, path.length() - 1);
+        }
+        return path;
     }
 
     @Override
