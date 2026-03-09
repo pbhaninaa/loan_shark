@@ -43,34 +43,23 @@
 
       <v-col cols="12" lg="8">
         <AppTableCard title="My Loans" :count-label="`${loans.length} loans`">
-            <v-table>
-              <thead>
-                <tr>
-                  <th>Loan</th>
-                  <th>Status</th>
-                  <th>Amount</th>
-                  <th>Total</th>
-                  <th>Due</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="loan in loans" :key="loan.id">
-                  <td>#{{ loan.id }}</td>
-                  <td>
-                    <v-chip :color="statusColor(loan.status)" size="small" variant="tonal">
-                      {{ loan.status }}
-                    </v-chip>
-                  </td>
-                  <td>R {{ loan.loanAmount }}</td>
-                  <td>R {{ loan.totalAmount }}</td>
-                  <td>{{ loan.dueDate || "-" }}</td>
-                  <td>
-                    <AppActionButton size="small" color="secondary" variant="tonal" text="View Schedule" @click="showSchedule(loan.id)" />
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
+          <AppDataTable
+            title=""
+            :headers="portalLoanHeaders"
+            :items="loans"
+            no-data-message="No loans."
+          >
+            <template #item.id="{ item }">#{{ item.id }}</template>
+            <template #item.status="{ item }">
+              <v-chip :color="statusColor(item.status)" size="small" variant="tonal">{{ item.status }}</v-chip>
+            </template>
+            <template #item.loanAmount="{ item }">R {{ item.loanAmount }}</template>
+            <template #item.totalAmount="{ item }">R {{ item.totalAmount }}</template>
+            <template #item.dueDate="{ item }">{{ item.dueDate || "-" }}</template>
+            <template #item.actions="{ item }">
+              <AppActionButton size="small" color="secondary" variant="tonal" text="View Schedule" @click="showSchedule(item.id)" />
+            </template>
+          </AppDataTable>
         </AppTableCard>
       </v-col>
     </v-row>
@@ -84,31 +73,19 @@
             <div v-if="selectedLoanId" class="text-body-2 text-medium-emphasis mb-3">
               Showing installments for loan #{{ selectedLoanId }}
             </div>
-            <v-table>
-              <thead>
-                <tr>
-                  <th>Installment</th>
-                  <th>Due Date</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in schedule" :key="`${selectedLoanId}-${item.installmentNumber}`">
-                  <td>{{ item.installmentNumber }}</td>
-                  <td>{{ item.dueDate }}</td>
-                  <td>R {{ item.amountDue }}</td>
-                  <td>
-                    <v-chip size="small" :color="scheduleColor(item.status)" variant="tonal">
-                      {{ item.status }}
-                    </v-chip>
-                  </td>
-                </tr>
-                <tr v-if="!schedule.length">
-                  <td colspan="4" class="text-medium-emphasis">Choose a loan to view its repayment schedule.</td>
-                </tr>
-              </tbody>
-            </v-table>
+            <AppDataTable
+              title=""
+              :headers="portalScheduleHeaders"
+              :items="schedule"
+              no-data-message="Choose a loan to view its repayment schedule."
+            >
+              <template #item.installmentNumber="{ item }">{{ item.installmentNumber }}</template>
+              <template #item.dueDate="{ item }">{{ item.dueDate }}</template>
+              <template #item.amountDue="{ item }">R {{ item.amountDue }}</template>
+              <template #item.status="{ item }">
+                <v-chip size="small" :color="scheduleColor(item.status)" variant="tonal">{{ item.status }}</v-chip>
+              </template>
+            </AppDataTable>
           </v-card-text>
         </v-card>
       </v-col>
@@ -153,6 +130,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import AppActionButton from "../components/ui/AppActionButton.vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppDialogCard from "../components/ui/AppDialogCard.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
@@ -174,6 +152,21 @@ const profile = computed(() => store.borrowerProfile);
 const loans = computed(() => store.loans);
 const schedule = computed(() => store.loanSchedule);
 const notifications = computed(() => store.notifications);
+
+const portalLoanHeaders = [
+  { title: "Loan", key: "id" },
+  { title: "Status", key: "status" },
+  { title: "Amount", key: "loanAmount" },
+  { title: "Total", key: "totalAmount" },
+  { title: "Due", key: "dueDate" },
+  { title: "Actions", key: "actions" }
+];
+const portalScheduleHeaders = [
+  { title: "Installment", key: "installmentNumber" },
+  { title: "Due Date", key: "dueDate" },
+  { title: "Amount", key: "amountDue" },
+  { title: "Status", key: "status" }
+];
 
 onMounted(async () => {
   await loadPortal();

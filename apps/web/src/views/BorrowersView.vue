@@ -14,52 +14,45 @@
     </v-alert>
 
     <AppTableCard title="Client Portfolio" :count-label="`${borrowers.length} records`">
-      <template #header-actions>
-        <AppSearchField v-model="search" label="Search clients" style="min-width: 260px;" @update:model-value="handleSearch" />
-      </template>
-      <v-table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Status</th>
-            <th>Risk</th>
-            <th>Income</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="borrower in borrowers" :key="borrower.id">
-            <td>{{ borrower.firstName }} {{ borrower.lastName }}</td>
-            <td>{{ borrower.phone }}</td>
-            <td>
-              <template v-if="store.isOwner">
-                <AppSelectField
-                  :model-value="borrower.status"
-                  :items="statusOptions"
-                  density="compact"
-                  hide-details
-                  style="min-width: 160px;"
-                  @update:model-value="updateBorrowerStatus(borrower.id, $event)"
-                />
-              </template>
-              <template v-else>
-                <v-chip :color="borrower.status === 'BLACKLISTED' ? 'error' : 'success'" size="small" variant="tonal">
-                  {{ borrower.status }}
-                </v-chip>
-              </template>
-            </td>
-            <td>
-              <v-chip color="info" size="small" variant="tonal">{{ borrower.riskScore }}</v-chip>
-            </td>
-            <td>{{ formatCurrency(borrower.monthlyIncome) }}</td>
-            <td>
-              <AppActionButton size="small" variant="tonal" text="View profile" prepend-icon="mdi-account-eye-outline" @click="openProfileDialog(borrower.id)" />
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
-      <AppPaginationFooter v-model="page" :total-pages="borrowersPage.totalPages" :total-elements="borrowersPage.totalElements" @update:model-value="loadBorrowers" />
+      <AppDataTable
+        title=""
+        :headers="borrowerHeaders"
+        :items="borrowers"
+        :loading="loading"
+        show-search
+        search-placeholder="Search clients"
+        no-data-message="No clients."
+        :items-per-page="8"
+        @update:search-value="onSearch"
+      >
+        <template #item.name="{ item }">{{ item.firstName }} {{ item.lastName }}</template>
+        <template #item.phone="{ item }">{{ item.phone }}</template>
+        <template #item.status="{ item }">
+          <template v-if="store.isOwner">
+            <AppSelectField
+              :model-value="item.status"
+              :items="statusOptions"
+              density="compact"
+              hide-details
+              style="min-width: 160px;"
+              @update:model-value="updateBorrowerStatus(item.id, $event)"
+            />
+          </template>
+          <template v-else>
+            <v-chip :color="item.status === 'BLACKLISTED' ? 'error' : 'success'" size="small" variant="tonal">{{ item.status }}</v-chip>
+          </template>
+        </template>
+        <template #item.riskScore="{ item }">
+          <v-chip color="info" size="small" variant="tonal">{{ item.riskScore }}</v-chip>
+        </template>
+        <template #item.monthlyIncome="{ item }">{{ formatCurrency(item.monthlyIncome) }}</template>
+        <template #item.actions="{ item }">
+          <AppActionButton size="small" variant="tonal" text="View profile" prepend-icon="mdi-account-eye-outline" @click="openProfileDialog(item.id)" />
+        </template>
+        <template #footer>
+          <AppPaginationFooter v-model="page" :total-pages="borrowersPage.totalPages" :total-elements="borrowersPage.totalElements" @update:model-value="loadBorrowers" />
+        </template>
+      </AppDataTable>
     </AppTableCard>
 
     <AppDialogCard v-model="showProfileDialog" title="Client Profile" :max-width="560">
@@ -196,10 +189,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import AppActionButton from "../components/ui/AppActionButton.vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppDialogCard from "../components/ui/AppDialogCard.vue";
 import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
-import AppSearchField from "../components/ui/AppSearchField.vue";
 import AppSelectField from "../components/ui/AppSelectField.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
@@ -219,6 +212,16 @@ const profileError = ref("");
 const downloadLoading = ref(null);
 const search = ref("");
 const page = ref(0);
+const loading = ref(false);
+
+const borrowerHeaders = [
+  { title: "Name", key: "name" },
+  { title: "Phone", key: "phone" },
+  { title: "Status", key: "status" },
+  { title: "Risk", key: "riskScore" },
+  { title: "Income", key: "monthlyIncome" },
+  { title: "Actions", key: "actions" }
+];
 
 const employmentTypeOptions = [
   "Employed",
@@ -349,7 +352,18 @@ async function downloadDocument(verificationId, type, suggestedName) {
 
 async function loadBorrowers(nextPage = page.value) {
   page.value = nextPage;
-  await store.fetchBorrowers({ q: search.value, page: page.value, size: 8 });
+  loading.value = true;
+  try {
+    await store.fetchBorrowers({ q: search.value, page: page.value, size: 8 });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function onSearch(value) {
+  search.value = value;
+  page.value = 0;
+  loadBorrowers(0);
 }
 
 async function handleSearch() {

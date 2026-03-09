@@ -10,30 +10,27 @@
     </AppPageHeader>
 
     <AppTableCard title="Blacklist Register" :count-label="`${blacklist.length} entries`" chip-color="error">
-      <template #header-actions>
-        <AppSearchField v-model="search" label="Search blacklist" style="min-width: 240px;" @update:model-value="handleSearch" />
-      </template>
-        <v-table>
-          <thead>
-            <tr>
-              <th>Entry</th>
-              <th>Client</th>
-              <th>Reason</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in blacklist" :key="entry.id">
-              <td>#{{ entry.id }}</td>
-              <td>{{ borrowerName(entry.borrowerId) }}</td>
-              <td>
-              <AppTruncateText :text="entry.reason" :max-chars="90" max-width="280px" />
-            </td>
-              <td>{{ formatDate(entry.blacklistedAt) }}</td>
-            </tr>
-          </tbody>
-        </v-table>
-      <AppPaginationFooter v-model="page" :total-pages="blacklistPage.totalPages" :total-elements="blacklistPage.totalElements" @update:model-value="loadBlacklist" />
+      <AppDataTable
+        title=""
+        :headers="blacklistHeaders"
+        :items="blacklist"
+        :loading="loading"
+        show-search
+        search-placeholder="Search blacklist"
+        no-data-message="No blacklist entries."
+        :items-per-page="8"
+        @update:search-value="onSearch"
+      >
+        <template #item.id="{ item }">#{{ item.id }}</template>
+        <template #item.borrowerId="{ item }">{{ borrowerName(item.borrowerId) }}</template>
+        <template #item.reason="{ item }">
+          <AppTruncateText :text="item.reason" :max-chars="90" max-width="280px" />
+        </template>
+        <template #item.blacklistedAt="{ item }">{{ formatDate(item.blacklistedAt) }}</template>
+        <template #footer>
+          <AppPaginationFooter v-model="page" :total-pages="blacklistPage.totalPages" :total-elements="blacklistPage.totalElements" @update:model-value="loadBlacklist" />
+        </template>
+      </AppDataTable>
     </AppTableCard>
 
     <AppDialogCard v-model="showBlacklistDialog" title="Add Borrower To Blacklist" :max-width="520">
@@ -62,8 +59,8 @@ import AppActionButton from "../components/ui/AppActionButton.vue";
 import AppDialogCard from "../components/ui/AppDialogCard.vue";
 import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
-import AppSearchField from "../components/ui/AppSearchField.vue";
 import AppSelectField from "../components/ui/AppSelectField.vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTruncateText from "../components/ui/AppTruncateText.vue";
 import api from "../services/api";
@@ -76,6 +73,14 @@ const borrowers = computed(() => store.borrowers);
 const showBlacklistDialog = ref(false);
 const search = ref("");
 const page = ref(0);
+const loading = ref(false);
+
+const blacklistHeaders = [
+  { title: "Entry", key: "id" },
+  { title: "Client", key: "borrowerId" },
+  { title: "Reason", key: "reason" },
+  { title: "Date", key: "blacklistedAt" }
+];
 const borrowerOptions = computed(() =>
   borrowers.value.map((borrower) => ({
     title: `${borrower.firstName} ${borrower.lastName} - ${borrower.phone}`,
@@ -112,7 +117,18 @@ function borrowerName(borrowerId) {
 
 async function loadBlacklist(nextPage = page.value) {
   page.value = nextPage;
-  await store.fetchBlacklist({ q: search.value, page: page.value, size: 8 });
+  loading.value = true;
+  try {
+    await store.fetchBlacklist({ q: search.value, page: page.value, size: 8 });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function onSearch(value) {
+  search.value = value;
+  page.value = 0;
+  loadBlacklist(0);
 }
 
 async function handleSearch() {

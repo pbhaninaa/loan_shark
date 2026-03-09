@@ -13,51 +13,29 @@
     </v-alert>
 
     <AppTableCard title="Manual Review Queue" :count-label="`${verifications.length} cases`" chip-color="warning">
-      <v-table>
-        <thead>
-          <tr>
-            <th>Client</th>
-            <th>Status</th>
-            <th>SA ID</th>
-            <th>OCR</th>
-            <th>Face</th>
-            <th>Notes</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in verifications" :key="item.id">
-            <td>#{{ item.borrowerId }}</td>
-            <td>
-              <v-chip size="small" color="warning" variant="tonal">{{ item.status }}</v-chip>
-            </td>
-            <td>{{ item.saIdValid ? "Valid" : "Invalid" }}</td>
-            <td>{{ item.ocrConfidence ?? "-" }}</td>
-            <td>{{ item.faceMatchScore ?? "-" }}</td>
-            <td>
-              <AppTruncateText :text="item.reviewNotes" :max-chars="90" max-width="280px" />
-            </td>
-            <td class="d-flex ga-2 flex-wrap">
-              <AppActionButton
-                size="small"
-                color="success"
-                text="Approve"
-                @click="openDialog(item, 'approve')"
-              />
-              <AppActionButton
-                size="small"
-                color="error"
-                variant="tonal"
-                text="Reject"
-                @click="openDialog(item, 'reject')"
-              />
-            </td>
-          </tr>
-          <tr v-if="!verifications.length">
-            <td colspan="7" class="text-medium-emphasis">No client verifications need manual review.</td>
-          </tr>
-        </tbody>
-      </v-table>
+      <AppDataTable
+        title=""
+        :headers="verificationHeaders"
+        :items="verifications"
+        no-data-message="No client verifications need manual review."
+      >
+        <template #item.borrowerId="{ item }">#{{ item.borrowerId }}</template>
+        <template #item.status="{ item }">
+          <v-chip size="small" color="warning" variant="tonal">{{ item.status }}</v-chip>
+        </template>
+        <template #item.saIdValid="{ item }">{{ item.saIdValid ? "Valid" : "Invalid" }}</template>
+        <template #item.ocrConfidence="{ item }">{{ item.ocrConfidence ?? "-" }}</template>
+        <template #item.faceMatchScore="{ item }">{{ item.faceMatchScore ?? "-" }}</template>
+        <template #item.reviewNotes="{ item }">
+          <AppTruncateText :text="item.reviewNotes" :max-chars="90" max-width="280px" />
+        </template>
+        <template #item.actions="{ item }">
+          <div class="d-flex ga-2 flex-wrap">
+            <AppActionButton size="small" color="success" text="Approve" @click="openDialog(item, 'approve')" />
+            <AppActionButton size="small" color="error" variant="tonal" text="Reject" @click="openDialog(item, 'reject')" />
+          </div>
+        </template>
+      </AppDataTable>
     </AppTableCard>
 
     <AppDialogCard v-model="showDialog" :title="dialogTitle" :max-width="1200">
@@ -150,6 +128,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import AppActionButton from "../components/ui/AppActionButton.vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppDialogCard from "../components/ui/AppDialogCard.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
@@ -171,6 +150,16 @@ const selfieDocumentUrl = ref("");
 
 const verifications = computed(() => store.verifications);
 const dialogTitle = computed(() => (dialogAction.value === "approve" ? "Approve Verification" : "Reject Verification"));
+
+const verificationHeaders = [
+  { title: "Client", key: "borrowerId" },
+  { title: "Status", key: "status" },
+  { title: "SA ID", key: "saIdValid" },
+  { title: "OCR", key: "ocrConfidence" },
+  { title: "Face", key: "faceMatchScore" },
+  { title: "Notes", key: "reviewNotes" },
+  { title: "Actions", key: "actions" }
+];
 
 onMounted(async () => {
   await loadVerifications();

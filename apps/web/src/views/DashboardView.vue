@@ -66,42 +66,33 @@
     <v-row class="mt-1" v-if="store.isOwner">
       <v-col cols="12">
         <AppTableCard title="Recent Actions" :count-label="`${actions.length} items`" chip-color="secondary">
-          <template #header-actions>
-            <AppSearchField v-model="search" label="Search actions" style="min-width: 240px;" @update:model-value="handleSearch" />
-          </template>
-          <v-table>
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Action</th>
-                <th>Reference</th>
-                <th>Amount</th>
-                <th>Performed By</th>
-                <th>Authorized By</th>
-                <th>Details</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in actions" :key="`${item.category}-${item.entityId}-${item.timestamp}`">
-                <td>
-                  <v-chip :color="item.category === 'TRANSACTION' ? 'success' : 'info'" size="small" variant="tonal">
-                    {{ item.category }}
-                  </v-chip>
-                </td>
-                <td>{{ item.action }}</td>
-                <td>{{ item.referenceNumber || (item.loanId ? `Loan #${item.loanId}` : item.entity) }}</td>
-                <td>{{ item.amount ? formatCurrency(item.amount) : "-" }}</td>
-                <td>{{ item.performedBy || "-" }}</td>
-                <td>{{ item.authorizedBy || "-" }}</td>
-                <td>
-                <AppTruncateText :text="item.details" :max-chars="90" max-width="280px" />
-              </td>
-                <td>{{ formatDateTime(item.timestamp) }}</td>
-              </tr>
-            </tbody>
-          </v-table>
-          <AppPaginationFooter v-model="page" :total-pages="actionsPage.totalPages" :total-elements="actionsPage.totalElements" @update:model-value="loadActions" />
+          <AppDataTable
+            title=""
+            :headers="actionHeaders"
+            :items="actions"
+            :loading="loading"
+            show-search
+            search-placeholder="Search actions"
+            no-data-message="No actions."
+            :items-per-page="8"
+            @update:search-value="onSearch"
+          >
+            <template #item.category="{ item }">
+              <v-chip :color="item.category === 'TRANSACTION' ? 'success' : 'info'" size="small" variant="tonal">{{ item.category }}</v-chip>
+            </template>
+            <template #item.action="{ item }">{{ item.action }}</template>
+            <template #item.referenceNumber="{ item }">{{ item.referenceNumber || (item.loanId ? `Loan #${item.loanId}` : item.entity) }}</template>
+            <template #item.amount="{ item }">{{ item.amount ? formatCurrency(item.amount) : "-" }}</template>
+            <template #item.performedBy="{ item }">{{ item.performedBy || "-" }}</template>
+            <template #item.authorizedBy="{ item }">{{ item.authorizedBy || "-" }}</template>
+            <template #item.details="{ item }">
+              <AppTruncateText :text="item.details" :max-chars="90" max-width="280px" />
+            </template>
+            <template #item.timestamp="{ item }">{{ formatDateTime(item.timestamp) }}</template>
+            <template #footer>
+              <AppPaginationFooter v-model="page" :total-pages="actionsPage.totalPages" :total-elements="actionsPage.totalElements" @update:model-value="loadActions" />
+            </template>
+          </AppDataTable>
         </AppTableCard>
       </v-col>
     </v-row>
@@ -110,9 +101,9 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
-import AppSearchField from "../components/ui/AppSearchField.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTruncateText from "../components/ui/AppTruncateText.vue";
 import { useAppStore } from "../store";
@@ -121,6 +112,18 @@ import { formatCurrency, formatDateTime } from "../utils/formatters";
 const store = useAppStore();
 const search = ref("");
 const page = ref(0);
+const loading = ref(false);
+
+const actionHeaders = [
+  { title: "Category", key: "category" },
+  { title: "Action", key: "action" },
+  { title: "Reference", key: "referenceNumber" },
+  { title: "Amount", key: "amount" },
+  { title: "Performed By", key: "performedBy" },
+  { title: "Authorized By", key: "authorizedBy" },
+  { title: "Details", key: "details" },
+  { title: "Time", key: "timestamp" }
+];
 
 const dashboard = computed(() => store.dashboard);
 const actions = computed(() => store.actions);
@@ -179,7 +182,18 @@ onMounted(async () => {
 
 async function loadActions(nextPage = page.value) {
   page.value = nextPage;
-  await store.fetchActions({ q: search.value, page: page.value, size: 3 });
+  loading.value = true;
+  try {
+    await store.fetchActions({ q: search.value, page: page.value, size: 3 });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function onSearch(value) {
+  search.value = value;
+  page.value = 0;
+  loadActions(0);
 }
 
 async function handleSearch() {

@@ -22,45 +22,34 @@
     </AppTableCard>
 
     <AppTableCard title="Installment Schedule" :count-label="`${schedule.length} installments`" chip-color="info">
-      <v-table>
-        <thead>
-          <tr>
-            <th>Installment</th>
-            <th>Due Date</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th class="text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in schedule" :key="`${selectedLoanId}-${item.installmentNumber}`">
-            <td>{{ item.installmentNumber }}</td>
-            <td>{{ item.dueDate }}</td>
-            <td>{{ formatCurrency(item.amountDue) }}</td>
-            <td>
-              <v-chip size="small" :color="scheduleColor(item.status)" variant="tonal">
-                {{ item.status }}
-              </v-chip>
-            </td>
-            <td class="text-right">
-              <AppActionButton
-                v-if="item.status !== 'PAID' && Number(item.amountDue) > 0"
-                size="small"
-                color="primary"
-                variant="tonal"
-                text="Pay"
-                prepend-icon="mdi-cash-check"
-                :loading="payLoading && payingInstallment === item.installmentNumber"
-                @click="openPayDialog(item)"
-              />
-              <span v-else class="text-medium-emphasis text-caption">—</span>
-            </td>
-          </tr>
-          <tr v-if="!schedule.length">
-            <td colspan="5" class="text-medium-emphasis">Select a loan to view its repayment schedule.</td>
-          </tr>
-        </tbody>
-      </v-table>
+      <AppDataTable
+        title=""
+        :headers="scheduleHeaders"
+        :items="schedule"
+        no-data-message="Select a loan to view its repayment schedule."
+      >
+        <template #item.installmentNumber="{ item }">{{ item.installmentNumber }}</template>
+        <template #item.dueDate="{ item }">{{ item.dueDate }}</template>
+        <template #item.amountDue="{ item }">{{ formatCurrency(item.amountDue) }}</template>
+        <template #item.status="{ item }">
+          <v-chip size="small" :color="scheduleColor(item.status)" variant="tonal">{{ item.status }}</v-chip>
+        </template>
+        <template #item.actions="{ item }">
+          <div class="text-right">
+            <AppActionButton
+              v-if="item.status !== 'PAID' && Number(item.amountDue) > 0"
+              size="small"
+              color="primary"
+              variant="tonal"
+              text="Pay"
+              prepend-icon="mdi-cash-check"
+              :loading="payLoading && payingInstallment === item.installmentNumber"
+              @click="openPayDialog(item)"
+            />
+            <span v-else class="text-medium-emphasis text-caption">—</span>
+          </div>
+        </template>
+      </AppDataTable>
     </AppTableCard>
 
     <v-dialog v-model="showPayDialog" max-width="440" persistent>
@@ -122,6 +111,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import AppActionButton from "../components/ui/AppActionButton.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppSelectField from "../components/ui/AppSelectField.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
@@ -148,6 +138,13 @@ const payForm = ref({
 });
 
 const schedule = computed(() => store.loanSchedule);
+const scheduleHeaders = [
+  { title: "Installment", key: "installmentNumber" },
+  { title: "Due Date", key: "dueDate" },
+  { title: "Amount", key: "amountDue" },
+  { title: "Status", key: "status" },
+  { title: "Actions", key: "actions" }
+];
 const loanOptions = computed(() =>
   store.loans.map((loan) => ({
     title: `Loan #${loan.id} - ${formatCurrency(loan.totalAmount)} - ${loan.status}`,
