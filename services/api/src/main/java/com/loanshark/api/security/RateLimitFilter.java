@@ -12,12 +12,16 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Value;
 
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private static final int MAX_ATTEMPTS_PER_MINUTE = 20;
-    private static final long WINDOW_SECONDS = 60;
+    @Value("${app.rate-limit.max-attempts-per-minute:20}")
+    private int maxAttemptsPerMinute;
+
+    @Value("${app.rate-limit.window-seconds:60}")
+    private long windowSeconds;
 
     private final Map<String, WindowCounter> counters = new ConcurrentHashMap<>();
 
@@ -51,7 +55,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 return new WindowCounter(now, 1);
             }
 
-            if (now - counter.windowStart > WINDOW_SECONDS) {
+            if (now - counter.windowStart > windowSeconds) {
                 return new WindowCounter(now, 1);
             }
 
@@ -61,7 +65,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         WindowCounter counter = counters.get(key);
 
-        if (counter.count > MAX_ATTEMPTS_PER_MINUTE) {
+        if (counter.count > maxAttemptsPerMinute) {
             response.setStatus(429);
             response.getWriter().write("Too many requests. Try again later.");
             return;
@@ -69,7 +73,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         // Cleanup old entries to prevent memory leak
         counters.entrySet().removeIf(entry ->
-                now - entry.getValue().windowStart > WINDOW_SECONDS * 5
+                now - entry.getValue().windowStart > windowSeconds * 5
         );
 
         filterChain.doFilter(request, response);

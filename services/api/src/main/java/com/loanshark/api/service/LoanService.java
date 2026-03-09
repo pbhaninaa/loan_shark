@@ -30,6 +30,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -60,11 +61,19 @@ public class LoanService {
     private final RepaymentRepository repaymentRepository;
 
     private static final BigDecimal EIGHTY_PERCENT = new BigDecimal("0.80");
-    /** Loans below this amount can be approved/rejected by CASHIER; above require OWNER. */
-    private static final BigDecimal CASHIER_APPROVAL_LIMIT = new BigDecimal("10000");
 
     @Value("${app.loan.default-installments}")
     private int defaultInstallments;
+
+    @Value("${app.loan.cashier-approval-limit:10000}")
+    private String cashierApprovalLimitConfig;
+
+    private BigDecimal cashierApprovalLimit;
+
+    @PostConstruct
+    void initCashierLimit() {
+        this.cashierApprovalLimit = new BigDecimal(cashierApprovalLimitConfig != null ? cashierApprovalLimitConfig.trim() : "10000");
+    }
 
     public LoanService(
         LoanRepository loanRepository,
@@ -244,10 +253,10 @@ public class LoanService {
         User currentUser = currentUserService.requireCurrentUser();
         if (currentUser.getRole() == UserRole.OWNER) {
             // owner can approve any loan
-        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(CASHIER_APPROVAL_LIMIT) < 0) {
+        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0) {
             // cashier can approve loans under the limit
         } else {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can approve loans over " + CASHIER_APPROVAL_LIMIT + "; cashiers may approve loans under that amount.");
+            throw new ResponseStatusException(FORBIDDEN, "Only owner can approve loans over " + cashierApprovalLimit + "; cashiers may approve loans under that amount.");
         }
         if (loan.getStatus() != LoanStatus.PENDING) {
             throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be approved");
@@ -276,10 +285,10 @@ public class LoanService {
         User currentUser = currentUserService.requireCurrentUser();
         if (currentUser.getRole() == UserRole.OWNER) {
             // owner can reject any loan
-        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(CASHIER_APPROVAL_LIMIT) < 0) {
+        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0) {
             // cashier can reject loans under the limit
         } else {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can reject loans over " + CASHIER_APPROVAL_LIMIT + "; cashiers may reject loans under that amount.");
+            throw new ResponseStatusException(FORBIDDEN, "Only owner can reject loans over " + cashierApprovalLimit + "; cashiers may reject loans under that amount.");
         }
         loan.setStatus(LoanStatus.REJECTED);
         loan.setApprovedBy(currentUser);
