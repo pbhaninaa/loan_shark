@@ -9,7 +9,11 @@
       </template>
     </AppPageHeader>
 
-    <AppTableCard title="Repayment History" :count-label="`${repayments.length} payments`" chip-color="info">
+    <AppTableCard
+      :title="selectedLoanAccountLabel"
+      :count-label="`${repayments.length} payments`"
+      chip-color="info"
+    >
       <template #header-actions>
         <AppSearchField v-model="search" label="Search repayments" style="min-width: 240px;" @update:model-value="handleSearch" />
         <AppActionButton
@@ -20,40 +24,45 @@
           @click="loadRepayments"
         />
       </template>
-        <v-table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Loan</th>
-              <th>Amount</th>
-              <th>Method</th>
-              <th>Reference</th>
-              <th>Client</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="repayment in repayments" :key="repayment.id">
-              <td>#{{ repayment.id }}</td>
-              <td>{{ repayment.loanId }}</td>
-              <td>{{ formatCurrency(repayment.amountPaid) }}</td>
-              <td>
-                <v-chip color="success" size="small" variant="tonal">
-                  {{ repayment.paymentMethod }}
-                </v-chip>
-              </td>
-              <td>{{ repayment.referenceNumber }}</td>
-              <td>{{ repayment.capturedByUsername || "—" }}</td>
-            </tr>
-          </tbody>
-        </v-table>
+      <v-table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Loan</th>
+            <th>Payer (full name)</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Recorded by</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="repayment in repayments" :key="repayment.id">
+            <td>#{{ repayment.id }}</td>
+            <td>{{ repayment.loanId }}</td>
+            <td>{{ repayment.borrowerFullName || repayment.borrowerUsername || "—" }}</td>
+            <td>{{ formatCurrency(repayment.amountPaid) }}</td>
+            <td>
+              <v-chip color="success" size="small" variant="tonal">
+                {{ repayment.paymentMethod }}
+              </v-chip>
+            </td>
+            <td>{{ repayment.referenceNumber }}</td>
+            <td>{{ repayment.capturedByUsername || "—" }}</td>
+          </tr>
+        </tbody>
+      </v-table>
       <AppPaginationFooter v-model="page" :total-pages="repaymentsPage.totalPages" :total-elements="repaymentsPage.totalElements" @update:model-value="loadRepayments" />
     </AppTableCard>
 
     <AppDialogCard v-model="showRepaymentDialog" title="Capture Payment" :max-width="520">
+      <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+        Select the loan (account) for this payment. The amount will reduce that client's debt and update the repayment schedule.
+      </v-alert>
       <v-form @submit.prevent="recordRepayment">
             <AppSelectField
               v-model="form.loanId"
-              label="Loan"
+              label="Loan (payer account)"
               prepend-inner-icon="mdi-pound"
               :items="loanOptions"
               item-title="title"
@@ -92,10 +101,18 @@ const loanOptions = computed(() =>
   store.loans
     .filter((loan) => loan.status !== "REJECTED")
     .map((loan) => ({
-      title: `Loan #${loan.id} - Client #${loan.borrowerId} - ${loan.status}`,
+      title: `Loan #${loan.id} - ${loan.borrowerUsername || `Client #${loan.borrowerId}`} - ${loan.status}`,
       value: loan.id
     }))
 );
+const selectedLoan = computed(() =>
+  form.loanId ? store.loans.find((l) => l.id === form.loanId) : null
+);
+const selectedLoanAccountLabel = computed(() => {
+  if (!selectedLoan.value) return "Repayment History";
+  const name = selectedLoan.value.borrowerUsername || `Client #${selectedLoan.value.borrowerId}`;
+  return `Repayment history — ${name} (Loan #${form.loanId})`;
+});
 const paymentMethods = ["CASH", "EFT", "MOBILE_TRANSFER"];
 const showRepaymentDialog = ref(false);
 const search = ref("");
@@ -117,9 +134,14 @@ onMounted(async () => {
 });
 
 async function recordRepayment() {
-  await api.post("/repayments", form);
+  const res = await api.post("/repayments", form);
   showRepaymentDialog.value = false;
   await loadRepayments(0);
+  const account = res?.data?.borrowerUsername || "Account";
+  const amount = res?.data?.amountPaid != null ? formatCurrency(res.data.amountPaid) : "";
+  if (typeof toast !== "undefined" && amount) {
+    toast.success(`Payment recorded. ${account}'s debt reduced by ${amount}.`);
+  }
 }
 
 async function loadRepayments(nextPage = page.value) {
