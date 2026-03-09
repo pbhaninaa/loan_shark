@@ -249,7 +249,8 @@ export const useAppStore = defineStore("app", {
       this.applyPagedResult("blacklist", "blacklistPage", data);
     },
     async fetchRepayments(loanId, params = {}) {
-      const { data } = await api.get(`/repayments/${loanId}`, { params });
+      const url = loanId != null ? `/repayments/${loanId}` : "/repayments";
+      const { data } = await api.get(url, { params });
       this.applyPagedResult("repayments", "repaymentsPage", data);
     },
     async fetchMyNotifications(params = {}) {

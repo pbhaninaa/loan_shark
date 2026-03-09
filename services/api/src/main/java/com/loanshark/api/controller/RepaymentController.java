@@ -34,6 +34,21 @@ public class RepaymentController {
         return Map.of("nextReference", repaymentService.getNextReferenceNumber());
     }
 
+    /** List all payment history (staff: all loans; borrower: own loans). Optional ?loanId= filters to one loan. */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
+    public PageResponse<RepaymentResponse> list(
+        @RequestParam(required = false) java.util.UUID loanId,
+        @RequestParam(defaultValue = "") String q,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        if (loanId != null) {
+            return repaymentService.listByLoan(loanId, q, page, size);
+        }
+        return repaymentService.listAll(q, page, size);
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
     @ResponseStatus(HttpStatus.CREATED)

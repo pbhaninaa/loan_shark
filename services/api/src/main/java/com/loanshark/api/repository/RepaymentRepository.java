@@ -35,4 +35,29 @@ public interface RepaymentRepository extends JpaRepository<Repayment, UUID> {
         order by r.paymentDate desc
         """)
     Page<Repayment> searchByLoanId(@Param("loanId") UUID loanId, @Param("query") String query, Pageable pageable);
+
+    @Query("""
+        select r from Repayment r
+        where (
+          :query = '' or
+          str(r.id) like concat('%', :query, '%') or
+          lower(str(r.paymentMethod)) like lower(concat('%', :query, '%')) or
+          lower(r.referenceNumber) like lower(concat('%', :query, '%'))
+        )
+        order by r.paymentDate desc
+        """)
+    Page<Repayment> searchAll(@Param("query") String query, Pageable pageable);
+
+    @Query("""
+        select r from Repayment r
+        where r.loan.borrower.id = :borrowerId
+          and (
+            :query = '' or
+            str(r.id) like concat('%', :query, '%') or
+            lower(str(r.paymentMethod)) like lower(concat('%', :query, '%')) or
+            lower(r.referenceNumber) like lower(concat('%', :query, '%'))
+          )
+        order by r.paymentDate desc
+        """)
+    Page<Repayment> searchByBorrowerId(@Param("borrowerId") UUID borrowerId, @Param("query") String query, Pageable pageable);
 }

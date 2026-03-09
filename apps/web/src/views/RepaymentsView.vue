@@ -2,7 +2,7 @@
   <div class="page-shell">
     <AppPageHeader
       title="Repayments"
-      description="Capture incoming payments, verify references, and review repayment history for any loan."
+      description="Capture incoming payments and view all payment history across loans. Use the filter to show a specific loan."
     >
       <template #actions>
         <AppActionButton text="Record Payment" prepend-icon="mdi-cash-check" @click="openCapturePaymentDialog" />
@@ -10,8 +10,8 @@
     </AppPageHeader>
 
     <AppTableCard
-      :title="selectedLoanAccountLabel"
-      :count-label="`${repayments.length} payments`"
+      title="Repayment History"
+      :count-label="`${repaymentsPage.totalElements} payments`"
       chip-color="info"
     >
       <AppDataTable
@@ -26,17 +26,24 @@
         @update:search-value="onSearch"
       >
         <template #header-actions>
-          <AppActionButton
-            text="Load Loan History"
-            color="secondary"
-            variant="tonal"
-            prepend-icon="mdi-history"
-            @click="loadRepayments"
+          <AppSelectField
+            v-model="filterLoanId"
+            label="Filter by loan"
+            clearable
+            placeholder="All loans"
+            :items="loanFilterOptions"
+            item-title="title"
+            item-value="value"
+            density="compact"
+            hide-details
+            style="min-width: 200px;"
+            @update:model-value="onFilterLoanChange"
           />
         </template>
         <template #item.borrowerFullName="{ item }">{{ item.borrowerFullName || item.borrowerUsername || "—" }}</template>
-        <template #item.loanId="{ item }">{{ item.loanId }}</template>
+        <template #item.loanId="{ item }">#{{ item.loanId }}</template>
         <template #item.amountPaid="{ item }">{{ formatCurrency(item.amountPaid) }}</template>
+        <template #item.paymentDate="{ item }">{{ formatDate(item.paymentDate) }}</template>
         <template #item.paymentMethod="{ item }">
           <v-chip color="success" size="small" variant="tonal">{{ item.paymentMethod }}</v-chip>
         </template>
@@ -108,11 +115,14 @@ const loanOptions = computed(() =>
 const selectedLoan = computed(() =>
   form.loanId ? store.loans.find((l) => l.id === form.loanId) : null
 );
-const selectedLoanAccountLabel = computed(() => {
-  if (!selectedLoan.value) return "Repayment History";
-  const name = selectedLoan.value.borrowerFullName || selectedLoan.value.borrowerUsername || `Client #${selectedLoan.value.borrowerId}`;
-  return `Repayment history — ${name} (Loan #${form.loanId})`;
-});
+const filterLoanId = ref(null);
+const loanFilterOptions = computed(() => [
+  { title: "All loans", value: null },
+  ...store.loans.map((loan) => {
+    const label = loan.borrowerFullName || loan.borrowerUsername || `Client #${loan.borrowerId}`;
+    return { title: `Loan #${loan.id} — ${label}`, value: loan.id };
+  })
+]);
 const paymentMethods = ["CASH", "EFT", "MOBILE_TRANSFER"];
 const showRepaymentDialog = ref(false);
 const search = ref("");
@@ -123,6 +133,7 @@ const repaymentHeaders = [
   { title: "Payer (full name)", key: "borrowerFullName" },
   { title: "Loan", key: "loanId" },
   { title: "Amount", key: "amountPaid" },
+  { title: "Date", key: "paymentDate" },
   { title: "Method", key: "paymentMethod" },
   { title: "Reference", key: "referenceNumber" },
   { title: "Recorded by", key: "capturedByUsername" }
@@ -137,11 +148,22 @@ const form = reactive({
 
 onMounted(async () => {
   await store.fetchLoans();
+  await loadRepayments(0);
   if (!form.loanId && loanOptions.value.length) {
     form.loanId = loanOptions.value[0].value;
-    await loadRepayments();
   }
 });
+
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  return d.toLocaleDateString(undefined, { dateStyle: "short" }) + " " + d.toLocaleTimeString(undefined, { timeStyle: "short" });
+}
+
+function onFilterLoanChange() {
+  page.value = 0;
+  loadRepayments(0);
+}
 
 async function openCapturePaymentDialog() {
   try {
@@ -165,11 +187,11 @@ async function recordRepayment() {
 }
 
 async function loadRepayments(nextPage = page.value) {
-  if (!form.loanId) return;
   page.value = nextPage;
   loading.value = true;
   try {
-    await store.fetchRepayments(form.loanId, { q: search.value, page: page.value, size: 8 });
+    const loanId = filterLoanId.value ?? null;
+    await store.fetchRepayments(loanId, { q: search.value, page: page.value, size: 8 });
   } finally {
     loading.value = false;
   }
@@ -179,10 +201,5 @@ function onSearch(value) {
   search.value = value;
   page.value = 0;
   loadRepayments(0);
-}
-
-async function handleSearch() {
-  page.value = 0;
-  await loadRepayments(0);
 }
 </script>
