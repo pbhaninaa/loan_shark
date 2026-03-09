@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from "vue-router";
+import { isTokenExpired } from "../utils/token";
 import LoginView from "../views/LoginView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import BorrowersView from "../views/BorrowersView.vue";
@@ -50,6 +51,13 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const store = useAppStore();
+
+  // Clear expired token so we stay authorised only while token is valid
+  const token = store.token || localStorage.getItem("loanSharkToken");
+  if (token && isTokenExpired(token)) {
+    store.clearSession();
+  }
+
   if (!store.setupLoaded) {
     await store.fetchSetupStatus(); // never blocks: on API failure still sets setupLoaded
   }

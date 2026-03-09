@@ -1,4 +1,5 @@
 import axios from "axios";
+import { isTokenExpired } from "../utils/token";
 
 // Build-time: VITE_API_URL (set on Vercel). Runtime fallback: if not on localhost, use Railway so deployed app works.
 const RAILWAY_API_URL = "https://backend-production-8d8d.up.railway.app";
@@ -60,9 +61,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || "";
       if (!requestUrl.includes("/auth/login")) {
-        localStorage.removeItem("loanSharkToken");
-        localStorage.removeItem("loanSharkRole");
-        localStorage.removeItem("loanSharkUserId");
+        window.dispatchEvent(new CustomEvent("auth-logout", { detail: { reason: "401" } }));
         window.location.hash = "#/login";
       }
     }
@@ -84,6 +83,13 @@ api.interceptors.request.use((config) => {
     path.startsWith("/auth/forgot-password") ||
     path.startsWith("/auth/reset-password") ||
     ((config.method || "").toLowerCase() === "get" && path === "/settings/loan-interest");
+
+  // If token is expired, log out and redirect before sending request
+  if (token && !isPublic && isTokenExpired(token)) {
+    window.dispatchEvent(new CustomEvent("auth-logout", { detail: { reason: "expired" } }));
+    window.location.hash = "#/login";
+    return Promise.reject(new Error("Session expired. Please log in again."));
+  }
 
   if (token && !isPublic) {
     config.headers.Authorization = `Bearer ${token}`;
