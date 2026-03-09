@@ -34,7 +34,10 @@ public class RepaymentController {
         return Map.of("nextReference", repaymentService.getNextReferenceNumber());
     }
 
-    /** List all payment history (staff: all loans; borrower: own loans). Optional ?loanId= filters to one loan. */
+    /**
+     * List payment history. Access: Borrower sees only their own repayments; Cashier and Owner see all.
+     * Optional ?loanId= filters to a specific loan (borrower may only filter to their own loans).
+     */
     @GetMapping
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
     public PageResponse<RepaymentResponse> list(
@@ -58,7 +61,7 @@ public class RepaymentController {
 
     @GetMapping("/{loanId}")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
-    public PageResponse<RepaymentResponse> list(
+    public PageResponse<RepaymentResponse> listByLoan(
         @PathVariable UUID loanId,
         @RequestParam(defaultValue = "") String q,
         @RequestParam(defaultValue = "0") int page,

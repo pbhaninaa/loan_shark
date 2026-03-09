@@ -198,7 +198,7 @@ public class RepaymentService {
     }
 
     /**
-     * Lists all repayments (staff: all loans; borrower: own loans only). Use for "Repayment History" showing full payment history.
+     * Lists repayments. Borrower: only their own; Cashier and Owner: all. Use for "Repayment History" / "My payment history".
      */
     @Transactional(readOnly = true)
     public PageResponse<RepaymentResponse> listAll(String query, int page, int size) {
