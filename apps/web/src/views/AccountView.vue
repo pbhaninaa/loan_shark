@@ -45,6 +45,41 @@
         Could not load account details.
       </v-alert>
     </v-card>
+
+    <v-card v-if="store.isOwner" class="mt-4">
+      <v-card-title class="d-flex align-center text-error">
+        <v-icon start>mdi-database-refresh</v-icon>
+        Reset database (owner only)
+      </v-card-title>
+      <v-divider />
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-3">
+          Remove all history (loans, repayments, blacklist, notifications, audit log, etc.). Users, clients and their profiles are kept. Business capital is set to zero.
+        </p>
+        <v-dialog v-model="showResetConfirm" max-width="440" persistent>
+          <template #activator="{ props }">
+            <AppActionButton
+              color="error"
+              variant="tonal"
+              text="Reset history"
+              prepend-icon="mdi-database-remove-outline"
+              v-bind="props"
+            />
+          </template>
+          <v-card>
+            <v-card-title>Confirm reset</v-card-title>
+            <v-card-text>
+              This will permanently delete all loans, repayments, blacklist entries, notifications, and reset business capital. Users and clients (and their profiles) will remain. Continue?
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer />
+              <v-btn variant="text" @click="showResetConfirm = false">Cancel</v-btn>
+              <v-btn color="error" variant="flat" :loading="resetting" @click="confirmResetHistory">Reset</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+      </v-card-text>
+    </v-card>
   </div>
 </template>
 
@@ -61,6 +96,8 @@ const error = ref("");
 const loading = ref(true);
 const saving = ref(false);
 const emailInput = ref("");
+const showResetConfirm = ref(false);
+const resetting = ref(false);
 
 const me = ref(null);
 
@@ -99,6 +136,22 @@ async function saveEmail() {
     error.value = e.response?.data?.message || e.message || "Failed to save email";
   } finally {
     saving.value = false;
+  }
+}
+
+async function confirmResetHistory() {
+  resetting.value = true;
+  error.value = "";
+  message.value = "";
+  try {
+    await store.resetHistory();
+    showResetConfirm.value = false;
+    message.value = "History reset. Users, clients and their profiles kept; business capital set to zero.";
+    if (typeof toast !== "undefined") toast.success("Database history reset.");
+  } catch (e) {
+    error.value = e.response?.data?.message || e.message || "Failed to reset history";
+  } finally {
+    resetting.value = false;
   }
 }
 </script>
