@@ -1,15 +1,9 @@
 package com.loanshark.api.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -17,10 +11,8 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -32,34 +24,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final RequireEmailFilter requireEmailFilter;
     private final RateLimitFilter rateLimitFilter;
     private final UserDetailsServiceImpl userDetailsService;
-    private final ObjectMapper objectMapper;
 
     public SecurityConfig(
         JwtAuthenticationFilter jwtAuthenticationFilter,
-        RequireEmailFilter requireEmailFilter,
         RateLimitFilter rateLimitFilter,
-        UserDetailsServiceImpl userDetailsService,
-        ObjectMapper objectMapper
+        UserDetailsServiceImpl userDetailsService
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.requireEmailFilter = requireEmailFilter;
         this.rateLimitFilter = rateLimitFilter;
         this.userDetailsService = userDetailsService;
-        this.objectMapper = objectMapper;
-    }
-
-    private AuthenticationEntryPoint json401EntryPoint() {
-        return (HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) -> {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding("UTF-8");
-            response.getWriter().write(objectMapper.writeValueAsString(Map.of(
-                "message", authException != null ? authException.getMessage() : "Unauthorized"
-            )));
-        };
     }
 
     @Bean
@@ -95,8 +70,7 @@ public class SecurityConfig {
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(requireEmailFilter, JwtAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
