@@ -26,10 +26,10 @@
       </template>
       <v-table>
         <thead>
-          <tr>
-            <th>ID</th>
+          <tr><th>Payer (full name)</th>
+            <!-- <th>ID</th> -->
             <th>Loan</th>
-            <th>Payer (full name)</th>
+            
             <th>Amount</th>
             <th>Method</th>
             <th>Reference</th>
@@ -37,11 +37,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="repayment in repayments" :key="repayment.id">
-            <td>#{{ repayment.id }}</td>
+          <tr v-for="repayment in repayments" :key="repayment.id"> <td>{{ repayment.borrowerFullName || repayment.borrowerUsername || "—" }}</td>
+          
+            <!-- <td>#{{ repayment.id }}</td> -->
             <td>{{ repayment.loanId }}</td>
-            <td>{{ repayment.borrowerFullName || repayment.borrowerUsername || "—" }}</td>
-            <td>{{ formatCurrency(repayment.amountPaid) }}</td>
+             <td>{{ formatCurrency(repayment.amountPaid) }}</td>
             <td>
               <v-chip color="success" size="small" variant="tonal">
                 {{ repayment.paymentMethod }}
