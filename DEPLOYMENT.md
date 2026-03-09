@@ -35,7 +35,7 @@ DB is configured only via **properties / env** (same as Mechanic Management). In
 
 | Variable | Value | Notes |
 |----------|--------|------|
-| `APP_FRONTEND_URL` | Your **Vercel production URL** (no trailing slash) | e.g. `https://loan-shark-xxx.vercel.app` |
+| `APP_FRONTEND_URL` | Your **Vercel production URL** (no trailing slash) | e.g. `https://lendhand-xxx.vercel.app` |
 | `APP_FRONTEND_ALLOWED_ORIGINS` | Optional. CORS allows all origins by default; set this if you restrict later. | Comma-separated origins |
 
 ### Profile
@@ -139,7 +139,7 @@ Replace placeholders with your real URLs and secrets.
   "SPRING_PROFILES_ACTIVE": "prod",
   "MYSQL_PUBLIC_URL": "${{ YourMySQLServiceName.MYSQL_PUBLIC_URL }}",
   "JWT_SECRET": "YOUR_64_CHAR_SECRET_HERE",
-  "APP_FRONTEND_URL": "https://your-loan-shark-app.vercel.app",
+  "APP_FRONTEND_URL": "https://your-lendhand-app.vercel.app",
   "MAIL_USERNAME": "",
   "MAIL_PASSWORD": "",
   "MAIL_FROM": "",

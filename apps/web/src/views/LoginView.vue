@@ -6,13 +6,13 @@
           <img
             v-if="logoImgSrc"
             :src="logoImgSrc"
-            alt="Loan Shark"
+            alt="LendHand"
             class="login-logo-img mb-2"
             @error="logoImgSrc = null"
           />
           <div class="d-flex align-center justify-center gap-2 flex-column flex-sm-row">
-            <v-icon size="40" color="primary">mdi-shark-fin</v-icon>
-            <span class="text-h4 font-weight-bold">Loan Shark</span>
+            <v-icon size="40" color="primary">mdi-hand-heart</v-icon>
+            <span class="text-h4 font-weight-bold">LendHand</span>
           </div>
         </div>
         <div class="mb-6">
