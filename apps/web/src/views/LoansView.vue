@@ -189,7 +189,7 @@ import { useAppStore } from "../store";
 import { formatCurrency } from "../utils/formatters";
 
 const store = useAppStore();
-const pendingLoans = computed(() => store.pendingLoans);
+const pendingLoans = computed(() => (store.pendingLoans || []).filter((l) => l.status === "PENDING"));
 const pendingLoansPage = computed(() => store.pendingLoansPage);
 const loans = computed(() => store.loans);
 const loansPage = computed(() => store.loansPage);

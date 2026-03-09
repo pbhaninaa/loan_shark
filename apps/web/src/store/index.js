@@ -236,7 +236,7 @@ export const useAppStore = defineStore("app", {
       this.applyPagedResult("loans", "loansPage", data);
     },
     async fetchPendingLoans(params = {}) {
-      const { data } = await api.get("/loans", { params: { ...params, status: "PENDING" } });
+      const { data } = await api.get("/loans", { params: { ...params, status: ["PENDING"] } });
       this.applyPagedResult("pendingLoans", "pendingLoansPage", data);
     },
     async updateLoan(loanId, payload) {
