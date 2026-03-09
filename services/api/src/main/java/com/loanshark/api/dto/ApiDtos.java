@@ -232,6 +232,7 @@ public final class ApiDtos {
         UUID id,
         UUID borrowerId,
         String borrowerUsername,
+        String borrowerFullName,
         BigDecimal loanAmount,
         BigDecimal interestRate,
         BigDecimal totalAmount,

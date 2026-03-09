@@ -66,6 +66,11 @@ public class RepaymentService {
         this.businessCapitalService = businessCapitalService;
     }
 
+    /**
+     * Records a payment against the selected loan. Every payment reduces the debt of the borrower
+     * who owns that loan: the amount is applied to that loan's repayment schedule (installments).
+     * The loan is chosen by the cashier/borrower in the UI; ensure the correct loan (payer) is selected.
+     */
     @Transactional
     public RepaymentResponse record(RepaymentRequest request) {
         Loan loan = loanService.findLoan(request.loanId());
@@ -179,6 +184,7 @@ public class RepaymentService {
         );
     }
 
+    /** Applies the payment to this loan's installments, reducing the paying borrower's outstanding debt. */
     private void applyPaymentToSchedule(Loan loan, BigDecimal amountPaid) {
         BigDecimal remaining = amountPaid;
         List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId());
