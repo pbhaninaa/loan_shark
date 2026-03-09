@@ -18,4 +18,6 @@ public interface BorrowerVerificationRepository extends JpaRepository<BorrowerVe
     List<BorrowerVerification> findByStatusOrderByCreatedAtDesc(VerificationStatus status);
 
     long countByStatus(VerificationStatus status);
+
+    void deleteByBorrowerId(UUID borrowerId);
 }

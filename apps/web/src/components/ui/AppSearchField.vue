@@ -6,6 +6,7 @@
     clearable
     hide-details
     density="comfortable"
+    class="mr-5"
     v-bind="$attrs"
     @update:model-value="$emit('update:modelValue', $event)"
   />

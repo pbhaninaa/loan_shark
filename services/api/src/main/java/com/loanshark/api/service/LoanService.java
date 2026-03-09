@@ -4,6 +4,7 @@ import com.loanshark.api.dto.ApiDtos.PageResponse;
 import com.loanshark.api.dto.ApiDtos.LoanApplicationRequest;
 import com.loanshark.api.dto.ApiDtos.LoanDecisionRequest;
 import com.loanshark.api.dto.ApiDtos.LoanResponse;
+import com.loanshark.api.dto.ApiDtos.LoanUpdateRequest;
 import com.loanshark.api.dto.ApiDtos.RiskCheckResponse;
 import com.loanshark.api.dto.ApiDtos.ScheduleResponse;
 import com.loanshark.api.entity.Borrower;
@@ -269,11 +270,45 @@ public class LoanService {
         businessCapitalService.deductForDisbursement(loan.getLoanAmount());
         createCashDisbursement(loan);
         auditLogService.record(currentUser.getId(), "APPROVE_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
-        notificationService.notifyLoanStatusChanged(
-            loan,
-            "Your loan application #" + loan.getId() + " was approved and is now ACTIVE."
-        );
+        notificationService.notifyLoanApproved(loan);
         return toResponse(loan);
+    }
+
+    /** Update a PENDING loan (amount and/or term). Owner only. Recomputes total amount from current settings. */
+    @Transactional
+    public LoanResponse updateLoan(UUID loanId, LoanUpdateRequest request) {
+        Loan loan = findLoan(loanId);
+        if (loan.getStatus() != LoanStatus.PENDING) {
+            throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be updated");
+        }
+        LoanInterestSettings settings = loanInterestSettingsRepository.findById(com.loanshark.api.entity.UuidConstants.LOAN_INTEREST_SETTINGS_ID).orElse(null);
+        if (settings == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured");
+        }
+        int termDays = request.loanTermDays() != null && request.loanTermDays() > 0
+            ? request.loanTermDays()
+            : loan.getLoanTermDays();
+        BigDecimal totalAmount = interestCalculationService.computeTotalAmount(request.loanAmount(), termDays, settings);
+        loan.setLoanAmount(request.loanAmount());
+        loan.setLoanTermDays(termDays);
+        loan.setTotalAmount(totalAmount);
+        loanRepository.save(loan);
+        User currentUser = currentUserService.requireCurrentUser();
+        auditLogService.record(currentUser.getId(), "UPDATE_LOAN", "Loan", loan.getId().toString(), "amount=" + request.loanAmount() + ", term=" + termDays);
+        return toResponse(loan);
+    }
+
+    /** Cancel (delete) a PENDING loan. Owner only. */
+    @Transactional
+    public void cancelLoan(UUID loanId) {
+        Loan loan = findLoan(loanId);
+        if (loan.getStatus() != LoanStatus.PENDING) {
+            throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be cancelled");
+        }
+        riskService.deleteAssessmentsByLoanId(loanId);
+        loanRepository.delete(loan);
+        User currentUser = currentUserService.requireCurrentUser();
+        auditLogService.record(currentUser.getId(), "CANCEL_LOAN", "Loan", loanId.toString(), "Pending loan cancelled");
     }
 
     @Transactional
@@ -291,10 +326,7 @@ public class LoanService {
         loan.setApprovedBy(currentUser);
         loanRepository.save(loan);
         auditLogService.record(currentUser.getId(), "REJECT_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
-        notificationService.notifyLoanStatusChanged(
-            loan,
-            "Your loan application #" + loan.getId() + " was rejected."
-        );
+        notificationService.notifyLoanRejected(loan, request.note());
         return toResponse(loan);
     }
 
@@ -315,6 +347,29 @@ public class LoanService {
     public Loan findLoan(UUID loanId) {
         return loanRepository.findById(loanId)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
+    }
+
+    /** Send overdue payment reminder to borrower (staff only). Loan must have at least one overdue or past-due schedule. */
+    @Transactional
+    public void sendOverdueReminder(UUID loanId) {
+        Loan loan = findLoan(loanId);
+        User currentUser = currentUserService.requireCurrentUser();
+        if (currentUser.getRole() != UserRole.OWNER && currentUser.getRole() != UserRole.CASHIER) {
+            throw new ResponseStatusException(FORBIDDEN, "Only owner or cashier can send payment reminders");
+        }
+        if (loan.getStatus() != LoanStatus.ACTIVE) {
+            throw new ResponseStatusException(BAD_REQUEST, "Only active loans can have payment reminders sent");
+        }
+        List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loanId);
+        LocalDate today = LocalDate.now();
+        boolean hasOverdue = schedules.stream().anyMatch(s ->
+            s.getStatus() == ScheduleStatus.OVERDUE
+                || (s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(today))
+        );
+        if (!hasOverdue) {
+            throw new ResponseStatusException(BAD_REQUEST, "This loan has no overdue or past-due installments");
+        }
+        notificationService.notifyOverdueReminder(loan);
     }
 
     private void enforceBorrowerOwnershipIfNeeded(Loan loan) {
@@ -387,6 +442,8 @@ public class LoanService {
                 if (borrowerFullName.isEmpty()) borrowerFullName = null;
             }
         }
+        boolean hasOverdue = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId()).stream()
+            .anyMatch(s -> s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(LocalDate.now()));
         return new LoanResponse(
             loan.getId(),
             loan.getBorrower().getId(),
@@ -403,7 +460,8 @@ public class LoanService {
             loan.getRiskBand(),
             loan.getInterestType(),
             loan.getInterestPeriodDays(),
-            loan.getGracePeriodDays() != null ? loan.getGracePeriodDays() : 0
+            loan.getGracePeriodDays() != null ? loan.getGracePeriodDays() : 0,
+            hasOverdue
         );
     }
 }

@@ -58,6 +58,7 @@ const notificationsPage = computed(() => store.notificationsPage);
 
 onMounted(async () => {
   await loadNotifications();
+  await store.fetchDashboard();
 });
 
 async function loadNotifications(nextPage = page.value) {
@@ -74,6 +75,7 @@ async function markAsRead(id) {
   try {
     await store.markNotificationRead(id);
     await loadNotifications(page.value);
+    await store.fetchDashboard();
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Could not update notification";
   }

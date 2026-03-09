@@ -14,8 +14,10 @@ import com.loanshark.api.repository.RiskAssessmentRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RiskService {
@@ -115,6 +117,11 @@ public class RiskService {
         assessment.setBand(result.band());
         assessment.setSummary(String.join("; ", result.factors()));
         return riskAssessmentRepository.save(assessment);
+    }
+
+    @Transactional
+    public void deleteAssessmentsByLoanId(UUID loanId) {
+        riskAssessmentRepository.deleteByLoanId(loanId);
     }
 
     private RiskBand bandFor(int score) {

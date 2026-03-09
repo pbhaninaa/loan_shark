@@ -48,6 +48,10 @@
         <template #item.monthlyIncome="{ item }">{{ formatCurrency(item.monthlyIncome) }}</template>
         <template #item.actions="{ item }">
           <AppActionButton size="small" variant="tonal" text="View profile" prepend-icon="mdi-account-eye-outline" @click="openProfileDialog(item.id)" />
+          <template v-if="store.isOwner">
+            <AppActionButton size="small" variant="tonal" text="Edit" prepend-icon="mdi-pencil-outline" @click="openEditDialog(item)" />
+            <AppActionButton size="small" color="error" variant="tonal" text="Delete" prepend-icon="mdi-delete-outline" :loading="deletingId === item.id" @click="confirmDeleteClient(item)" />
+          </template>
         </template>
         <template #footer>
           <AppPaginationFooter v-model="page" :total-pages="borrowersPage.totalPages" :total-elements="borrowersPage.totalElements" @update:model-value="loadBorrowers" />
@@ -105,6 +109,68 @@
         <v-alert type="error" variant="tonal">{{ profileError }}</v-alert>
       </template>
     </AppDialogCard>
+
+    <AppDialogCard v-model="showEditDialog" title="Edit client" :max-width="640">
+      <v-alert v-if="editError" type="error" variant="tonal" density="compact" class="mb-3">
+        {{ editError }}
+      </v-alert>
+      <v-form v-if="editingBorrower" @submit.prevent="saveEditBorrower">
+        <v-row>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="editForm.firstName" label="First name" prepend-inner-icon="mdi-account-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="editForm.lastName" label="Last name" prepend-inner-icon="mdi-account-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="editForm.idNumber" label="ID number" prepend-inner-icon="mdi-card-account-details-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model="editForm.phone" label="Phone" prepend-inner-icon="mdi-phone-outline" required />
+          </v-col>
+          <v-col cols="12">
+            <AppTextField v-model="editForm.email" label="Email" prepend-inner-icon="mdi-email-outline" />
+          </v-col>
+          <v-col cols="12">
+            <AppTextField v-model="editForm.address" label="Address" prepend-inner-icon="mdi-map-marker-outline" required />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppSelectField
+              v-model="editForm.employmentStatus"
+              label="Employment type"
+              :items="employmentTypeOptions"
+              required
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <AppTextField v-model.number="editForm.monthlyIncome" label="Monthly income" type="number" prepend-inner-icon="mdi-cash" required />
+          </v-col>
+          <v-col cols="12">
+            <AppTextField v-model="editForm.employerName" label="Employer name" prepend-inner-icon="mdi-domain" />
+          </v-col>
+        </v-row>
+        <div class="d-flex ga-2">
+          <AppActionButton text="Update client" type="submit" :loading="editLoading" />
+          <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="showEditDialog = false" />
+        </div>
+      </v-form>
+    </AppDialogCard>
+
+    <v-dialog v-model="showDeleteConfirm" max-width="440" persistent>
+      <v-card>
+        <v-card-title>Delete client</v-card-title>
+        <v-card-text>
+          <template v-if="deletingBorrower">
+            Remove <strong>{{ deletingBorrower.firstName }} {{ deletingBorrower.lastName }}</strong>? This also removes their login account. Cannot be undone. Clients with loan history cannot be deleted.
+          </template>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showDeleteConfirm = false">Cancel</v-btn>
+          <v-btn color="error" variant="flat" :loading="deleteLoading" @click="doDeleteBorrower">Delete client</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <AppDialogCard v-model="showCreateDialog" title="Create Client Profile" :max-width="720">
       <v-form @submit.prevent="createBorrower">
@@ -204,6 +270,25 @@ const store = useAppStore();
 const message = ref("");
 const statusOptions = ["ACTIVE", "BLACKLISTED"];
 const showCreateDialog = ref(false);
+const showEditDialog = ref(false);
+const editingBorrower = ref(null);
+const editForm = reactive({
+  firstName: "",
+  lastName: "",
+  idNumber: "",
+  phone: "",
+  email: "",
+  address: "",
+  employmentStatus: "",
+  monthlyIncome: 0,
+  employerName: ""
+});
+const editError = ref("");
+const editLoading = ref(false);
+const showDeleteConfirm = ref(false);
+const deletingBorrower = ref(null);
+const deletingId = ref(null);
+const deleteLoading = ref(false);
 const showProfileDialog = ref(false);
 const selectedProfile = ref(null);
 const borrowerVerification = ref(null);
@@ -259,6 +344,71 @@ const borrowersPage = computed(() => store.borrowersPage);
 onMounted(async () => {
   await loadBorrowers();
 });
+
+function openEditDialog(borrower) {
+  editingBorrower.value = borrower;
+  editForm.firstName = borrower.firstName ?? "";
+  editForm.lastName = borrower.lastName ?? "";
+  editForm.idNumber = borrower.idNumber ?? "";
+  editForm.phone = borrower.phone ?? "";
+  editForm.email = borrower.email ?? "";
+  editForm.address = borrower.address ?? "";
+  editForm.employmentStatus = borrower.employmentStatus ?? "";
+  editForm.monthlyIncome = Number(borrower.monthlyIncome) || 0;
+  editForm.employerName = borrower.employerName ?? "";
+  editError.value = "";
+  showEditDialog.value = true;
+}
+
+async function saveEditBorrower() {
+  if (!editingBorrower.value) return;
+  editError.value = "";
+  editLoading.value = true;
+  try {
+    await store.updateBorrower(editingBorrower.value.id, {
+      firstName: editForm.firstName,
+      lastName: editForm.lastName,
+      idNumber: editForm.idNumber,
+      phone: editForm.phone,
+      email: editForm.email || undefined,
+      address: editForm.address,
+      employmentStatus: editForm.employmentStatus,
+      monthlyIncome: editForm.monthlyIncome,
+      employerName: editForm.employerName || undefined
+    });
+    showEditDialog.value = false;
+    editingBorrower.value = null;
+    message.value = "Client updated.";
+    await loadBorrowers();
+  } catch (e) {
+    editError.value = e.response?.data?.message || e.message || "Failed to update client.";
+  } finally {
+    editLoading.value = false;
+  }
+}
+
+function confirmDeleteClient(borrower) {
+  deletingBorrower.value = borrower;
+  showDeleteConfirm.value = true;
+}
+
+async function doDeleteBorrower() {
+  if (!deletingBorrower.value) return;
+  deletingId.value = deletingBorrower.value.id;
+  deleteLoading.value = true;
+  try {
+    await store.deleteBorrower(deletingBorrower.value.id);
+    showDeleteConfirm.value = false;
+    deletingBorrower.value = null;
+    message.value = "Client deleted.";
+    await loadBorrowers();
+  } catch (e) {
+    message.value = e.response?.data?.message || e.message || "Failed to delete client.";
+  } finally {
+    deleteLoading.value = false;
+    deletingId.value = null;
+  }
+}
 
 async function createBorrower() {
   const idFile = Array.isArray(form.idDocument) ? form.idDocument?.[0] : form.idDocument;

@@ -14,6 +14,10 @@ import com.loanshark.api.entity.UserRole;
 import com.loanshark.api.repository.BlacklistEntryRepository;
 import com.loanshark.api.repository.BorrowerDocumentRepository;
 import com.loanshark.api.repository.BorrowerRepository;
+import com.loanshark.api.repository.BorrowerVerificationRepository;
+import com.loanshark.api.repository.LoanRepository;
+import com.loanshark.api.repository.RiskAssessmentRepository;
+import com.loanshark.api.repository.UserRepository;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -31,7 +35,11 @@ public class BorrowerService {
 
     private final BorrowerRepository borrowerRepository;
     private final BorrowerDocumentRepository borrowerDocumentRepository;
+    private final BorrowerVerificationRepository borrowerVerificationRepository;
     private final BlacklistEntryRepository blacklistEntryRepository;
+    private final RiskAssessmentRepository riskAssessmentRepository;
+    private final LoanRepository loanRepository;
+    private final UserRepository userRepository;
     private final AuditLogService auditLogService;
     private final CurrentUserService currentUserService;
     private final AuthService authService;
@@ -41,7 +49,11 @@ public class BorrowerService {
     public BorrowerService(
         BorrowerRepository borrowerRepository,
         BorrowerDocumentRepository borrowerDocumentRepository,
+        BorrowerVerificationRepository borrowerVerificationRepository,
         BlacklistEntryRepository blacklistEntryRepository,
+        RiskAssessmentRepository riskAssessmentRepository,
+        LoanRepository loanRepository,
+        UserRepository userRepository,
         AuditLogService auditLogService,
         CurrentUserService currentUserService,
         AuthService authService,
@@ -50,7 +62,11 @@ public class BorrowerService {
     ) {
         this.borrowerRepository = borrowerRepository;
         this.borrowerDocumentRepository = borrowerDocumentRepository;
+        this.borrowerVerificationRepository = borrowerVerificationRepository;
         this.blacklistEntryRepository = blacklistEntryRepository;
+        this.riskAssessmentRepository = riskAssessmentRepository;
+        this.loanRepository = loanRepository;
+        this.userRepository = userRepository;
         this.auditLogService = auditLogService;
         this.currentUserService = currentUserService;
         this.authService = authService;
@@ -120,7 +136,11 @@ public class BorrowerService {
         applyRequest(borrower, request);
         User currentUser = currentUserService.requireCurrentUser();
         auditLogService.record(currentUser.getId(), "UPDATE_BORROWER", "Borrower", borrower.getId().toString(), borrower.getIdNumber());
-        return toResponse(borrowerRepository.save(borrower));
+        Borrower saved = borrowerRepository.save(borrower);
+        if (saved.getUser() != null) {
+            notificationService.notifyBorrowerProfileUpdated(saved);
+        }
+        return toResponse(saved);
     }
 
     @Transactional
@@ -181,6 +201,29 @@ public class BorrowerService {
 
     public boolean isBlacklisted(UUID borrowerId) {
         return blacklistEntryRepository.existsByBorrowerId(borrowerId);
+    }
+
+    /** Delete a client (borrower). Owner only. Fails if the client has any loans. Also deletes linked login user. */
+    @Transactional
+    public void deleteBorrower(UUID id) {
+        Borrower borrower = findBorrower(id);
+        if (!loanRepository.findByBorrowerIdOrderByCreatedAtDesc(id).isEmpty()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Cannot delete client with existing loan history. Reject or clear loans first.");
+        }
+        UUID userId = borrower.getUser() != null ? borrower.getUser().getId() : null;
+
+        User currentUser = currentUserService.requireCurrentUser();
+        auditLogService.record(currentUser.getId(), "DELETE_BORROWER", "Borrower", id.toString(), borrower.getFirstName() + " " + borrower.getLastName());
+
+        blacklistEntryRepository.deleteByBorrowerId(id);
+        riskAssessmentRepository.deleteByBorrowerId(id);
+        borrowerVerificationRepository.deleteByBorrowerId(id);
+        borrowerDocumentRepository.deleteByBorrowerId(id);
+        borrowerRepository.delete(borrower);
+
+        if (userId != null) {
+            userRepository.findById(userId).ifPresent(userRepository::delete);
+        }
     }
 
     public Borrower findBorrower(UUID id) {

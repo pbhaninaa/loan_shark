@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex justify-space-between align-center flex-wrap ga-3 mt-4">
-    <div class="text-body-2 text-medium-emphasis">
+    <div class="text-body-2 text-medium-emphasis ml-4">
       {{ totalLabel }}
     </div>
     <v-pagination

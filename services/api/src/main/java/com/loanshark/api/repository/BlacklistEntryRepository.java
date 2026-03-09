@@ -18,6 +18,8 @@ public interface BlacklistEntryRepository extends JpaRepository<BlacklistEntry, 
 
     boolean existsByBorrowerId(UUID borrowerId);
 
+    void deleteByBorrowerId(UUID borrowerId);
+
     @Query("""
         select b from BlacklistEntry b
         where :query = '' or

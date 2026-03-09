@@ -5,6 +5,7 @@ import com.loanshark.api.dto.ApiDtos.PageResponse;
 import com.loanshark.api.entity.Borrower;
 import com.loanshark.api.entity.Loan;
 import com.loanshark.api.entity.Notification;
+import com.loanshark.api.entity.RepaymentSchedule;
 import com.loanshark.api.entity.User;
 import com.loanshark.api.repository.NotificationRepository;
 import java.util.List;
@@ -91,6 +92,20 @@ public class NotificationService {
     }
 
     @Transactional
+    public void notifyBorrowerProfileUpdated(Borrower borrower) {
+        if (borrower.getUser() == null) {
+            return;
+        }
+        String message = "Your profile was updated. Check your details in My Profile.";
+        notifyUser(borrower.getUser().getId(), "PROFILE", message);
+        emailNotificationService.send(
+            borrower.getEmail(),
+            "Loan Shark profile updated",
+            message
+        );
+    }
+
+    @Transactional
     public void notifyBorrowerStatusChanged(Borrower borrower) {
         if (borrower.getUser() == null) {
             return;
@@ -100,6 +115,101 @@ public class NotificationService {
         emailNotificationService.send(
             borrower.getEmail(),
             "Loan Shark profile status changed",
+            message
+        );
+    }
+
+    /** Notify borrower when their profile is removed (e.g. deleted). Call when borrower/user is deleted. */
+    @Transactional
+    public void notifyBorrowerProfileDeleted(Borrower borrower, String reason) {
+        if (borrower.getUser() == null) {
+            return;
+        }
+        String message = "Your borrower profile has been removed from the system."
+            + (reason != null && !reason.isBlank() ? " " + reason : "");
+        notifyUser(borrower.getUser().getId(), "PROFILE", message);
+        emailNotificationService.send(
+            borrower.getEmail(),
+            "Loan Shark – Profile removed",
+            message
+        );
+    }
+
+    /** Notify borrower with full loan terms (amount, interest, term, total, due date). */
+    @Transactional
+    public void notifyLoanApproved(Loan loan) {
+        Borrower borrower = loan.getBorrower();
+        if (borrower.getUser() == null) {
+            return;
+        }
+        String message = String.format(
+            "Your loan was APPROVED. Loan #%s: Amount R%s, Interest %s%% (%s), Term %s days. Total to repay: R%s. Due date: %s. You can pay in full or in installments.",
+            loan.getId(),
+            loan.getLoanAmount() != null ? loan.getLoanAmount().toPlainString() : "0",
+            loan.getInterestRate() != null ? loan.getInterestRate().toPlainString() : "0",
+            loan.getInterestType() != null ? loan.getInterestType().name() : "SIMPLE",
+            loan.getLoanTermDays() != null ? loan.getLoanTermDays() : "0",
+            loan.getTotalAmount() != null ? loan.getTotalAmount().toPlainString() : "0",
+            loan.getDueDate() != null ? loan.getDueDate().toString() : "—"
+        );
+        notifyUser(borrower.getUser().getId(), "LOAN_STATUS", message);
+        emailNotificationService.send(
+            borrower.getEmail(),
+            "Loan Shark – Loan approved",
+            message
+        );
+    }
+
+    @Transactional
+    public void notifyLoanRejected(Loan loan, String note) {
+        Borrower borrower = loan.getBorrower();
+        if (borrower.getUser() == null) {
+            return;
+        }
+        String message = "Your loan application #" + loan.getId() + " was REJECTED."
+            + (note != null && !note.isBlank() ? " Note: " + note : "");
+        notifyUser(borrower.getUser().getId(), "LOAN_STATUS", message);
+        emailNotificationService.send(
+            borrower.getEmail(),
+            "Loan Shark – Loan application rejected",
+            message
+        );
+    }
+
+    /** Reminder 2 days before an installment due date. */
+    @Transactional
+    public void notifyPaymentDueReminder(RepaymentSchedule schedule) {
+        Loan loan = schedule.getLoan();
+        Borrower borrower = loan != null ? loan.getBorrower() : null;
+        if (borrower == null || borrower.getUser() == null) {
+            return;
+        }
+        String message = String.format(
+            "Reminder: Payment of R%s for loan #%s is due on %s. Please pay on or before the due date.",
+            schedule.getAmountDue() != null ? schedule.getAmountDue().toPlainString() : "0",
+            loan.getId(),
+            schedule.getDueDate() != null ? schedule.getDueDate().toString() : "—"
+        );
+        notifyUser(borrower.getUser().getId(), "PAYMENT_REMINDER", message);
+        emailNotificationService.send(
+            borrower.getEmail(),
+            "Loan Shark – Payment due soon",
+            message
+        );
+    }
+
+    /** Overdue reminder (staff triggered). */
+    @Transactional
+    public void notifyOverdueReminder(Loan loan) {
+        Borrower borrower = loan.getBorrower();
+        if (borrower.getUser() == null) {
+            return;
+        }
+        String message = "Your loan #" + loan.getId() + " has overdue payment(s). Please pay as soon as possible to avoid further action.";
+        notifyUser(borrower.getUser().getId(), "PAYMENT_REMINDER", message);
+        emailNotificationService.send(
+            borrower.getEmail(),
+            "Loan Shark – Overdue payment reminder",
             message
         );
     }

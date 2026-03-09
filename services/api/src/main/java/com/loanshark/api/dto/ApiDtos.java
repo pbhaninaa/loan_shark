@@ -222,6 +222,14 @@ public final class ApiDtos {
         /** Term is optional; when null, server uses admin default_loan_term_days. */
     }
 
+    /** Admin (owner) can update PENDING loan amount and/or term. */
+    public record LoanUpdateRequest(
+        @NotNull @DecimalMin("1.00") BigDecimal loanAmount,
+        @Positive Integer loanTermDays
+    ) {
+        /** loanTermDays optional; when null, server keeps existing term. */
+    }
+
     public record LoanDecisionRequest(
         @NotNull UUID loanId,
         String note
@@ -244,7 +252,8 @@ public final class ApiDtos {
         RiskBand riskBand,
         InterestType interestType,
         Integer interestPeriodDays,
-        Integer gracePeriodDays
+        Integer gracePeriodDays,
+        boolean hasOverdueSchedule
     ) {
     }
 
@@ -367,6 +376,7 @@ public final class ApiDtos {
         long activeLoans,
         long overdueSchedules,
         long pendingVerifications,
+        long unreadNotifications,
         BigDecimal principalOutstanding,
         BigDecimal repaymentsCaptured
     ) {

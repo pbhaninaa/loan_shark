@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface BorrowerDocumentRepository extends JpaRepository<BorrowerDocument, UUID> {
 
     List<BorrowerDocument> findByBorrowerId(UUID borrowerId);
+
+    void deleteByBorrowerId(UUID borrowerId);
 }
