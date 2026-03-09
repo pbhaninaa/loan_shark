@@ -82,9 +82,9 @@
             </template>
             <template #item.action="{ item }">{{ item.action }}</template>
             <template #item.referenceNumber="{ item }">{{ item.referenceNumber || (item.loanId ? `Loan #${item.loanId}` : item.entity) }}</template>
-            <template #item.amount="{ item }">{{ item.amount ? formatCurrency(item.amount) : "-" }}</template>
-            <template #item.performedBy="{ item }">{{ item.performedBy || "-" }}</template>
-            <template #item.authorizedBy="{ item }">{{ item.authorizedBy || "-" }}</template>
+            <template #item.amount="{ item }">{{ item.amount ? formatCurrency(item.amount) : "None" }}</template>
+            <template #item.performedBy="{ item }">{{ item.performedBy || "By The System" }}</template>
+            <template #item.authorizedBy="{ item }">{{ item.authorizedBy || "By The System" }}</template>
             <template #item.details="{ item }">
               <AppTruncateText :text="item.details" :max-chars="90" max-width="280px" />
             </template>

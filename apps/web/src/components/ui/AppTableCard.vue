@@ -1,5 +1,5 @@
 <template>
-  <v-card>
+  <div class="table-container">
     <v-card-title class="d-flex justify-space-between align-center">
       <span>{{ title }}</span>
       <div class="d-flex ga-2 align-center">
@@ -11,7 +11,7 @@
     <v-card-text>
       <slot />
     </v-card-text>
-  </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -30,3 +30,8 @@ defineProps({
   }
 });
 </script>
+<style lang="css">
+.table-container{
+  padding: auto;
+}
+</style>
