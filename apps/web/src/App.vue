@@ -315,7 +315,7 @@ const scalerStyle = computed(() => ({
   transform: `scale(${scale.value})`,
   transformOrigin: "0 0",
   width: `${100 / scale.value}vw`,
-  height: `${100 / scale.value}vh`
+  minHeight: `${100 / scale.value}vh`
 }));
 
 const displayName = computed(() => {
