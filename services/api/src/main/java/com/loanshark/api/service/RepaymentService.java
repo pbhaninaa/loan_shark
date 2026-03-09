@@ -188,22 +188,72 @@ public class RepaymentService {
         final String borrowerFullNameFinal = borrowerFullName != null ? borrowerFullName.trim() : null;
         return new PageResponse<>(
             repaymentPage.getContent().stream()
-                .map(repayment -> new RepaymentResponse(
-                    repayment.getId(),
-                    repayment.getLoan().getId(),
-                    borrowerUsername,
-                    borrowerFullNameFinal,
-                    repayment.getAmountPaid(),
-                    repayment.getPaymentDate(),
-                    repayment.getPaymentMethod(),
-                    repayment.getReferenceNumber(),
-                    repayment.getCapturedBy() != null ? repayment.getCapturedBy().getUsername() : null
-                ))
+                .map(repayment -> toRepaymentResponse(repayment, borrowerUsername, borrowerFullNameFinal))
                 .toList(),
             repaymentPage.getNumber(),
             repaymentPage.getSize(),
             repaymentPage.getTotalElements(),
             repaymentPage.getTotalPages()
+        );
+    }
+
+    /**
+     * Lists all repayments (staff: all loans; borrower: own loans only). Use for "Repayment History" showing full payment history.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<RepaymentResponse> listAll(String query, int page, int size) {
+        User currentUser = currentUserService.requireCurrentUser();
+        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
+        Page<Repayment> repaymentPage;
+        if (currentUser.getRole() == UserRole.BORROWER) {
+            UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
+                .map(com.loanshark.api.entity.Borrower::getId)
+                .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
+            repaymentPage = repaymentRepository.searchByBorrowerId(
+                borrowerId,
+                query == null ? "" : query.trim(),
+                PageRequest.of(page, size)
+            );
+        } else {
+            repaymentPage = repaymentRepository.searchAll(
+                query == null ? "" : query.trim(),
+                PageRequest.of(page, size)
+            );
+        }
+        return new PageResponse<>(
+            repaymentPage.getContent().stream()
+                .map(this::toRepaymentResponse)
+                .toList(),
+            repaymentPage.getNumber(),
+            repaymentPage.getSize(),
+            repaymentPage.getTotalElements(),
+            repaymentPage.getTotalPages()
+        );
+    }
+
+    private RepaymentResponse toRepaymentResponse(Repayment repayment) {
+        Loan loan = repayment.getLoan();
+        String borrowerUsername = loan.getBorrower() != null && loan.getBorrower().getUser() != null
+            ? loan.getBorrower().getUser().getUsername() : null;
+        String borrowerFullName = loan.getBorrower() != null
+            ? (loan.getBorrower().getFirstName() != null ? loan.getBorrower().getFirstName() : "").trim()
+                + " " + (loan.getBorrower().getLastName() != null ? loan.getBorrower().getLastName() : "").trim()
+            : null;
+        if (borrowerFullName != null) borrowerFullName = borrowerFullName.trim();
+        return toRepaymentResponse(repayment, borrowerUsername, borrowerFullName);
+    }
+
+    private RepaymentResponse toRepaymentResponse(Repayment repayment, String borrowerUsername, String borrowerFullName) {
+        return new RepaymentResponse(
+            repayment.getId(),
+            repayment.getLoan().getId(),
+            borrowerUsername,
+            borrowerFullName,
+            repayment.getAmountPaid(),
+            repayment.getPaymentDate(),
+            repayment.getPaymentMethod(),
+            repayment.getReferenceNumber(),
+            repayment.getCapturedBy() != null ? repayment.getCapturedBy().getUsername() : null
         );
     }
 
