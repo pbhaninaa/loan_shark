@@ -202,11 +202,20 @@ public class LoanService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<LoanResponse> listAll(String query, int page, int size) {
-        Page<Loan> loanPage = loanRepository.search(
-            query == null ? "" : query.trim(),
-            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+    public PageResponse<LoanResponse> listAll(String query, List<LoanStatus> statuses, int page, int size) {
+        Page<Loan> loanPage;
+        if (statuses != null && !statuses.isEmpty()) {
+            loanPage = loanRepository.searchByStatusIn(
+                query == null ? "" : query.trim(),
+                statuses,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+            );
+        } else {
+            loanPage = loanRepository.search(
+                query == null ? "" : query.trim(),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+            );
+        }
         return new PageResponse<>(
             loanPage.getContent().stream().map(this::toResponse).toList(),
             loanPage.getNumber(),
@@ -444,6 +453,10 @@ public class LoanService {
         }
         boolean hasOverdue = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId()).stream()
             .anyMatch(s -> s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(LocalDate.now()));
+        BigDecimal total = loan.getTotalAmount() != null ? loan.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal amountPaid = repaymentRepository.sumAmountPaidByLoanId(loan.getId()) != null
+            ? repaymentRepository.sumAmountPaidByLoanId(loan.getId()) : BigDecimal.ZERO;
+        BigDecimal pendingAmount = total.subtract(amountPaid).max(BigDecimal.ZERO);
         return new LoanResponse(
             loan.getId(),
             loan.getBorrower().getId(),
@@ -452,6 +465,7 @@ public class LoanService {
             loan.getLoanAmount(),
             loan.getInterestRate(),
             loan.getTotalAmount(),
+            pendingAmount,
             loan.getLoanTermDays(),
             loan.getIssueDate(),
             loan.getDueDate(),

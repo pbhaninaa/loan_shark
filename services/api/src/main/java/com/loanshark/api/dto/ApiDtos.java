@@ -244,6 +244,8 @@ public final class ApiDtos {
         BigDecimal loanAmount,
         BigDecimal interestRate,
         BigDecimal totalAmount,
+        /** Remaining amount owed (totalAmount minus sum of repayments). Null for PENDING before disbursement. */
+        BigDecimal pendingAmount,
         Integer loanTermDays,
         LocalDate issueDate,
         LocalDate dueDate,

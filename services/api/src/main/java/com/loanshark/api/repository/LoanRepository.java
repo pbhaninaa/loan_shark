@@ -41,6 +41,20 @@ public interface LoanRepository extends JpaRepository<Loan, UUID> {
 
     @Query("""
         select l from Loan l
+        where l.status in :statuses
+          and (:query = '' or
+              str(l.id) like concat('%', :query, '%') or
+              lower(str(l.status)) like lower(concat('%', :query, '%')) or
+              lower(str(l.riskBand)) like lower(concat('%', :query, '%')) or
+              lower(l.borrower.firstName) like lower(concat('%', :query, '%')) or
+              lower(l.borrower.lastName) like lower(concat('%', :query, '%')) or
+              lower(l.borrower.phone) like lower(concat('%', :query, '%')) or
+              lower(l.borrower.idNumber) like lower(concat('%', :query, '%')))
+        """)
+    Page<Loan> searchByStatusIn(@Param("query") String query, @Param("statuses") List<LoanStatus> statuses, Pageable pageable);
+
+    @Query("""
+        select l from Loan l
         where l.borrower.id = :borrowerId
           and (
               :query = '' or

@@ -27,6 +27,8 @@ export const useAppStore = defineStore("app", {
     verifications: [],
     loans: [],
     loansPage: { page: 0, size: 8, totalElements: 0, totalPages: 0 },
+    pendingLoans: [],
+    pendingLoansPage: { page: 0, size: 8, totalElements: 0, totalPages: 0 },
     blacklist: [],
     blacklistPage: { page: 0, size: 8, totalElements: 0, totalPages: 0 },
     repayments: [],
@@ -233,6 +235,10 @@ export const useAppStore = defineStore("app", {
       const { data } = await api.get("/loans", { params });
       this.applyPagedResult("loans", "loansPage", data);
     },
+    async fetchPendingLoans(params = {}) {
+      const { data } = await api.get("/loans", { params: { ...params, status: "PENDING" } });
+      this.applyPagedResult("pendingLoans", "pendingLoansPage", data);
+    },
     async updateLoan(loanId, payload) {
       const { data } = await api.put(`/loans/${loanId}`, payload);
       return data;
@@ -256,7 +262,12 @@ export const useAppStore = defineStore("app", {
       return data;
     },
     async fetchLoanSchedule(loanId) {
-      const { data } = await api.get(`/loans/${loanId}/schedule`);
+      const id = loanId != null && String(loanId).trim() !== "" && String(loanId) !== "NaN" ? String(loanId).trim() : null;
+      if (!id) {
+        this.loanSchedule = [];
+        return [];
+      }
+      const { data } = await api.get(`/loans/${id}/schedule`);
       this.loanSchedule = data;
       return data;
     },

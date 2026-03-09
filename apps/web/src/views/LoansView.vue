@@ -9,17 +9,24 @@
       </template>
     </AppPageHeader>
 
-    <AppTableCard title="Loan Queue" :count-label="`${loans.length} applications`" chip-color="warning">
+    <!-- Pending Loan Requests: always has Actions (Approve, Reject, Edit, Cancel) -->
+    <AppTableCard
+      v-if="store.isOwner || store.isCashier"
+      title="Pending Loan Requests"
+      :count-label="`${pendingLoans.length} pending`"
+      chip-color="warning"
+      class="mb-6"
+    >
       <AppDataTable
         title=""
-        :headers="loanHeaders"
-        :items="loans"
-        :loading="loading"
+        :headers="pendingHeaders"
+        :items="pendingLoans"
+        :loading="pendingLoading"
         show-search
-        search-placeholder="Search loans"
-        no-data-message="No loan applications."
+        search-placeholder="Search pending requests"
+        no-data-message="No pending loan requests."
         :items-per-page="8"
-        @update:search-value="onSearch"
+        @update:search-value="onPendingSearch"
       >
         <template #item.id="{ item }">#{{ item.id }}</template>
         <template #item.borrowerId="{ item }">{{ borrowerName(item.borrowerId) }}</template>
@@ -32,9 +39,9 @@
         <template #item.loanAmount="{ item }">{{ formatCurrency(item.loanAmount) }}</template>
         <template #item.totalAmount="{ item }">{{ formatCurrency(item.totalAmount) }}</template>
         <template #item.actions="{ item }">
-          <div v-if="canSeeLoanActions && (canActOnLoan(item) || (item.status === 'ACTIVE' && item.hasOverdueSchedule) || (store.isOwner && item.status === 'PENDING'))" class="d-flex ga-2 flex-wrap">
+          <div class="d-flex ga-2 flex-wrap">
             <AppActionButton
-              v-if="item.status === 'PENDING'"
+              v-if="canActOnLoan(item)"
               size="small"
               color="success"
               variant="flat"
@@ -42,7 +49,7 @@
               @click="approve(item.id)"
             />
             <AppActionButton
-              v-if="item.status === 'PENDING'"
+              v-if="canActOnLoan(item)"
               size="small"
               color="error"
               variant="flat"
@@ -50,7 +57,7 @@
               @click="reject(item.id)"
             />
             <AppActionButton
-              v-if="store.isOwner && item.status === 'PENDING'"
+              v-if="store.isOwner"
               size="small"
               variant="tonal"
               text="Edit"
@@ -58,7 +65,7 @@
               @click="openEditLoan(item)"
             />
             <AppActionButton
-              v-if="store.isOwner && item.status === 'PENDING'"
+              v-if="store.isOwner"
               size="small"
               color="error"
               variant="tonal"
@@ -67,20 +74,42 @@
               :loading="cancelLoading === item.id"
               @click="cancelLoan(item)"
             />
-            <AppActionButton
-              v-if="item.status === 'ACTIVE' && item.hasOverdueSchedule"
-              size="small"
-              color="warning"
-              variant="tonal"
-              text="Send reminder"
-              prepend-icon="mdi-email-alert-outline"
-              :loading="remindLoading === item.id"
-              @click="sendReminder(item.id)"
-            />
           </div>
         </template>
         <template #footer>
-          <AppPaginationFooter v-model="page" :total-pages="loansPage.totalPages" :total-elements="loansPage.totalElements" @update:model-value="loadLoans" />
+          <AppPaginationFooter v-model="pendingPage" :total-pages="pendingLoansPage.totalPages" :total-elements="pendingLoansPage.totalElements" @update:model-value="loadPendingLoans" />
+        </template>
+      </AppDataTable>
+    </AppTableCard>
+
+    <!-- Loans (Active & Completed): Loan Amount, Total Amount, Pending Amount — no Actions -->
+    <AppTableCard
+      v-if="store.isOwner || store.isCashier"
+      title="Loans"
+      :count-label="`${loans.length} active or completed`"
+      chip-color="primary"
+    >
+      <AppDataTable
+        title=""
+        :headers="loansTableHeaders"
+        :items="loans"
+        :loading="loansLoading"
+        show-search
+        search-placeholder="Search loans"
+        no-data-message="No active or completed loans."
+        :items-per-page="8"
+        @update:search-value="onLoansSearch"
+      >
+        <template #item.id="{ item }">#{{ item.id }}</template>
+        <template #item.borrowerId="{ item }">{{ borrowerName(item.borrowerId) }}</template>
+        <template #item.status="{ item }">
+          <v-chip :color="statusColor(item.status)" size="small" variant="tonal">{{ item.status }}</v-chip>
+        </template>
+        <template #item.loanAmount="{ item }">{{ formatCurrency(item.loanAmount) }}</template>
+        <template #item.totalAmount="{ item }">{{ formatCurrency(item.totalAmount) }}</template>
+        <template #item.pendingAmount="{ item }">{{ formatCurrency(item.pendingAmount) }}</template>
+        <template #footer>
+          <AppPaginationFooter v-model="loansPageNum" :total-pages="loansPage.totalPages" :total-elements="loansPage.totalElements" @update:model-value="loadLoansTable" />
         </template>
       </AppDataTable>
     </AppTableCard>
@@ -160,9 +189,11 @@ import { useAppStore } from "../store";
 import { formatCurrency } from "../utils/formatters";
 
 const store = useAppStore();
+const pendingLoans = computed(() => store.pendingLoans);
+const pendingLoansPage = computed(() => store.pendingLoansPage);
 const loans = computed(() => store.loans);
-const borrowers = computed(() => store.borrowers);
 const loansPage = computed(() => store.loansPage);
+const borrowers = computed(() => store.borrowers);
 const showApplyDialog = ref(false);
 const showEditDialog = ref(false);
 const editingLoan = ref(null);
@@ -173,23 +204,32 @@ const showCancelConfirm = ref(false);
 const cancelLoanId = ref(null);
 const cancelLoading = ref(null);
 const confirmCancelLoading = ref(false);
-const search = ref("");
-const page = ref(0);
-const loading = ref(false);
+const pendingSearch = ref("");
+const pendingPage = ref(0);
+const pendingLoading = ref(false);
+const loansSearch = ref("");
+const loansPageNum = ref(0);
+const loansLoading = ref(false);
 const remindLoading = ref(null);
 
-const loanHeaders = computed(() => {
-  const h = [
-    { title: "ID", key: "id" },
-    { title: "Client", key: "borrowerId" },
-    { title: "Status", key: "status" },
-    { title: "Risk", key: "riskBand" },
-    { title: "Amount", key: "loanAmount" },
-    { title: "Total", key: "totalAmount" }
-  ];
-  if (store.isOwner || store.isCashier) h.push({ title: "Actions", key: "actions" });
-  return h;
-});
+const pendingHeaders = computed(() => [
+  { title: "ID", key: "id" },
+  { title: "Client", key: "borrowerId" },
+  { title: "Status", key: "status" },
+  { title: "Risk", key: "riskBand" },
+  { title: "Amount", key: "loanAmount" },
+  { title: "Total", key: "totalAmount" },
+  { title: "Actions", key: "actions" }
+]);
+
+const loansTableHeaders = computed(() => [
+  { title: "ID", key: "id" },
+  { title: "Client", key: "borrowerId" },
+  { title: "Status", key: "status" },
+  { title: "Loan Amount", key: "loanAmount" },
+  { title: "Total Amount", key: "totalAmount" },
+  { title: "Pending Amount", key: "pendingAmount" }
+]);
 const borrowerOptions = computed(() =>
   borrowers.value.map((borrower) => ({
     title: `${borrower.firstName} ${borrower.lastName} - ${borrower.phone}`,
@@ -214,11 +254,18 @@ function onApplyDialogToggle(isOpen) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadLoans(), store.fetchBorrowers({ page: 0, size: 100 })]);
+  await Promise.all([
+    store.isOwner || store.isCashier ? Promise.all([loadPendingLoans(), loadLoansTable()]) : Promise.resolve(),
+    store.fetchBorrowers({ page: 0, size: 100 })
+  ]);
   if (!form.borrowerId && borrowerOptions.value.length) {
     form.borrowerId = borrowerOptions.value[0].value;
   }
 });
+
+async function refreshBothTables() {
+  await Promise.all([loadPendingLoans(), loadLoansTable()]);
+}
 
 async function applyLoan() {
   applyError.value = "";
@@ -228,7 +275,7 @@ async function applyLoan() {
       loanAmount: form.loanAmount
     });
     showApplyDialog.value = false;
-    await loadLoans();
+    await refreshBothTables();
   } catch (e) {
     applyError.value = e.response?.data?.message || e.message || "Application failed.";
   }
@@ -236,25 +283,12 @@ async function applyLoan() {
 
 async function approve(loanId) {
   await api.post("/loans/approve", { loanId, note: "Approved from portal" });
-  await loadLoans();
+  await refreshBothTables();
 }
 
 async function reject(loanId) {
   await api.post("/loans/reject", { loanId, note: "Rejected from portal" });
-  await loadLoans();
-}
-
-async function sendReminder(loanId) {
-  remindLoading.value = loanId;
-  try {
-    await api.post(`/loans/${loanId}/remind`);
-    if (typeof toast !== "undefined") toast.success("Reminder sent to borrower by email.");
-    await loadLoans();
-  } catch (e) {
-    if (typeof toast !== "undefined") toast.error(e.response?.data?.message || "Failed to send reminder.");
-  } finally {
-    remindLoading.value = null;
-  }
+  await refreshBothTables();
 }
 
 function openEditLoan(loan) {
@@ -275,7 +309,7 @@ async function saveEditLoan() {
     await store.updateLoan(editingLoan.value.id, payload);
     showEditDialog.value = false;
     editingLoan.value = null;
-    await loadLoans();
+    await refreshBothTables();
   } catch (e) {
     editError.value = e.response?.data?.message || e.message || "Failed to update loan.";
   } finally {
@@ -295,7 +329,7 @@ async function confirmCancelLoan() {
     await store.deleteLoan(cancelLoanId.value);
     showCancelConfirm.value = false;
     cancelLoanId.value = null;
-    await loadLoans();
+    await refreshBothTables();
   } catch (e) {
     editError.value = e.response?.data?.message || e.message || "Failed to cancel loan.";
   } finally {
@@ -303,25 +337,41 @@ async function confirmCancelLoan() {
   }
 }
 
-async function loadLoans(nextPage = page.value) {
-  page.value = nextPage;
-  loading.value = true;
+async function loadPendingLoans(nextPage = pendingPage.value) {
+  pendingPage.value = nextPage;
+  pendingLoading.value = true;
   try {
-    await store.fetchLoans({ q: search.value, page: page.value, size: 8 });
+    await store.fetchPendingLoans({ q: pendingSearch.value, page: pendingPage.value, size: 8 });
   } finally {
-    loading.value = false;
+    pendingLoading.value = false;
   }
 }
 
-function onSearch(value) {
-  search.value = value;
-  page.value = 0;
-  loadLoans(0);
+function onPendingSearch(value) {
+  pendingSearch.value = value;
+  pendingPage.value = 0;
+  loadPendingLoans(0);
 }
 
-async function handleSearch() {
-  page.value = 0;
-  await loadLoans(0);
+async function loadLoansTable(nextPage = loansPageNum.value) {
+  loansPageNum.value = nextPage;
+  loansLoading.value = true;
+  try {
+    await store.fetchLoans({
+      q: loansSearch.value,
+      page: loansPageNum.value,
+      size: 8,
+      status: ["ACTIVE", "COMPLETED"]
+    });
+  } finally {
+    loansLoading.value = false;
+  }
+}
+
+function onLoansSearch(value) {
+  loansSearch.value = value;
+  loansPageNum.value = 0;
+  loadLoansTable(0);
 }
 
 function riskColor(riskBand) {
@@ -351,8 +401,6 @@ function borrowerName(borrowerId) {
   const borrower = borrowers.value.find((item) => item.id === borrowerId);
   return borrower ? `${borrower.firstName} ${borrower.lastName}` : `Client #${borrowerId}`;
 }
-
-const canSeeLoanActions = computed(() => store.isOwner || store.isCashier);
 
 function canActOnLoan(loan) {
   if (loan.status !== "PENDING") return false;
