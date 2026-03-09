@@ -27,7 +27,7 @@
               <th>Username</th>
               <th>Role</th>
               <th>Status</th>
-              <th>Client Link</th>
+              <!-- <th>Client Link</th> -->
               <th>Created</th>
               <th>Actions</th>
             </tr>
@@ -43,7 +43,7 @@
                   {{ user.status }}
                 </v-chip>
               </td>
-              <td>{{ user.borrowerId ? `Client #${user.borrowerId}` : "-" }}</td>
+              <!-- <td>{{ user.borrowerId ? `Client #${user.borrowerId}` : "-" }}</td> -->
               <td>{{ formatDate(user.createdAt) }}</td>
               <td>
                 <div class="d-flex ga-2 flex-wrap">
