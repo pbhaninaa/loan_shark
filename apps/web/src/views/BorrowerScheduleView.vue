@@ -17,7 +17,7 @@
         :items="loanOptions"
         item-title="title"
         item-value="value"
-        @update:model-value="loadSchedule"
+        @update:model-value="onLoanSelected"
       />
     </AppTableCard>
 
@@ -152,21 +152,38 @@ const scheduleHeaders = [
   { title: "Actions", key: "actions" }
 ];
 const loanOptions = computed(() =>
-  store.loans.map((loan) => ({
-    title: `Loan #${loan.id} - ${formatCurrency(loan.totalAmount)} - ${loan.status}`,
-    value: loan.id
-  }))
+  store.loans.map((loan) => {
+    const id = loan?.id != null ? String(loan.id) : "";
+    return {
+      title: `Loan #${id || "—"} - ${formatCurrency(loan.totalAmount)} - ${loan.status}`,
+      value: id
+    };
+  }).filter((opt) => opt.value)
 );
 const selectedLoanLabel = computed(() => (selectedLoanId.value ? `Loan #${selectedLoanId.value}` : "Choose loan"));
+
+function normalizeLoanId(val) {
+  if (val == null || val === "") return null;
+  const s = String(val).trim();
+  if (s === "" || s === "NaN" || s === "undefined") return null;
+  return s;
+}
+
+function onLoanSelected(val) {
+  const id = normalizeLoanId(val);
+  selectedLoanId.value = id;
+  if (id) loadSchedule(id);
+}
 
 onMounted(async () => {
   try {
     await store.fetchMyLoans();
-    const routeLoanId = route.query.loanId ? String(route.query.loanId) : null;
+    const routeLoanId = normalizeLoanId(route.query.loanId);
     const firstLoanId = loanOptions.value[0]?.value ?? null;
-    selectedLoanId.value = routeLoanId || firstLoanId;
-    if (selectedLoanId.value) {
-      await loadSchedule(selectedLoanId.value);
+    const id = routeLoanId || (firstLoanId ? normalizeLoanId(firstLoanId) : null);
+    selectedLoanId.value = id;
+    if (id) {
+      await loadSchedule(id);
     }
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Could not load repayment schedules";
@@ -176,20 +193,21 @@ onMounted(async () => {
 watch(
   () => route.query.loanId,
   async (loanId) => {
-    if (!loanId) return;
-    const id = String(loanId);
+    const id = normalizeLoanId(loanId);
+    if (!id) return;
     selectedLoanId.value = id;
     await loadSchedule(id);
   }
 );
 
 async function loadSchedule(loanId) {
-  if (!loanId || typeof loanId !== "string") return;
+  const id = normalizeLoanId(loanId);
+  if (!id) return;
   error.value = "";
-  selectedLoanId.value = loanId;
-  router.replace({ name: "borrower-schedule", query: { loanId } });
+  selectedLoanId.value = id;
+  router.replace({ name: "borrower-schedule", query: { loanId: id } });
   try {
-    await store.fetchLoanSchedule(loanId);
+    await store.fetchLoanSchedule(id);
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Could not load repayment schedule";
   }
