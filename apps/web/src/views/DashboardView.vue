@@ -175,8 +175,9 @@ const metricCards = computed(() => [
 ]);
 
 onMounted(async () => {
+  await store.fetchDashboard();
   if (store.isOwner) {
-    await Promise.all([store.fetchDashboard(), loadActions()]);
+    await loadActions();
   }
 });
 

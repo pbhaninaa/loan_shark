@@ -147,7 +147,6 @@ async function confirmResetHistory() {
     await store.resetHistory();
     showResetConfirm.value = false;
     message.value = "History reset. Users, clients and their profiles kept; business capital set to zero.";
-    if (typeof toast !== "undefined") toast.success("Database history reset.");
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to reset history";
   } finally {

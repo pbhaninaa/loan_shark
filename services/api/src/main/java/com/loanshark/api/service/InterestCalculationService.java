@@ -6,22 +6,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import org.springframework.stereotype.Service;
 
-/**
- * Interest accrues from disbursement. First period starts when the borrower gets the money
- * (even if repaid after a minute). After each period (e.g. 30 days) another interest block accumulates.
- * Grace period: for the first N days after disbursement, interest does NOT accumulate (e.g. 2 days
- * to pay without extra interest). After grace, interest applies on the remaining days.
- * - Simple: total = principal + principal * (rate/100) * numPeriods (numPeriods = ceil(effectiveDays/periodDays))
- * - Compound: total = principal * (1 + rate/100)^n where n = effectiveDays/periodDays (fractional).
- *   Using fractional n ensures e.g. 365 days / 30-day period => 12.17 periods, not 13.
- */
+
 @Service
 public class InterestCalculationService {
 
-    /**
-     * Number of interest periods for the given term (integer, ceiling). Used for simple interest.
-     * Minimum 1 (interest applies from day one).
-     */
+
     public int numberOfPeriods(int loanTermDays, int periodDays) {
         if (periodDays <= 0) {
             periodDays = 30;
@@ -30,19 +19,11 @@ public class InterestCalculationService {
         return Math.max(1, periods);
     }
 
-    /**
-     * Effective days that attract interest: term minus grace period. If grace >= term, no interest.
-     */
     public int effectiveInterestDays(int loanTermDays, int gracePeriodDays) {
         return Math.max(0, loanTermDays - gracePeriodDays);
     }
 
-    /**
-     * Total amount due using current settings: principal + interest (simple or compound).
-     * Grace period days do not attract interest (e.g. 2 days = first 2 days no interest).
-     * Compound: uses fractional number of periods (effectiveDays/periodDays) so e.g. 365 days at 30-day
-     * period gives n=12.17, not 13, matching A = P(1+r)^n.
-     */
+
     public BigDecimal computeTotalAmount(
         BigDecimal principal,
         int loanTermDays,

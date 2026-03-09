@@ -32,7 +32,7 @@
         <template #item.loanAmount="{ item }">{{ formatCurrency(item.loanAmount) }}</template>
         <template #item.totalAmount="{ item }">{{ formatCurrency(item.totalAmount) }}</template>
         <template #item.actions="{ item }">
-          <div v-if="canSeeLoanActions && canActOnLoan(item)" class="d-flex ga-2">
+          <div v-if="canSeeLoanActions && (canActOnLoan(item) || (item.status === 'ACTIVE' && item.hasOverdueSchedule) || (store.isOwner && item.status === 'PENDING'))" class="d-flex ga-2 flex-wrap">
             <AppActionButton
               v-if="item.status === 'PENDING'"
               size="small"
@@ -49,6 +49,34 @@
               text="Reject"
               @click="reject(item.id)"
             />
+            <AppActionButton
+              v-if="store.isOwner && item.status === 'PENDING'"
+              size="small"
+              variant="tonal"
+              text="Edit"
+              prepend-icon="mdi-pencil-outline"
+              @click="openEditLoan(item)"
+            />
+            <AppActionButton
+              v-if="store.isOwner && item.status === 'PENDING'"
+              size="small"
+              color="error"
+              variant="tonal"
+              text="Cancel"
+              prepend-icon="mdi-close-circle-outline"
+              :loading="cancelLoading === item.id"
+              @click="cancelLoan(item)"
+            />
+            <AppActionButton
+              v-if="item.status === 'ACTIVE' && item.hasOverdueSchedule"
+              size="small"
+              color="warning"
+              variant="tonal"
+              text="Send reminder"
+              prepend-icon="mdi-email-alert-outline"
+              :loading="remindLoading === item.id"
+              @click="sendReminder(item.id)"
+            />
           </div>
         </template>
         <template #footer>
@@ -56,6 +84,34 @@
         </template>
       </AppDataTable>
     </AppTableCard>
+
+    <AppDialogCard v-model="showEditDialog" title="Edit loan (PENDING only)" :max-width="440">
+      <v-alert v-if="editError" type="error" variant="tonal" density="compact" class="mb-3">
+        {{ editError }}
+      </v-alert>
+      <v-form v-if="editingLoan" @submit.prevent="saveEditLoan">
+        <AppTextField v-model.number="editForm.loanAmount" label="Loan amount" type="number" prepend-inner-icon="mdi-cash-plus" />
+        <AppTextField v-model.number="editForm.loanTermDays" label="Loan term (days, optional)" type="number" prepend-inner-icon="mdi-calendar" hint="Leave blank to keep current term" persistent-hint />
+        <div class="d-flex ga-2 mt-3">
+          <AppActionButton text="Update" type="submit" :loading="editLoading" />
+          <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="showEditDialog = false" />
+        </div>
+      </v-form>
+    </AppDialogCard>
+
+    <v-dialog v-model="showCancelConfirm" max-width="440" persistent>
+      <v-card>
+        <v-card-title>Cancel loan application</v-card-title>
+        <v-card-text>
+          Pending loan #{{ cancelLoanId }} will be removed. This cannot be undone. Continue?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showCancelConfirm = false">No</v-btn>
+          <v-btn color="error" variant="flat" :loading="confirmCancelLoading" @click="confirmCancelLoan">Yes, cancel loan</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <AppDialogCard v-model="showApplyDialog" title="Capture Loan Application" :max-width="520" @update:model-value="onApplyDialogToggle">
       <v-alert v-if="applyError" type="error" variant="tonal" density="compact" class="mb-3">
@@ -105,9 +161,19 @@ const loans = computed(() => store.loans);
 const borrowers = computed(() => store.borrowers);
 const loansPage = computed(() => store.loansPage);
 const showApplyDialog = ref(false);
+const showEditDialog = ref(false);
+const editingLoan = ref(null);
+const editForm = reactive({ loanAmount: 0, loanTermDays: null });
+const editError = ref("");
+const editLoading = ref(false);
+const showCancelConfirm = ref(false);
+const cancelLoanId = ref(null);
+const cancelLoading = ref(null);
+const confirmCancelLoading = ref(false);
 const search = ref("");
 const page = ref(0);
 const loading = ref(false);
+const remindLoading = ref(null);
 
 const loanHeaders = computed(() => {
   const h = [
@@ -171,6 +237,65 @@ async function approve(loanId) {
 async function reject(loanId) {
   await api.post("/loans/reject", { loanId, note: "Rejected from portal" });
   await loadLoans();
+}
+
+async function sendReminder(loanId) {
+  remindLoading.value = loanId;
+  try {
+    await api.post(`/loans/${loanId}/remind`);
+    if (typeof toast !== "undefined") toast.success("Reminder sent to borrower by email.");
+    await loadLoans();
+  } catch (e) {
+    if (typeof toast !== "undefined") toast.error(e.response?.data?.message || "Failed to send reminder.");
+  } finally {
+    remindLoading.value = null;
+  }
+}
+
+function openEditLoan(loan) {
+  editingLoan.value = loan;
+  editForm.loanAmount = Number(loan.loanAmount);
+  editForm.loanTermDays = loan.loanTermDays ?? null;
+  editError.value = "";
+  showEditDialog.value = true;
+}
+
+async function saveEditLoan() {
+  if (!editingLoan.value) return;
+  editError.value = "";
+  editLoading.value = true;
+  try {
+    const payload = { loanAmount: editForm.loanAmount };
+    if (editForm.loanTermDays != null && editForm.loanTermDays > 0) payload.loanTermDays = editForm.loanTermDays;
+    await store.updateLoan(editingLoan.value.id, payload);
+    showEditDialog.value = false;
+    editingLoan.value = null;
+    await loadLoans();
+  } catch (e) {
+    editError.value = e.response?.data?.message || e.message || "Failed to update loan.";
+  } finally {
+    editLoading.value = false;
+  }
+}
+
+function cancelLoan(loan) {
+  cancelLoanId.value = loan.id;
+  showCancelConfirm.value = true;
+}
+
+async function confirmCancelLoan() {
+  if (!cancelLoanId.value) return;
+  confirmCancelLoading.value = true;
+  try {
+    await store.deleteLoan(cancelLoanId.value);
+    showCancelConfirm.value = false;
+    cancelLoanId.value = null;
+    await loadLoans();
+  } catch (e) {
+    editError.value = e.response?.data?.message || e.message || "Failed to cancel loan.";
+  } finally {
+    confirmCancelLoading.value = false;
+  }
 }
 
 async function loadLoans(nextPage = page.value) {

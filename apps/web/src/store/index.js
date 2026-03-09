@@ -206,6 +206,13 @@ export const useAppStore = defineStore("app", {
       const { data } = await api.get(`/borrowers/${id}`);
       return data;
     },
+    async updateBorrower(id, payload) {
+      const { data } = await api.put(`/borrowers/${id}`, payload);
+      return data;
+    },
+    async deleteBorrower(id) {
+      await api.delete(`/borrowers/${id}`);
+    },
     async fetchVerificationByBorrowerId(borrowerId) {
       const { data } = await api.get(`/verifications/by-borrower/${borrowerId}`);
       return data;
@@ -219,6 +226,13 @@ export const useAppStore = defineStore("app", {
     async fetchLoans(params = {}) {
       const { data } = await api.get("/loans", { params });
       this.applyPagedResult("loans", "loansPage", data);
+    },
+    async updateLoan(loanId, payload) {
+      const { data } = await api.put(`/loans/${loanId}`, payload);
+      return data;
+    },
+    async deleteLoan(loanId) {
+      await api.delete(`/loans/${loanId}`);
     },
     async fetchMyLoans(params = {}) {
       const { data } = await api.get("/loans/my", { params });

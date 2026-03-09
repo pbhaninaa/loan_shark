@@ -39,6 +39,7 @@ const router = createRouter({
     { path: "/borrowers", name: "borrowers", component: BorrowersView, meta: { auth: true } },
     { path: "/loans", name: "loans", component: LoansView, meta: { auth: true } },
     { path: "/repayments", name: "repayments", component: RepaymentsView, meta: { auth: true } },
+    { path: "/notifications", name: "notifications", component: BorrowerNotificationsView, meta: { auth: true, staffOnly: true } },
     { path: "/users", name: "users", component: UsersView, meta: { auth: true, ownerOnly: true } },
     { path: "/verifications", name: "verifications", component: VerificationsView, meta: { auth: true, ownerOnly: true } },
     { path: "/settings/loan-interest", name: "loan-interest-settings", component: LoanInterestSettingsView, meta: { auth: true, ownerOnly: true } },
@@ -58,6 +59,10 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.ownerOnly && !store.isOwner) {
+    return { name: "dashboard" };
+  }
+
+  if (to.meta.staffOnly && !store.isOwner && !store.isCashier) {
     return { name: "dashboard" };
   }
 

@@ -242,65 +242,57 @@ const navItems = computed(() => {
           ]
         : [
             { title: "My Profile", to: "/my-portal/profile", icon: "mdi-account-circle-outline" },
-            { title: "My account", to: "/account", icon: "mdi-account-cog-outline" },
             { title: "My Loans", to: "/my-portal/loans", icon: "mdi-cash-multiple" },
             { title: "Repayment Schedule", to: "/my-portal/schedule", icon: "mdi-calendar-clock-outline" },
             { title: "My payment history", to: "/my-portal/payment-history", icon: "mdi-history" },
             { title: "Notifications", to: "/my-portal/notifications", icon: "mdi-bell-outline" },
-            { title: "Help & Contact", to: "/my-portal/help", icon: "mdi-help-circle-outline" }
+            { title: "Help & Contact", to: "/my-portal/help", icon: "mdi-help-circle-outline" },
+            { title: "My account", to: "/account", icon: "mdi-account-cog-outline" }
           ]
         : [
           { title: "Dashboard", to: "/dashboard", icon: "mdi-view-dashboard-outline" },
-
-          // Core lending workflow
           { title: "Clients", to: "/borrowers", icon: "mdi-account-group-outline" },
           { title: "Loans", to: "/loans", icon: "mdi-cash-multiple", badgeKey: "pendingLoans" },
-          { title: "Repayments", to: "/repayments", icon: "mdi-cash-check" }
+          { title: "Repayments", to: "/repayments", icon: "mdi-cash-check" },
+          { title: "Notifications", to: "/notifications", icon: "mdi-bell-outline", badgeKey: "unreadNotifications" }
         ])
   ];
 
   if (store.isOwner) {
-
-    // Risk management
     items.push({
       title: "Verifications",
       to: "/verifications",
       icon: "mdi-shield-check-outline",
       badgeKey: "pendingVerifications"
     });
-
     items.push({
       title: "Blacklist",
       to: "/blacklist",
       icon: "mdi-account-cancel-outline"
     });
-
-    // Administration
     items.push({
       title: "Users",
       to: "/users",
       icon: "mdi-account-tie-outline"
     });
-
-    items.push({
-      title: "My account",
-      to: "/account",
-      icon: "mdi-account-cog-outline"
-    });
-
-    // System settings
     items.push({
       title: "Loan interest & term",
       to: "/settings/loan-interest",
       icon: "mdi-percent"
     });
-
     items.push({
       title: "Business capital",
       to: "/settings/business-capital",
       icon: "mdi-bank-outline"
     });
   }
+
+  // My account last for all staff (owner and cashier)
+  items.push({
+    title: "My account",
+    to: "/account",
+    icon: "mdi-account-cog-outline"
+  });
 
   return items;
 });

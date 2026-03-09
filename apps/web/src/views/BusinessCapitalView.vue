@@ -23,7 +23,7 @@
     </v-alert>
 
     <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="3">
+      <v-col cols="10" sm="4" md="3">
         <v-card>
           <v-card-title class="d-flex align-center text-secondary">
             <v-icon start>mdi-wallet-plus</v-icon>
@@ -40,7 +40,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
+    <v-col cols="10" sm="4" md="3">
         <v-card>
           <v-card-title class="d-flex align-center text-primary">
             <v-icon start>mdi-cash-multiple</v-icon>
@@ -57,7 +57,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
+ <v-col cols="10" sm="4" md="3">
         <v-card>
           <v-card-title class="d-flex align-center text-error">
             <v-icon start>mdi-cash-minus</v-icon>
@@ -74,7 +74,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
+   <v-col cols="10" sm="4" md="3">
         <v-card>
           <v-card-title class="d-flex align-center text-success">
             <v-icon start>mdi-cash-plus</v-icon>
@@ -91,7 +91,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
+<v-col cols="10" sm="4" md="3">
         <v-card>
           <v-card-title class="d-flex align-center text-warning">
             <v-icon start>mdi-currency-usd</v-icon>

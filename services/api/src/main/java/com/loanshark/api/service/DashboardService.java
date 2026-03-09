@@ -14,8 +14,10 @@ import com.loanshark.api.repository.BorrowerVerificationRepository;
 import com.loanshark.api.repository.CashTransactionRepository;
 import com.loanshark.api.repository.LoanRepository;
 import com.loanshark.api.repository.RepaymentRepository;
+import com.loanshark.api.repository.NotificationRepository;
 import com.loanshark.api.repository.RepaymentScheduleRepository;
 import com.loanshark.api.repository.UserRepository;
+import com.loanshark.api.service.CurrentUserService;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
@@ -38,6 +40,8 @@ public class DashboardService {
     private final CashTransactionRepository cashTransactionRepository;
     private final UserRepository userRepository;
     private final BorrowerVerificationRepository borrowerVerificationRepository;
+    private final NotificationRepository notificationRepository;
+    private final CurrentUserService currentUserService;
 
     public DashboardService(
         BorrowerRepository borrowerRepository,
@@ -47,7 +51,9 @@ public class DashboardService {
         AuditLogRepository auditLogRepository,
         CashTransactionRepository cashTransactionRepository,
         UserRepository userRepository,
-        BorrowerVerificationRepository borrowerVerificationRepository
+        BorrowerVerificationRepository borrowerVerificationRepository,
+        NotificationRepository notificationRepository,
+        CurrentUserService currentUserService
     ) {
         this.borrowerRepository = borrowerRepository;
         this.loanRepository = loanRepository;
@@ -57,6 +63,8 @@ public class DashboardService {
         this.cashTransactionRepository = cashTransactionRepository;
         this.userRepository = userRepository;
         this.borrowerVerificationRepository = borrowerVerificationRepository;
+        this.notificationRepository = notificationRepository;
+        this.currentUserService = currentUserService;
     }
 
     @Transactional(readOnly = true)
@@ -71,12 +79,22 @@ public class DashboardService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long pendingVerifications = borrowerVerificationRepository.countByStatus(VerificationStatus.MANUAL_REVIEW);
+        long unreadNotifications = 0;
+        try {
+            unreadNotifications = notificationRepository.countByUserIdAndStatusNot(
+                currentUserService.requireCurrentUser().getId(),
+                "READ"
+            );
+        } catch (Exception ignored) {
+            // no current user (e.g. public)
+        }
         return new DashboardSummaryResponse(
             borrowerRepository.count(),
             loanRepository.findAllByStatusOrderByCreatedAtAsc(LoanStatus.PENDING).size(),
             loanRepository.findAllByStatusOrderByCreatedAtAsc(LoanStatus.ACTIVE).size(),
             repaymentScheduleRepository.countByStatus(ScheduleStatus.OVERDUE),
             pendingVerifications,
+            unreadNotifications,
             principalOutstanding,
             repaymentsCaptured
         );
