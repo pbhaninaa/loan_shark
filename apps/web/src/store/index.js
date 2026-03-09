@@ -284,6 +284,10 @@ export const useAppStore = defineStore("app", {
     },
     async topUpBusinessCapital(amount) {
       await api.post("/auth/business-capital/top-up", { amount: Number(amount) });
+    },
+    async resetHistory() {
+      const { data } = await api.post("/admin/reset-history");
+      return data;
     }
   },
   getters: {
