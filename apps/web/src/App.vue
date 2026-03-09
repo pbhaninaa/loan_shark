@@ -245,6 +245,7 @@ const navItems = computed(() => {
             { title: "My account", to: "/account", icon: "mdi-account-cog-outline" },
             { title: "My Loans", to: "/my-portal/loans", icon: "mdi-cash-multiple" },
             { title: "Repayment Schedule", to: "/my-portal/schedule", icon: "mdi-calendar-clock-outline" },
+            { title: "My payment history", to: "/my-portal/payment-history", icon: "mdi-history" },
             { title: "Notifications", to: "/my-portal/notifications", icon: "mdi-bell-outline" },
             { title: "Help & Contact", to: "/my-portal/help", icon: "mdi-help-circle-outline" }
           ]

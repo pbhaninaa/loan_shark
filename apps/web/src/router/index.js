@@ -12,6 +12,7 @@ import BusinessCapitalView from "../views/BusinessCapitalView.vue";
 import BorrowerProfileView from "../views/BorrowerProfileView.vue";
 import BorrowerLoansView from "../views/BorrowerLoansView.vue";
 import BorrowerScheduleView from "../views/BorrowerScheduleView.vue";
+import BorrowerPaymentHistoryView from "../views/BorrowerPaymentHistoryView.vue";
 import BorrowerNotificationsView from "../views/BorrowerNotificationsView.vue";
 import BorrowerHelpView from "../views/BorrowerHelpView.vue";
 import BorrowerVerificationStatusView from "../views/BorrowerVerificationStatusView.vue";
@@ -32,6 +33,7 @@ const router = createRouter({
     { path: "/my-portal/profile", name: "borrower-profile", component: BorrowerProfileView, meta: { auth: true, borrowerOnly: true } },
     { path: "/my-portal/loans", name: "borrower-loans", component: BorrowerLoansView, meta: { auth: true, borrowerOnly: true } },
     { path: "/my-portal/schedule", name: "borrower-schedule", component: BorrowerScheduleView, meta: { auth: true, borrowerOnly: true } },
+    { path: "/my-portal/payment-history", name: "borrower-payment-history", component: BorrowerPaymentHistoryView, meta: { auth: true, borrowerOnly: true } },
     { path: "/my-portal/notifications", name: "borrower-notifications", component: BorrowerNotificationsView, meta: { auth: true, borrowerOnly: true } },
     { path: "/my-portal/help", name: "borrower-help", component: BorrowerHelpView, meta: { auth: true, borrowerOnly: true } },
     { path: "/borrowers", name: "borrowers", component: BorrowersView, meta: { auth: true } },
