@@ -185,14 +185,14 @@ public class RepaymentService {
             ? (loan.getBorrower().getFirstName() != null ? loan.getBorrower().getFirstName() : "").trim()
                 + " " + (loan.getBorrower().getLastName() != null ? loan.getBorrower().getLastName() : "").trim()
             : null;
-        if (borrowerFullName != null) borrowerFullName = borrowerFullName.trim();
+        final String borrowerFullNameFinal = borrowerFullName != null ? borrowerFullName.trim() : null;
         return new PageResponse<>(
             repaymentPage.getContent().stream()
                 .map(repayment -> new RepaymentResponse(
                     repayment.getId(),
                     repayment.getLoan().getId(),
                     borrowerUsername,
-                    borrowerFullName,
+                    borrowerFullNameFinal,
                     repayment.getAmountPaid(),
                     repayment.getPaymentDate(),
                     repayment.getPaymentMethod(),
