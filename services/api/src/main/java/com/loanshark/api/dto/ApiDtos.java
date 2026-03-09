@@ -382,6 +382,13 @@ public final class ApiDtos {
     ) {
     }
 
+    /** For borrower nav badges: unread notifications and overdue installments. */
+    public record BorrowerSummaryResponse(
+        long unreadNotifications,
+        long overdueSchedules
+    ) {
+    }
+
     public record ActionResponse(
         String category,
         String action,

@@ -130,7 +130,10 @@
           Money made (available for lending): <strong>{{ formatCurrency(availableBalance) }}</strong>. Lending is limited to this so the rotation keeps flowing. If the amount requested exceeds this, the application will be rejected until the owner adds funds.
         </v-alert>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-          Interest and terms are set by the business. The client only chooses the amount; repayments reduce what they owe and interest continues per business rules until the loan is paid off.
+          <div class="mb-2">Interest and terms are set by the business. The client only chooses the amount; repayments reduce what they owe and interest continues per business rules until the loan is paid off.</div>
+          <div v-if="loanSettings" class="text-caption mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.2);">
+            <strong>Current settings:</strong> {{ loanSettings.defaultInterestRate }}% interest ({{ loanSettings.interestType }}), interest period {{ loanSettings.interestPeriodDays }} days, grace period {{ loanSettings.gracePeriodDays }} days, default loan term {{ loanSettings.defaultLoanTermDays }} days.
+          </div>
         </v-alert>
         <AppTextField v-model.number="form.loanAmount" label="Loan amount" type="number" prepend-inner-icon="mdi-cash-plus" />
         <div class="d-flex ga-2">
@@ -200,11 +203,13 @@ const form = reactive({
 });
 const applyError = ref("");
 const availableBalance = ref(null);
+const loanSettings = ref(null);
 
 function onApplyDialogToggle(isOpen) {
   if (isOpen) {
     applyError.value = "";
     store.fetchBusinessCapitalBalance().then((b) => { availableBalance.value = b; }).catch(() => { availableBalance.value = null; });
+    store.fetchLoanInterestSettings().then((s) => { loanSettings.value = s; }).catch(() => { loanSettings.value = null; });
   }
 }
 

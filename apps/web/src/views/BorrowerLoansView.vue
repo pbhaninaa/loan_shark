@@ -50,7 +50,10 @@
           Money made (available for lending): <strong>{{ formatCurrency(availableBalance) }}</strong>. You can only be approved up to this amount. If you need more, the business must add funds first.
         </v-alert>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-          Interest and terms are set by the business. You can pay any amount at any time; each payment reduces what you owe and interest continues per business rules until the loan is paid off.
+          <div class="mb-2">Interest and terms are set by the business. You can pay any amount at any time; each payment reduces what you owe and interest continues per business rules until the loan is paid off.</div>
+          <div v-if="loanSettings" class="text-caption mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.2);">
+            <strong>Current settings:</strong> {{ loanSettings.defaultInterestRate }}% interest ({{ loanSettings.interestType }}), interest period {{ loanSettings.interestPeriodDays }} days, grace period {{ loanSettings.gracePeriodDays }} days, default loan term {{ loanSettings.defaultLoanTermDays }} days.
+          </div>
         </v-alert>
         <AppTextField v-model.number="applyForm.loanAmount" label="Loan amount" type="number" prepend-inner-icon="mdi-cash-plus" />
         <div class="d-flex ga-2">
@@ -98,10 +101,12 @@ const applyForm = reactive({
   loanAmount: 1000
 });
 const availableBalance = ref(null);
+const loanSettings = ref(null);
 
 function onApplyDialogToggle(isOpen) {
   if (isOpen) {
     store.fetchBusinessCapitalBalance().then((b) => { availableBalance.value = b; }).catch(() => { availableBalance.value = null; });
+    store.fetchLoanInterestSettings().then((s) => { loanSettings.value = s; }).catch(() => { loanSettings.value = null; });
   }
 }
 

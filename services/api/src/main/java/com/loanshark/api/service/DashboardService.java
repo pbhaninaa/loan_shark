@@ -1,12 +1,14 @@
 package com.loanshark.api.service;
 
 import com.loanshark.api.dto.ApiDtos.ActionResponse;
+import com.loanshark.api.dto.ApiDtos.BorrowerSummaryResponse;
 import com.loanshark.api.dto.ApiDtos.DashboardSummaryResponse;
 import com.loanshark.api.dto.ApiDtos.PageResponse;
 import com.loanshark.api.entity.AuditLog;
 import com.loanshark.api.entity.CashTransaction;
 import com.loanshark.api.entity.LoanStatus;
 import com.loanshark.api.entity.ScheduleStatus;
+import com.loanshark.api.entity.UserRole;
 import com.loanshark.api.entity.VerificationStatus;
 import com.loanshark.api.repository.AuditLogRepository;
 import com.loanshark.api.repository.BorrowerRepository;
@@ -98,6 +100,23 @@ public class DashboardService {
             principalOutstanding,
             repaymentsCaptured
         );
+    }
+
+    /** Summary for borrower nav badges: unread notifications and overdue installments for their loans. */
+    @Transactional(readOnly = true)
+    public BorrowerSummaryResponse borrowerSummary() {
+        var user = currentUserService.requireCurrentUser();
+        if (user.getRole() != UserRole.BORROWER) {
+            throw new org.springframework.security.access.AccessDeniedException("Borrower only");
+        }
+        UUID borrowerId = borrowerRepository.findByUserId(user.getId())
+            .map(b -> b.getId())
+            .orElse(null);
+        long unreadNotifications = notificationRepository.countByUserIdAndStatusNot(user.getId(), "READ");
+        long overdueSchedules = borrowerId != null
+            ? repaymentScheduleRepository.countByLoanBorrowerIdAndStatus(borrowerId, ScheduleStatus.OVERDUE)
+            : 0;
+        return new BorrowerSummaryResponse(unreadNotifications, overdueSchedules);
     }
 
     @Transactional(readOnly = true)

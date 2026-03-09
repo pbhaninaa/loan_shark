@@ -112,10 +112,13 @@
       </v-col>
     </v-row>
 
-    <AppDialogCard v-model="showApplyDialog" title="Apply For A Loan" :max-width="520">
+    <AppDialogCard v-model="showApplyDialog" title="Apply For A Loan" :max-width="520" @update:model-value="onApplyDialogToggle">
       <v-form @submit.prevent="applyLoan">
             <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-              Interest and terms are set by the business. You can pay any amount at any time; each payment reduces what you owe and interest continues per business rules until the loan is paid off.
+              <div class="mb-2">Interest and terms are set by the business. You can pay any amount at any time; each payment reduces what you owe and interest continues per business rules until the loan is paid off.</div>
+              <div v-if="loanSettings" class="text-caption mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.2);">
+                <strong>Current settings:</strong> {{ loanSettings.defaultInterestRate }}% interest ({{ loanSettings.interestType }}), interest period {{ loanSettings.interestPeriodDays }} days, grace period {{ loanSettings.gracePeriodDays }} days, default loan term {{ loanSettings.defaultLoanTermDays }} days.
+              </div>
             </v-alert>
             <AppTextField v-model.number="applyForm.loanAmount" label="Loan amount" type="number" prepend-inner-icon="mdi-cash-plus" />
             <div class="d-flex ga-2">
@@ -143,10 +146,17 @@ const showApplyDialog = ref(false);
 const selectedLoanId = ref(null);
 const message = ref("");
 const error = ref("");
+const loanSettings = ref(null);
 
 const applyForm = reactive({
   loanAmount: 1000
 });
+
+function onApplyDialogToggle(isOpen) {
+  if (isOpen) {
+    store.fetchLoanInterestSettings().then((s) => { loanSettings.value = s; }).catch(() => { loanSettings.value = null; });
+  }
+}
 
 const profile = computed(() => store.borrowerProfile);
 const loans = computed(() => store.loans);
