@@ -6,6 +6,7 @@ import com.loanshark.api.dto.ApiDtos.LoanResponse;
 import com.loanshark.api.dto.ApiDtos.LoanUpdateRequest;
 import com.loanshark.api.dto.ApiDtos.PageResponse;
 import com.loanshark.api.dto.ApiDtos.ScheduleResponse;
+import com.loanshark.api.entity.LoanStatus;
 import com.loanshark.api.service.LoanService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -45,10 +46,11 @@ public class LoanController {
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER')")
     public PageResponse<LoanResponse> list(
         @RequestParam(defaultValue = "") String q,
+        @RequestParam(required = false) List<LoanStatus> status,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
-        return loanService.listAll(q, page, size);
+        return loanService.listAll(q, status, page, size);
     }
 
     @GetMapping("/my")
