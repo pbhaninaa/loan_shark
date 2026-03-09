@@ -5,7 +5,7 @@
       description="Capture incoming payments, verify references, and review repayment history for any loan."
     >
       <template #actions>
-        <AppActionButton text="Record Payment" prepend-icon="mdi-cash-check" @click="showRepaymentDialog = true" />
+        <AppActionButton text="Record Payment" prepend-icon="mdi-cash-check" @click="openCapturePaymentDialog" />
       </template>
     </AppPageHeader>
 
@@ -103,7 +103,7 @@ const repayments = computed(() => store.repayments);
 const repaymentsPage = computed(() => store.repaymentsPage);
 const loanOptions = computed(() =>
   store.loans
-    .filter((loan) => loan.status !== "REJECTED")
+    .filter((loan) => loan.status === "ACTIVE")
     .map((loan) => {
       const payerLabel = loan.borrowerFullName || loan.borrowerUsername || `Client #${loan.borrowerId}`;
       return {
@@ -129,7 +129,7 @@ const form = reactive({
   loanId: null,
   amountPaid: 325,
   paymentMethod: "CASH",
-  referenceNumber: "PAY-1001"
+  referenceNumber: ""
 });
 
 onMounted(async () => {
@@ -139,6 +139,16 @@ onMounted(async () => {
     await loadRepayments();
   }
 });
+
+async function openCapturePaymentDialog() {
+  try {
+    const { data } = await api.get("/repayments/next-reference");
+    form.referenceNumber = data?.nextReference ?? "PAY-1001";
+  } catch {
+    form.referenceNumber = "PAY-1001";
+  }
+  showRepaymentDialog.value = true;
+}
 
 async function recordRepayment() {
   const res = await api.post("/repayments", form);

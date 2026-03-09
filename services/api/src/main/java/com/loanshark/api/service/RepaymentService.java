@@ -19,7 +19,10 @@ import com.loanshark.api.repository.RepaymentRepository;
 import com.loanshark.api.repository.RepaymentScheduleRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -64,6 +67,26 @@ public class RepaymentService {
         this.borrowerVerificationService = borrowerVerificationService;
         this.notificationService = notificationService;
         this.businessCapitalService = businessCapitalService;
+    }
+
+    private static final Pattern REFERENCE_NUMBER_PATTERN = Pattern.compile("^PAY-(\\d+)$", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Returns the next reference number for a repayment, based on the last one created (e.g. PAY-1001 → PAY-1002).
+     */
+    public String getNextReferenceNumber() {
+        Optional<Repayment> last = repaymentRepository.findFirstByOrderByPaymentDateDesc();
+        if (last.isEmpty()) {
+            return "PAY-1001";
+        }
+        String ref = last.get().getReferenceNumber();
+        if (ref == null) return "PAY-1001";
+        Matcher m = REFERENCE_NUMBER_PATTERN.matcher(ref.trim());
+        if (m.matches()) {
+            int next = Integer.parseInt(m.group(1)) + 1;
+            return "PAY-" + next;
+        }
+        return "PAY-1001";
     }
 
     /**

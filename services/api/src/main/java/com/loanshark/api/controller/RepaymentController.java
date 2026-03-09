@@ -5,6 +5,7 @@ import com.loanshark.api.dto.ApiDtos.RepaymentRequest;
 import com.loanshark.api.dto.ApiDtos.RepaymentResponse;
 import com.loanshark.api.service.RepaymentService;
 import jakarta.validation.Valid;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,12 @@ public class RepaymentController {
 
     public RepaymentController(RepaymentService repaymentService) {
         this.repaymentService = repaymentService;
+    }
+
+    @GetMapping("/next-reference")
+    @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
+    public Map<String, String> nextReference() {
+        return Map.of("nextReference", repaymentService.getNextReferenceNumber());
     }
 
     @PostMapping

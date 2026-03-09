@@ -15,6 +15,9 @@ public interface RepaymentRepository extends JpaRepository<Repayment, UUID> {
 
     List<Repayment> findByLoanIdOrderByPaymentDateDesc(UUID loanId);
 
+    /** Latest repayment by payment date (for generating next reference number). */
+    java.util.Optional<Repayment> findFirstByOrderByPaymentDateDesc();
+
     @Query("SELECT COALESCE(SUM(r.amountPaid), 0) FROM Repayment r WHERE r.loan.id = :loanId")
     BigDecimal sumAmountPaidByLoanId(@Param("loanId") UUID loanId);
 
