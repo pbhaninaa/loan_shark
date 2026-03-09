@@ -276,8 +276,10 @@ public final class ApiDtos {
         int termDays
     ) {}
 
+    /** balance = available for lending (principal + repayments in − disbursements out). principalAmount = owner top-ups only. */
     public record BusinessCapitalResponse(
         BigDecimal balance,
+        BigDecimal principalAmount,
         BigDecimal totalMoneyOut,
         BigDecimal totalMoneyIn,
         BigDecimal expectedAmount

@@ -28,6 +28,10 @@ public class BusinessCapital {
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal balance = BigDecimal.ZERO;
 
+    /** Total amount the owner has ever added from his pocket (only increases on top-up). Never reduced by disbursements or increased by repayments. */
+    @Column(name = "total_owner_added", nullable = false, precision = 14, scale = 2)
+    private BigDecimal totalOwnerAdded = BigDecimal.ZERO;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 }

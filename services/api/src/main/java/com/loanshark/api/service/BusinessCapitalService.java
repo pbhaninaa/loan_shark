@@ -45,6 +45,7 @@ public class BusinessCapitalService {
         this.auditLogService = auditLogService;
     }
 
+    /** Current pool available for lending (principal + repayments in − disbursements out). Use this when deciding if a loan can be approved. */
     @Transactional(readOnly = true)
     public BigDecimal getBalance() {
         return businessCapitalRepository.findById(UuidConstants.BUSINESS_CAPITAL_ID)
@@ -52,9 +53,19 @@ public class BusinessCapitalService {
             .orElse(BigDecimal.ZERO);
     }
 
+    /** Total amount the owner has ever added from his pocket (stored; only increases on top-up). */
+    @Transactional(readOnly = true)
+    public BigDecimal getPrincipalAmount() {
+        return businessCapitalRepository.findById(UuidConstants.BUSINESS_CAPITAL_ID)
+            .map(BusinessCapital::getTotalOwnerAdded)
+            .orElse(BigDecimal.ZERO);
+    }
+
     @Transactional(readOnly = true)
     public BusinessCapitalResponse getSummary() {
-        BigDecimal balance = getBalance();
+        BusinessCapital cap = businessCapitalRepository.findById(UuidConstants.BUSINESS_CAPITAL_ID).orElse(null);
+        BigDecimal balance = cap != null ? cap.getBalance() : BigDecimal.ZERO;
+        BigDecimal principalAmount = cap != null ? cap.getTotalOwnerAdded() : BigDecimal.ZERO;
         BigDecimal totalMoneyOut = cashTransactionRepository.sumAmountByType(CashTransactionType.DISBURSEMENT);
         BigDecimal totalMoneyIn = cashTransactionRepository.sumAmountByType(CashTransactionType.REPAYMENT);
         if (totalMoneyOut == null) totalMoneyOut = BigDecimal.ZERO;
@@ -69,7 +80,7 @@ public class BusinessCapitalService {
                 expectedAmount = expectedAmount.add(pending);
             }
         }
-        return new BusinessCapitalResponse(balance, totalMoneyOut, totalMoneyIn, expectedAmount);
+        return new BusinessCapitalResponse(balance, principalAmount, totalMoneyOut, totalMoneyIn, expectedAmount);
     }
 
     /**
@@ -86,6 +97,7 @@ public class BusinessCapitalService {
         BusinessCapital cap = businessCapitalRepository.findByIdForUpdate(UuidConstants.BUSINESS_CAPITAL_ID)
             .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Business capital record not found"));
         cap.setBalance(cap.getBalance().add(amount));
+        cap.setTotalOwnerAdded(cap.getTotalOwnerAdded().add(amount));
         cap.setUpdatedAt(Instant.now());
         businessCapitalRepository.save(cap);
         auditLogService.record(
@@ -93,7 +105,7 @@ public class BusinessCapitalService {
             "ADD_FUNDS",
             "BusinessCapital",
             cap.getId().toString(),
-            "Added " + amount + " to lending pool. New balance: " + cap.getBalance()
+            "Added " + amount + " from pocket. Total you put in: " + cap.getTotalOwnerAdded() + ". New balance: " + cap.getBalance()
         );
     }
 
