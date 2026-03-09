@@ -6,7 +6,7 @@
       <v-navigation-drawer v-model="drawer" color="secondary" theme="dark" rail-width="88">
         <div class="d-flex flex-column fill-height">
           <div class="px-4 pt-6 pb-4">
-            <div class="text-h5 font-weight-bold">Loan Shark</div>
+            <div class="text-h5 font-weight-bold">LendHand</div>
             <div class="text-caption text-medium-emphasis">Operations Portal</div>
           </div>
 

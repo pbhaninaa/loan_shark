@@ -1,11 +1,11 @@
-# Push Loan Shark to GitHub
+# Push LendHand to GitHub
 
 Your project is committed locally. To create the repo and push:
 
 ## 1. Create the repository on GitHub
 
 1. Go to **https://github.com/new**
-2. **Repository name:** `loan-shark` (or any name you prefer)
+2. **Repository name:** `lendhand` or `loan-shark` (or any name you prefer)
 3. Leave it **empty** (no README, .gitignore, or license)
 4. Click **Create repository**
 

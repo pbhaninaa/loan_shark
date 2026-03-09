@@ -1,4 +1,4 @@
-# Loan Shark — User Manual
+# LendHand — User Manual
 
 **Loan Management System for Micro-Lenders**
 

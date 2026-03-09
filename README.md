@@ -1,4 +1,4 @@
-# Loan Shark Loan Management System
+# LendHand — Loan Management System
 
 A greenfield monorepo for a micro-lending platform with:
 

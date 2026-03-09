@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="lhGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1976D2"/>
+      <stop offset="100%" style="stop-color:#0D47A1"/>
+    </linearGradient>
+  </defs>
+  <!-- Soft circle background -->
+  <circle cx="60" cy="60" r="54" fill="url(#lhGrad)" opacity="0.15"/>
+  <circle cx="60" cy="60" r="46" stroke="#1976D2" stroke-width="2" fill="none" opacity="0.6"/>
+  <!-- Open hand: palm -->
+  <ellipse cx="60" cy="72" rx="22" ry="14" fill="url(#lhGrad)"/>
+  <!-- Thumb -->
+  <ellipse cx="38" cy="58" rx="10" ry="14" fill="url(#lhGrad)" transform="rotate(-25 38 58)"/>
+  <!-- Fingers -->
+  <ellipse cx="60" cy="38" rx="8" ry="16" fill="url(#lhGrad)"/>
+  <ellipse cx="72" cy="42" rx="7" ry="14" fill="url(#lhGrad)" transform="rotate(-10 72 42)"/>
+  <ellipse cx="82" cy="50" rx="6" ry="12" fill="url(#lhGrad)" transform="rotate(-5 82 50)"/>
+  <ellipse cx="90" cy="58" rx="5" ry="10" fill="url(#lhGrad)" transform="rotate(5 90 58)"/>
+</svg>

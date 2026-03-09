@@ -1,4 +1,4 @@
-# Loan Shark — User Manual
+# LendHand — User Manual
 
 **Loan Management System for Micro-Lenders**  
 Version 1.0 | Web Portal & Borrower Self-Service
@@ -31,9 +31,9 @@ Every **FIGURE** below is written so that an AI or human can produce a matching 
 
 ## 1. Introduction
 
-### 1.1 What is Loan Shark?
+### 1.1 What is LendHand?
 
-Loan Shark is a **loan management system** for micro-lenders and loan providers. It supports:
+LendHand is a **loan management system** for micro-lenders and loan providers. It supports:
 
 - **Staff (Owner and Cashier):** Managing borrowers, loans, repayments, interest settings, user accounts, and manual verification reviews.
 - **Borrowers:** Registering with identity verification (KYC), viewing their profile, applying for loans, seeing repayment schedules, and reading notifications.
@@ -51,7 +51,7 @@ The system runs as a **web application** (Vue 3 + Vuetify). Users sign in and se
 ---
 
 **FIGURE 1 — System overview diagram**  
-*Image description:* A simple diagram with three boxes: "Owner", "Cashier", "Borrower". Arrows from "Owner" to "Full system", from "Cashier" to "Operations (no settings/users/verifications)", and from "Borrower" to "My portal (profile, loans, schedule, notifications)". Caption: "Role-based access in Loan Shark."
+*Image description:* A simple diagram with three boxes: "Owner", "Cashier", "Borrower". Arrows from "Owner" to "Full system", from "Cashier" to "Operations (no settings/users/verifications)", and from "Borrower" to "My portal (profile, loans, schedule, notifications)". Caption: "Role-based access in LendHand."
 
 ---
 
@@ -106,7 +106,7 @@ After the owner account exists:
 Once signed in, the screen has:
 
 - **Left:** A **navigation drawer** (sidebar) with:
-  - App title: **"Loan Shark"** and **"Operations Portal"** (or similar).
+  - App title: **"LendHand"** and **"Operations Portal"** (or similar).
   - Menu items that depend on role (see sections below).
   - At the bottom: **"Signed in as [Role]"** and a **Logout** button.
 - **Top:** An **app bar** with a menu icon and title **"Loan Management Portal"**.
@@ -115,12 +115,12 @@ Once signed in, the screen has:
 ---
 
 **FIGURE 5 — Staff layout (Owner) — Dashboard**  
-*Image description:* Left sidebar with "Loan Shark", "Operations Portal", and menu items: Dashboard, Borrowers, Loans, Repayments, Users, Verifications, Blacklist, Loan interest & term. Bottom: "Signed in as Owner", Logout. Main area: "Operations Dashboard" with metric cards (e.g. Total loans, Active borrowers, Overdue) and a "Recent Actions" table with columns Category, Action, Reference, Amount, Performed By, Authorized By, Date. Search and pagination. Caption: "Owner view: Dashboard and navigation."
+*Image description:* Left sidebar with "LendHand", "Operations Portal", and menu items: Dashboard, Borrowers, Loans, Repayments, Users, Verifications, Blacklist, Loan interest & term. Bottom: "Signed in as Owner", Logout. Main area: "Operations Dashboard" with metric cards (e.g. Total loans, Active borrowers, Overdue) and a "Recent Actions" table with columns Category, Action, Reference, Amount, Performed By, Authorized By, Date. Search and pagination. Caption: "Owner view: Dashboard and navigation."
 
 ---
 
 **FIGURE 6 — Borrower layout (approved) — My Profile**  
-*Image description:* Left sidebar with "Loan Shark" and menu: My Profile, My Loans, Repayment Schedule, Notifications. Bottom: "Signed in as Borrower", Logout. Main area: "My Profile" or "Borrower account" page with borrower details. Caption: "Borrower view: Portal navigation and profile."
+*Image description:* Left sidebar with "LendHand" and menu: My Profile, My Loans, Repayment Schedule, Notifications. Bottom: "Signed in as Borrower", Logout. Main area: "My Profile" or "Borrower account" page with borrower details. Caption: "Borrower view: Portal navigation and profile."
 
 ---
 
