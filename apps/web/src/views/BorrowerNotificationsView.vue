@@ -22,7 +22,7 @@
           v-for="notification in notifications"
           :key="notification.id"
           :title="notification.channel"
-          @click="markAsRead(notification.id)"
+          @click="openMessageDialog(notification)"
         >
           <template #subtitle>
             <AppTruncateText :text="notification.message" :max-chars="90" fallback="" />
@@ -35,6 +35,18 @@
       <div v-if="!notifications.length" class="text-medium-emphasis">No notifications yet.</div>
       <AppPaginationFooter v-model="page" :total-pages="notificationsPage.totalPages" :total-elements="notificationsPage.totalElements" @update:model-value="loadNotifications" />
     </AppTableCard>
+
+    <v-dialog v-model="messageDialogOpen" max-width="520" persistent>
+      <v-card>
+        <v-card-title class="text-wrap">{{ selectedMessage?.channel ?? 'Message' }}</v-card-title>
+        <v-divider />
+        <v-card-text class="text-body-1 text-wrap pt-3">{{ selectedMessage?.message ?? '' }}</v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" variant="flat" @click="closeMessageDialog">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -53,6 +65,8 @@ const store = useAppStore();
 const error = ref("");
 const search = ref("");
 const page = ref(0);
+const messageDialogOpen = ref(false);
+const selectedMessage = ref(null);
 const notifications = computed(() => store.notifications);
 const notificationsPage = computed(() => store.notificationsPage);
 
@@ -69,6 +83,25 @@ async function loadNotifications(nextPage = page.value) {
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Could not load notifications";
   }
+}
+
+function openMessageDialog(notification) {
+  selectedMessage.value = notification;
+  messageDialogOpen.value = true;
+}
+
+async function closeMessageDialog() {
+  messageDialogOpen.value = false;
+  if (selectedMessage.value?.id) {
+    try {
+      await store.markNotificationRead(selectedMessage.value.id);
+      await loadNotifications(page.value);
+      await store.fetchDashboard();
+    } catch (requestError) {
+      error.value = requestError.response?.data?.message || "Could not update notification";
+    }
+  }
+  selectedMessage.value = null;
 }
 
 async function markAsRead(id) {
