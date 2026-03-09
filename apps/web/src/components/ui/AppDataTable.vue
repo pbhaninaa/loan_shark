@@ -75,8 +75,8 @@ import { computed, ref, watch } from "vue";
 import AppTruncateText from "./AppTruncateText.vue";
 
 const getCellText = (item, header) => {
-  const val = header.formatter ? header.formatter(item) : (item?.[header.key] ?? "-");
-  return val != null ? String(val) : "-";
+  const val = header.formatter ? header.formatter(item) : (item?.[header.key] ?? "None");
+  return val != null ? String(val) : "None";
 };
 
 const props = defineProps({

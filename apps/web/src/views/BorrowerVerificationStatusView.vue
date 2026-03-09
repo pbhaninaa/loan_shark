@@ -26,9 +26,9 @@
         </div>
 
         <v-list density="comfortable">
-          <v-list-item title="Client status" :subtitle="borrowerStatus || '-'" />
-          <v-list-item title="OCR confidence" :subtitle="verification.ocrConfidence || '-'" />
-          <v-list-item title="Face match score" :subtitle="verification.faceMatchScore || '-'" />
+          <v-list-item title="Client status" :subtitle="borrowerStatus || 'None'" />
+          <v-list-item title="OCR confidence" :subtitle="verification.ocrConfidence || 'None'" />
+          <v-list-item title="Face match score" :subtitle="verification.faceMatchScore || 'None'" />
           <v-list-item title="Review notes" :subtitle="verification.reviewNotes || 'Your verification is still being processed.'" />
           <v-list-item title="Location captured" :subtitle="locationLabel" />
           <v-list-item title="Last update" :subtitle="formatDateTime(verification.updatedAt)" />
@@ -50,7 +50,7 @@ const verification = computed(() => store.verification);
 const borrowerStatus = computed(() => store.borrowerStatus);
 const locationLabel = computed(() => {
   if (!verification.value?.latitude || !verification.value?.longitude) {
-    return "-";
+    return "None";
   }
   if (verification.value.locationName) {
     return `${verification.value.locationName} (${verification.value.latitude}, ${verification.value.longitude})`;

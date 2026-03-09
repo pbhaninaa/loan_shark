@@ -34,7 +34,7 @@
         </template>
         <template #item.loanAmount="{ item }">{{ formatCurrency(item.loanAmount) }}</template>
         <template #item.totalAmount="{ item }">{{ formatCurrency(item.totalAmount) }}</template>
-        <template #item.dueDate="{ item }">{{ item.dueDate || "-" }}</template>
+        <template #item.dueDate="{ item }">{{ item.dueDate || "None" }}</template>
         <template #item.actions="{ item }">
           <AppActionButton size="small" color="secondary" variant="tonal" text="View Schedule" @click="openSchedule(item.id)" />
         </template>
