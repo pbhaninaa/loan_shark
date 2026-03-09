@@ -61,13 +61,13 @@
         <div class="text-h6">{{ selectedProfile.firstName }} {{ selectedProfile.lastName }}</div>
         <div class="text-body-2 text-medium-emphasis mb-3">Client #{{ selectedProfile.id }}</div>
         <v-list density="comfortable" class="py-0">
-          <v-list-item title="ID number" :subtitle="selectedProfile.idNumber || '—'" />
-          <v-list-item title="Phone" :subtitle="selectedProfile.phone || '—'" />
-          <v-list-item title="Email" :subtitle="selectedProfile.email || '—'" />
-          <v-list-item title="Address" :subtitle="selectedProfile.address || '—'" />
-          <v-list-item title="Employment status" :subtitle="selectedProfile.employmentStatus || '—'" />
+          <v-list-item title="ID number" :subtitle="selectedProfile.idNumber || 'None'" />
+          <v-list-item title="Phone" :subtitle="selectedProfile.phone || 'None'" />
+          <v-list-item title="Email" :subtitle="selectedProfile.email || 'None'" />
+          <v-list-item title="Address" :subtitle="selectedProfile.address || 'None'" />
+          <v-list-item title="Employment status" :subtitle="selectedProfile.employmentStatus || 'None'" />
           <v-list-item title="Monthly income" :subtitle="formatCurrency(selectedProfile.monthlyIncome)" />
-          <v-list-item title="Employer" :subtitle="selectedProfile.employerName || '—'" />
+          <v-list-item title="Employer" :subtitle="selectedProfile.employerName || 'None'" />
         </v-list>
         <div class="d-flex ga-2 flex-wrap mt-3">
           <v-chip :color="selectedProfile.status === 'BLACKLISTED' ? 'error' : 'success'" variant="tonal">

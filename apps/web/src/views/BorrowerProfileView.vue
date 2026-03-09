@@ -17,7 +17,7 @@
         <div class="text-body-2 text-medium-emphasis mb-4">Client #{{ profile.id }}</div>
         <v-list density="comfortable">
           <v-list-item title="Phone" :subtitle="profile.phone" />
-          <v-list-item title="Email" :subtitle="profile.email || '-'" />
+          <v-list-item title="Email" :subtitle="profile.email || 'None'" />
           <v-list-item title="Address" :subtitle="profile.address" />
           <v-list-item title="Employment" :subtitle="profile.employmentStatus" />
           <v-list-item title="Monthly Income" :subtitle="formatCurrency(profile.monthlyIncome)" />

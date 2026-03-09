@@ -26,7 +26,7 @@
             <div class="text-body-2 text-medium-emphasis mb-4">Client #{{ profile.id }}</div>
             <v-list density="compact">
               <v-list-item title="Phone" :subtitle="profile.phone" />
-              <v-list-item title="Email" :subtitle="profile.email || '-'" />
+              <v-list-item title="Email" :subtitle="profile.email || 'None'" />
               <v-list-item title="Address" :subtitle="profile.address" />
               <v-list-item title="Employment" :subtitle="profile.employmentStatus" />
               <v-list-item title="Monthly Income" :subtitle="`R ${profile.monthlyIncome}`" />
@@ -55,7 +55,7 @@
             </template>
             <template #item.loanAmount="{ item }">R {{ item.loanAmount }}</template>
             <template #item.totalAmount="{ item }">R {{ item.totalAmount }}</template>
-            <template #item.dueDate="{ item }">{{ item.dueDate || "-" }}</template>
+            <template #item.dueDate="{ item }">{{ item.dueDate || "None" }}</template>
             <template #item.actions="{ item }">
               <AppActionButton size="small" color="secondary" variant="tonal" text="View Schedule" @click="showSchedule(item.id)" />
             </template>

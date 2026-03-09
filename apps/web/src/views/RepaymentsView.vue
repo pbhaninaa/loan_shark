@@ -40,7 +40,7 @@
             @update:model-value="onFilterLoanChange"
           />
         </template>
-        <template #item.borrowerFullName="{ item }">{{ item.borrowerFullName || item.borrowerUsername || "—" }}</template>
+        <template #item.borrowerFullName="{ item }">{{ item.borrowerFullName || item.borrowerUsername || "None" }}</template>
         <template #item.loanId="{ item }">#{{ item.loanId }}</template>
         <template #item.amountPaid="{ item }">{{ formatCurrency(item.amountPaid) }}</template>
         <template #item.paymentDate="{ item }">{{ formatDate(item.paymentDate) }}</template>
@@ -48,7 +48,7 @@
           <v-chip color="success" size="small" variant="tonal">{{ item.paymentMethod }}</v-chip>
         </template>
         <template #item.referenceNumber="{ item }">{{ item.referenceNumber }}</template>
-        <template #item.capturedByUsername="{ item }">{{ item.capturedByUsername || "—" }}</template>
+        <template #item.capturedByUsername="{ item }">{{ item.capturedByUsername || "None" }}</template>
         <template #footer>
           <AppPaginationFooter v-model="page" :total-pages="repaymentsPage.totalPages" :total-elements="repaymentsPage.totalElements" @update:model-value="loadRepayments" />
         </template>
@@ -155,7 +155,7 @@ onMounted(async () => {
 });
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) return "None";
   const d = new Date(value);
   return d.toLocaleDateString(undefined, { dateStyle: "short" }) + " " + d.toLocaleTimeString(undefined, { timeStyle: "short" });
 }
