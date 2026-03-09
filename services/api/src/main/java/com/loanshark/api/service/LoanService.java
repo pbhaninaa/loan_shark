@@ -367,13 +367,24 @@ public class LoanService {
 
     private LoanResponse toResponse(Loan loan) {
         String borrowerUsername = null;
-        if (loan.getBorrower() != null && loan.getBorrower().getUser() != null) {
-            borrowerUsername = loan.getBorrower().getUser().getUsername();
+        String borrowerFullName = null;
+        if (loan.getBorrower() != null) {
+            if (loan.getBorrower().getUser() != null) {
+                borrowerUsername = loan.getBorrower().getUser().getUsername();
+            }
+            String first = loan.getBorrower().getFirstName();
+            String last = loan.getBorrower().getLastName();
+            if (first != null || last != null) {
+                borrowerFullName = (first != null ? first : "").trim() + " " + (last != null ? last : "").trim();
+                borrowerFullName = borrowerFullName.trim();
+                if (borrowerFullName.isEmpty()) borrowerFullName = null;
+            }
         }
         return new LoanResponse(
             loan.getId(),
             loan.getBorrower().getId(),
             borrowerUsername,
+            borrowerFullName,
             loan.getLoanAmount(),
             loan.getInterestRate(),
             loan.getTotalAmount(),

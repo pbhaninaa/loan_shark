@@ -68,6 +68,10 @@
               item-title="title"
               item-value="value"
             />
+            <v-alert v-if="selectedLoan" type="warning" variant="tonal" density="compact" class="mt-2 mb-2">
+              <strong>Paying for:</strong> {{ selectedLoan.borrowerFullName || selectedLoan.borrowerUsername || `Client #${selectedLoan.borrowerId}` }}
+              <span class="text-caption d-block mt-1">Confirm this is the person making the payment to avoid crediting the wrong account.</span>
+            </v-alert>
             <AppTextField v-model.number="form.amountPaid" label="Amount paid" type="number" prepend-inner-icon="mdi-cash" />
             <AppSelectField v-model="form.paymentMethod" label="Payment method" :items="paymentMethods" />
             <AppTextField v-model="form.referenceNumber" label="Reference number" prepend-inner-icon="mdi-receipt-text-outline" />
@@ -100,17 +104,20 @@ const repaymentsPage = computed(() => store.repaymentsPage);
 const loanOptions = computed(() =>
   store.loans
     .filter((loan) => loan.status !== "REJECTED")
-    .map((loan) => ({
-      title: `Loan #${loan.id} - ${loan.borrowerUsername || `Client #${loan.borrowerId}`} - ${loan.status}`,
-      value: loan.id
-    }))
+    .map((loan) => {
+      const payerLabel = loan.borrowerFullName || loan.borrowerUsername || `Client #${loan.borrowerId}`;
+      return {
+        title: `Loan #${loan.id} — ${payerLabel} — ${loan.status}`,
+        value: loan.id
+      };
+    })
 );
 const selectedLoan = computed(() =>
   form.loanId ? store.loans.find((l) => l.id === form.loanId) : null
 );
 const selectedLoanAccountLabel = computed(() => {
   if (!selectedLoan.value) return "Repayment History";
-  const name = selectedLoan.value.borrowerUsername || `Client #${selectedLoan.value.borrowerId}`;
+  const name = selectedLoan.value.borrowerFullName || selectedLoan.value.borrowerUsername || `Client #${selectedLoan.value.borrowerId}`;
   return `Repayment history — ${name} (Loan #${form.loanId})`;
 });
 const paymentMethods = ["CASH", "EFT", "MOBILE_TRANSFER"];
