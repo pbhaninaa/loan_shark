@@ -15,25 +15,25 @@ import org.springframework.stereotype.Service;
 @Service
 public class JwtService {
 
-    /** HS512 requires at least 64 bytes (512 bits). */
-    private static final int MIN_SECRET_BYTES = 64;
-
     @Value("${jwt.secret:}")
     private String secret;
 
-    @Value("${jwt.expiration:3600000}")
+    @Value("${jwt.expiration-ms:3600000}")
     private long expirationMs;
+
+    @Value("${jwt.min-secret-length:64}")
+    private int minSecretLength;
 
     @PostConstruct
     void validateSecret() {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
-                "JWT secret is not set. Set JWT_SECRET environment variable (min 64 characters for HS512).");
+                "JWT secret is not set. Set jwt.secret or JWT_SECRET (min length: " + minSecretLength + ").");
         }
-        if (secret.getBytes(StandardCharsets.UTF_8).length < MIN_SECRET_BYTES) {
+        int length = secret.getBytes(StandardCharsets.UTF_8).length;
+        if (length < minSecretLength) {
             throw new IllegalStateException(
-                "JWT secret must be at least 64 characters (bytes) for HS512. Current length: "
-                    + secret.getBytes(StandardCharsets.UTF_8).length + ". Set JWT_SECRET on Railway.");
+                "JWT secret must be at least " + minSecretLength + " bytes (HS512). Current: " + length + ". Set jwt.secret or JWT_SECRET.");
         }
     }
 
