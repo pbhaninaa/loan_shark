@@ -8,6 +8,14 @@ body,
   font-family: Inter, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Dark mode: no white gap at bottom on mobile (root and viewport use dark bg) */
+html.theme-dark,
+html.theme-dark body,
+html.theme-dark #app,
+html.theme-dark .viewport-scaler-outer {
+  background: #0f172a;
+}
+
 .viewport-scaler-outer {
   position: fixed;
   top: 0;
@@ -16,6 +24,7 @@ body,
   height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
+  background: #f5f7fb;
 }
 
 .viewport-scaler-inner {

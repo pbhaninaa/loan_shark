@@ -128,12 +128,13 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from "vue";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useTheme } from "vuetify";
 import { useAppStore } from "./store";
 
 const DRAWER_KEY = "loanSharkDarkMode";
+const THEME_DARK_CLASS = "theme-dark";
 
 const REF_WIDTH = 1280;
 const REF_HEIGHT = 800;
@@ -163,8 +164,15 @@ function applySavedTheme() {
   } catch (_) {}
 }
 
+function syncDarkClassToDocument() {
+  document.documentElement.classList.toggle(THEME_DARK_CLASS, isDark.value);
+}
+
+watch(isDark, syncDarkClassToDocument, { immediate: true });
+
 onMounted(() => {
   applySavedTheme();
+  syncDarkClassToDocument();
   updateScale();
   window.addEventListener("resize", updateScale);
 });
