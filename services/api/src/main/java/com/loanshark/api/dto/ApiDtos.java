@@ -231,6 +231,7 @@ public final class ApiDtos {
     public record LoanResponse(
         UUID id,
         UUID borrowerId,
+        String borrowerUsername,
         BigDecimal loanAmount,
         BigDecimal interestRate,
         BigDecimal totalAmount,
@@ -294,6 +295,8 @@ public final class ApiDtos {
     public record RepaymentResponse(
         UUID id,
         UUID loanId,
+        String borrowerUsername,
+        String borrowerFullName,
         BigDecimal amountPaid,
         Instant paymentDate,
         PaymentMethod paymentMethod,

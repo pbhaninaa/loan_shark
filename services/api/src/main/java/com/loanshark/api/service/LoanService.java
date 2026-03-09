@@ -366,9 +366,14 @@ public class LoanService {
     }
 
     private LoanResponse toResponse(Loan loan) {
+        String borrowerUsername = null;
+        if (loan.getBorrower() != null && loan.getBorrower().getUser() != null) {
+            borrowerUsername = loan.getBorrower().getUser().getUsername();
+        }
         return new LoanResponse(
             loan.getId(),
             loan.getBorrower().getId(),
+            borrowerUsername,
             loan.getLoanAmount(),
             loan.getInterestRate(),
             loan.getTotalAmount(),

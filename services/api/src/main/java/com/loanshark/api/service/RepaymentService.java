@@ -105,9 +105,26 @@ public class RepaymentService {
         businessCapitalService.addRepayment(request.amountPaid());
 
         auditLogService.record(currentUser.getId(), "RECORD_REPAYMENT", "Repayment", repayment.getId().toString(), request.referenceNumber());
+
+        String borrowerUsername = loan.getBorrower() != null && loan.getBorrower().getUser() != null
+            ? loan.getBorrower().getUser().getUsername() : null;
+        String borrowerFullName = loan.getBorrower() != null
+            ? (loan.getBorrower().getFirstName() != null ? loan.getBorrower().getFirstName() : "").trim()
+                + " " + (loan.getBorrower().getLastName() != null ? loan.getBorrower().getLastName() : "").trim()
+            : null;
+        if (borrowerFullName != null) borrowerFullName = borrowerFullName.trim();
+        if (borrowerUsername != null) {
+            notificationService.notifyUser(
+                loan.getBorrower().getUser().getId(),
+                "REPAYMENT",
+                "Your payment of " + request.amountPaid() + " was recorded. Your debt has been reduced."
+            );
+        }
         return new RepaymentResponse(
             repayment.getId(),
             loan.getId(),
+            borrowerUsername,
+            borrowerFullName,
             repayment.getAmountPaid(),
             repayment.getPaymentDate(),
             repayment.getPaymentMethod(),
@@ -134,11 +151,20 @@ public class RepaymentService {
             query == null ? "" : query.trim(),
             PageRequest.of(page, size)
         );
+        String borrowerUsername = loan.getBorrower() != null && loan.getBorrower().getUser() != null
+            ? loan.getBorrower().getUser().getUsername() : null;
+        String borrowerFullName = loan.getBorrower() != null
+            ? (loan.getBorrower().getFirstName() != null ? loan.getBorrower().getFirstName() : "").trim()
+                + " " + (loan.getBorrower().getLastName() != null ? loan.getBorrower().getLastName() : "").trim()
+            : null;
+        if (borrowerFullName != null) borrowerFullName = borrowerFullName.trim();
         return new PageResponse<>(
             repaymentPage.getContent().stream()
                 .map(repayment -> new RepaymentResponse(
                     repayment.getId(),
                     repayment.getLoan().getId(),
+                    borrowerUsername,
+                    borrowerFullName,
                     repayment.getAmountPaid(),
                     repayment.getPaymentDate(),
                     repayment.getPaymentMethod(),
