@@ -2,6 +2,19 @@
   <v-row justify="center" align="center" class="fill-height" style="min-height: calc(100vh - 96px);">
     <v-col cols="12" sm="12" md="8" lg="7" class="d-flex justify-center">
       <v-card class="pa-6 pa-md-10 login-card" style="max-width: 540px; width: 100%;">
+        <div class="login-logo text-center mb-6">
+          <img
+            v-if="logoImgSrc"
+            :src="logoImgSrc"
+            alt="Loan Shark"
+            class="login-logo-img mb-2"
+            @error="logoImgSrc = null"
+          />
+          <div class="d-flex align-center justify-center gap-2 flex-column flex-sm-row">
+            <v-icon size="40" color="primary">mdi-shark-fin</v-icon>
+            <span class="text-h4 font-weight-bold">Loan Shark</span>
+          </div>
+        </div>
         <div class="mb-6">
           <div class="text-overline text-primary">{{ headingLabel }}</div>
           <div class="text-h4 font-weight-bold">
@@ -299,6 +312,8 @@ const loading = ref(false);
 const error = ref("");
 const infoMessage = ref("");
 const mode = ref("login");
+// Optional logo image: add public/logo.svg or public/logo.png to show your brand image; on load error we hide it and show icon+text only
+const logoImgSrc = ref("/logo.svg");
 const borrowerStep = ref(1);
 const borrowerSubmitted = ref(false);
 const selfieVideoRef = ref(null);
@@ -720,3 +735,11 @@ function goToVerificationAfterRegister() {
   router.push("/my-portal/verification");
 }
 </script>
+
+<style scoped>
+.login-logo-img {
+  max-height: 64px;
+  width: auto;
+  object-fit: contain;
+}
+</style>

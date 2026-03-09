@@ -26,7 +26,7 @@ public class DashboardController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'CASHIER')")
     public DashboardSummaryResponse summary() {
         return dashboardService.summary();
     }
