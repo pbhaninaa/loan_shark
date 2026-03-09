@@ -62,9 +62,6 @@ public class LoanService {
 
     private static final BigDecimal EIGHTY_PERCENT = new BigDecimal("0.80");
 
-    @Value("${app.loan.default-installments}")
-    private int defaultInstallments;
-
     @Value("${app.loan.cashier-approval-limit:10000}")
     private String cashierApprovalLimitConfig;
 
@@ -336,17 +333,27 @@ public class LoanService {
         }
     }
 
+    /**
+     * Generates repayment schedule from loan total amount, term and interest period (from settings).
+     * Number of installments = ceil(loanTermDays / interestPeriodDays); due dates align with each period.
+     */
     private void generateSchedule(Loan loan) {
-        int installments = loan.getLoanTermDays() >= 28 ? defaultInstallments : 1;
-        BigDecimal amountPerInstallment = loan.getTotalAmount()
-            .divide(new BigDecimal(installments), 2, RoundingMode.HALF_UP);
+        int termDays = loan.getLoanTermDays() != null && loan.getLoanTermDays() > 0 ? loan.getLoanTermDays() : 365;
+        int periodDays = loan.getInterestPeriodDays() != null && loan.getInterestPeriodDays() > 0
+            ? loan.getInterestPeriodDays()
+            : 30;
+        int installments = Math.max(1, (termDays + periodDays - 1) / periodDays);
+        BigDecimal total = loan.getTotalAmount();
+        BigDecimal amountPerInstallment = total.divide(new BigDecimal(installments), 2, RoundingMode.HALF_UP);
+        LocalDate issueDate = loan.getIssueDate() != null ? loan.getIssueDate() : LocalDate.now();
         for (int i = 1; i <= installments; i++) {
             RepaymentSchedule schedule = new RepaymentSchedule();
             schedule.setLoan(loan);
             schedule.setInstallmentNumber(i);
-            schedule.setDueDate(loan.getIssueDate().plusDays((long) i * (loan.getLoanTermDays() / installments)));
+            int daysFromIssue = Math.min(i * periodDays, termDays);
+            schedule.setDueDate(issueDate.plusDays(daysFromIssue));
             schedule.setAmountDue(i == installments
-                ? loan.getTotalAmount().subtract(amountPerInstallment.multiply(new BigDecimal(installments - 1)))
+                ? total.subtract(amountPerInstallment.multiply(new BigDecimal(installments - 1)))
                 : amountPerInstallment);
             schedule.setStatus(ScheduleStatus.PENDING);
             repaymentScheduleRepository.save(schedule);

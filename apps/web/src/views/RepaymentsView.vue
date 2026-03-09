@@ -50,7 +50,7 @@
 
     <AppDialogCard v-model="showRepaymentDialog" title="Capture Payment" :max-width="520">
       <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-        Select the loan (account) for this payment. The amount will reduce that client's debt and update the repayment schedule.
+        Select the loan and enter the amount received. The borrower can pay in full, pay installments as due, or pay whatever they can afford at any time—any amount is applied to their balance until the loan is paid off.
       </v-alert>
       <v-form @submit.prevent="recordRepayment">
             <AppSelectField

@@ -59,7 +59,7 @@ public class InterestCalculationService {
             return principal.setScale(2, RoundingMode.HALF_UP);
         }
 
-        BigDecimal rate = settings.getDefaultInterestRate();
+        BigDecimal rate = settings.getDefaultInterestRate() != null ? settings.getDefaultInterestRate() : BigDecimal.ZERO;
         int periodDays = settings.getInterestPeriodDays() != null ? settings.getInterestPeriodDays() : 30;
         if (periodDays <= 0) {
             periodDays = 30;
