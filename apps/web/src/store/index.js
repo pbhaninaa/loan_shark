@@ -17,6 +17,7 @@ export const useAppStore = defineStore("app", {
     borrowerId,
     borrowerStatus,
     dashboard: null,
+    borrowerSummary: null,
     actions: [],
     actionsPage: { page: 0, size: 5, totalElements: 0, totalPages: 0 },
     borrowers: [],
@@ -79,6 +80,7 @@ export const useAppStore = defineStore("app", {
       this.borrowerId = null;
       this.borrowerStatus = null;
       this.dashboard = null;
+      this.borrowerSummary = null;
       this.actions = [];
       this.borrowerProfile = null;
       this.authMe = null;
@@ -193,6 +195,10 @@ export const useAppStore = defineStore("app", {
     async fetchDashboard() {
       const { data } = await api.get("/dashboard/summary");
       this.dashboard = data;
+    },
+    async fetchBorrowerSummary() {
+      const { data } = await api.get("/dashboard/borrower-summary");
+      this.borrowerSummary = data;
     },
     async fetchActions(params = {}) {
       const { data } = await api.get("/dashboard/actions", { params });

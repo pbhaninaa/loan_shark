@@ -162,9 +162,12 @@ const selectedLoanLabel = computed(() => (selectedLoanId.value ? `Loan #${select
 onMounted(async () => {
   try {
     await store.fetchMyLoans();
-    const routeLoanId = route.query.loanId ? Number(route.query.loanId) : null;
-    selectedLoanId.value = routeLoanId || loanOptions.value[0]?.value || null;
-    await loadSchedule(selectedLoanId.value);
+    const routeLoanId = route.query.loanId ? String(route.query.loanId) : null;
+    const firstLoanId = loanOptions.value[0]?.value ?? null;
+    selectedLoanId.value = routeLoanId || firstLoanId;
+    if (selectedLoanId.value) {
+      await loadSchedule(selectedLoanId.value);
+    }
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Could not load repayment schedules";
   }
@@ -173,23 +176,20 @@ onMounted(async () => {
 watch(
   () => route.query.loanId,
   async (loanId) => {
-    if (!loanId) {
-      return;
-    }
-    selectedLoanId.value = Number(loanId);
-    await loadSchedule(selectedLoanId.value);
+    if (!loanId) return;
+    const id = String(loanId);
+    selectedLoanId.value = id;
+    await loadSchedule(id);
   }
 );
 
 async function loadSchedule(loanId) {
-  if (!loanId) {
-    return;
-  }
+  if (!loanId || typeof loanId !== "string") return;
   error.value = "";
-  selectedLoanId.value = Number(loanId);
-  router.replace({ name: "borrower-schedule", query: { loanId: selectedLoanId.value } });
+  selectedLoanId.value = loanId;
+  router.replace({ name: "borrower-schedule", query: { loanId } });
   try {
-    await store.fetchLoanSchedule(selectedLoanId.value);
+    await store.fetchLoanSchedule(loanId);
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Could not load repayment schedule";
   }

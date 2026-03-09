@@ -181,21 +181,34 @@ onUnmounted(() => {
 });
 
 function pendingCount(badgeKey) {
-  if (!store.dashboard || !badgeKey) return 0;
-  const n = Number(store.dashboard[badgeKey]);
+  if (!badgeKey) return 0;
+  const source = store.isBorrower ? store.borrowerSummary : store.dashboard;
+  if (!source) return 0;
+  const n = Number(source[badgeKey]);
   return Number.isFinite(n) ? n : 0;
 }
 
 onMounted(() => {
-  if (store.isAuthenticated && !store.isBorrower) {
+  if (!store.isAuthenticated) return;
+  if (store.isBorrower) {
+    store.fetchBorrowerSummary();
+  } else {
     store.fetchDashboard();
   }
 });
 
 // Refresh pending counts when visiting pages that can change them
 router.afterEach((to) => {
-  if (store.isAuthenticated && !store.isBorrower && ["dashboard", "loans", "verifications"].includes(String(to.name))) {
-    store.fetchDashboard();
+  if (!store.isAuthenticated) return;
+  const name = String(to.name || "");
+  if (store.isBorrower) {
+    if (["borrower-notifications", "borrower-payment-history"].includes(name)) {
+      store.fetchBorrowerSummary();
+    }
+  } else {
+    if (["dashboard", "loans", "verifications", "repayments"].includes(name)) {
+      store.fetchDashboard();
+    }
   }
 });
 const showChangePasswordDialog = ref(false);
@@ -252,16 +265,16 @@ const navItems = computed(() => {
             { title: "My Profile", to: "/my-portal/profile", icon: "mdi-account-circle-outline" },
             { title: "My Loans", to: "/my-portal/loans", icon: "mdi-cash-multiple" },
             { title: "Repayment Schedule", to: "/my-portal/schedule", icon: "mdi-calendar-clock-outline" },
-            { title: "My payment history", to: "/my-portal/payment-history", icon: "mdi-history" },
-            { title: "Notifications", to: "/my-portal/notifications", icon: "mdi-bell-outline" },
-            { title: "Help & Contact", to: "/my-portal/help", icon: "mdi-help-circle-outline" },
-            { title: "My account", to: "/account", icon: "mdi-account-cog-outline" }
+            { title: "My payment history", to: "/my-portal/payment-history", icon: "mdi-history", badgeKey: "overdueSchedules" },
+            { title: "Notifications", to: "/my-portal/notifications", icon: "mdi-bell-outline", badgeKey: "unreadNotifications" },
+            { title: "My account", to: "/account", icon: "mdi-account-cog-outline" },
+            { title: "Help & Contact", to: "/my-portal/help", icon: "mdi-help-circle-outline" }
           ]
         : [
           { title: "Dashboard", to: "/dashboard", icon: "mdi-view-dashboard-outline" },
           { title: "Clients", to: "/borrowers", icon: "mdi-account-group-outline" },
           { title: "Loans", to: "/loans", icon: "mdi-cash-multiple", badgeKey: "pendingLoans" },
-          { title: "Repayments", to: "/repayments", icon: "mdi-cash-check" },
+          { title: "Repayments", to: "/repayments", icon: "mdi-cash-check", badgeKey: "overdueSchedules" },
           { title: "Notifications", to: "/notifications", icon: "mdi-bell-outline", badgeKey: "unreadNotifications" }
         ])
   ];
@@ -293,14 +306,15 @@ const navItems = computed(() => {
       to: "/settings/business-capital",
       icon: "mdi-bank-outline"
     });
-  }
-
-  // My account last for all staff (owner and cashier)
-  items.push({
+     items.push({
     title: "My account",
     to: "/account",
     icon: "mdi-account-cog-outline"
   });
+  }
+
+  // My account last for all staff (owner and cashier)
+ 
 
   return items;
 });

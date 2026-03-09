@@ -1,6 +1,7 @@
 package com.loanshark.api.controller;
 
 import com.loanshark.api.dto.ApiDtos.ActionResponse;
+import com.loanshark.api.dto.ApiDtos.BorrowerSummaryResponse;
 import com.loanshark.api.dto.ApiDtos.DashboardSummaryResponse;
 import com.loanshark.api.dto.ApiDtos.PageResponse;
 import com.loanshark.api.entity.AuditLog;
@@ -29,6 +30,12 @@ public class DashboardController {
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER')")
     public DashboardSummaryResponse summary() {
         return dashboardService.summary();
+    }
+
+    @GetMapping("/borrower-summary")
+    @PreAuthorize("hasRole('BORROWER')")
+    public BorrowerSummaryResponse borrowerSummary() {
+        return dashboardService.borrowerSummary();
     }
 
     @GetMapping("/audit-logs")

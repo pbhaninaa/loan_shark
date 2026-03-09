@@ -166,6 +166,11 @@ function onFilterLoanChange() {
 }
 
 async function openCapturePaymentDialog() {
+  await store.fetchLoans();
+  const activeLoans = store.loans.filter((l) => l.status === "ACTIVE");
+  if (activeLoans.length && !form.loanId) {
+    form.loanId = activeLoans[0].id;
+  }
   try {
     const { data } = await api.get("/repayments/next-reference");
     form.referenceNumber = data?.nextReference ?? "PAY-1001";
