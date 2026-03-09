@@ -2,7 +2,7 @@
   <div class="page-shell">
     <AppPageHeader
       title="Loan interest & term settings"
-      description="Configure default interest rate, type (simple/compound), interest period, grace period, and default loan term. These apply when clients apply for a loan with only the amount."
+      description="Configure default interest rate, type (simple/compound), interest period, grace period, and default loan term. The expected amount is calculated from what you put in (Business capital) and updates as you add more."
     >
       <template #actions>
         <v-chip color="primary" variant="tonal" size="large">Owner only</v-chip>
@@ -93,7 +93,7 @@
                   {{ formatCurrency(expectedAmount.expectedAmountDue) }}
                 </div>
                 <p class="text-caption text-medium-emphasis mt-2 mb-0">
-                  For principal {{ formatCurrency(expectedAmount.principal) }} over {{ expectedAmount.termDays }} days (using rate, type, period &amp; grace above).
+                  Based on <strong>what you put in</strong> ({{ formatCurrency(expectedAmount.principal) }}) over {{ expectedAmount.termDays }} days, using rate, type, period &amp; grace above. This updates when you add more funds in Business capital.
                 </p>
               </div>
             </v-col>

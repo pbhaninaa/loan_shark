@@ -88,7 +88,7 @@ public class LoanInterestSettingsService {
 
     /**
      * Compute expected amount due at end of default loan term for a given principal using current settings.
-     * Used to show owners what a loan of X (e.g. current business capital) would yield at term end.
+     * Principal is typically what the owner put in (total owner added); it updates as the owner continuously adds more in Business capital.
      */
     @Transactional(readOnly = true)
     public ExpectedAmountAtEndOfTermResponse getExpectedAmountAtEndOfTerm(BigDecimal principal) {

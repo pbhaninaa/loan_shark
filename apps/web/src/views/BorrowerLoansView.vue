@@ -47,7 +47,7 @@
     <AppDialogCard v-model="showApplyDialog" title="Apply For A Loan" :max-width="520" @update:model-value="onApplyDialogToggle">
       <v-form @submit.prevent="applyLoan">
         <v-alert v-if="availableBalance != null" type="info" variant="tonal" density="compact" class="mb-3">
-          Available for lending: <strong>{{ formatCurrency(availableBalance) }}</strong>. If you request more than this amount, your application cannot be approved until the business adds funds.
+          Money made (available for lending): <strong>{{ formatCurrency(availableBalance) }}</strong>. You can only be approved up to this amount. If you need more, the business must add funds first.
         </v-alert>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
           Interest and terms are set by the business. You can pay any amount at any time; each payment reduces what you owe and interest continues per business rules until the loan is paid off.

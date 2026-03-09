@@ -71,7 +71,7 @@
           item-value="value"
         />
         <v-alert v-if="availableBalance != null" type="info" variant="tonal" density="compact" class="mb-3">
-          Available for lending: <strong>{{ formatCurrency(availableBalance) }}</strong>. If the amount requested exceeds this, the application will be rejected until the admin adds funds.
+          Money made (available for lending): <strong>{{ formatCurrency(availableBalance) }}</strong>. Lending is limited to this so the rotation keeps flowing. If the amount requested exceeds this, the application will be rejected until the owner adds funds.
         </v-alert>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
           Interest and terms are set by the business. The client only chooses the amount; repayments reduce what they owe and interest continues per business rules until the loan is paid off.

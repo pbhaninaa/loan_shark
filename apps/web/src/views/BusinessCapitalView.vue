@@ -2,7 +2,7 @@
   <div class="page-shell">
     <AppPageHeader
       title="Business capital"
-      description="Amount left = money you currently have (initial + money in − money out). Money out = amount you gave to clients. Money in = amount paid by clients. Expected amount = pending payments from clients."
+      description="Track how much you put from your pocket and how much you got back. Loans are funded from this pool; we never forget what you contributed."
     >
       <template #actions>
         <v-chip color="primary" variant="tonal" size="large">Owner only</v-chip>
@@ -16,7 +16,47 @@
       {{ error }}
     </v-alert>
 
+    <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+      <strong>You put in:</strong> {{ formatCurrency(summary.principalAmount) }} from your pocket
+      &nbsp;·&nbsp;
+      <strong>You got back:</strong> {{ formatCurrency(summary.totalMoneyIn) }} from clients (repayments)
+    </v-alert>
+
     <v-row class="mb-4">
+      <v-col cols="12" sm="6" md="3">
+        <v-card>
+          <v-card-title class="d-flex align-center text-secondary">
+            <v-icon start>mdi-wallet-plus</v-icon>
+            What you put in
+          </v-card-title>
+          <v-divider />
+          <v-card-text>
+            <div class="text-h4 font-weight-bold">
+              {{ formatCurrency(summary.principalAmount) }}
+            </div>
+            <p class="text-caption text-medium-emphasis mt-2 mb-0">
+              Total you added from your pocket (every top-up). We track this so you always know how much you gave.
+            </p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-card>
+          <v-card-title class="d-flex align-center text-primary">
+            <v-icon start>mdi-cash-multiple</v-icon>
+            Money made
+          </v-card-title>
+          <v-divider />
+          <v-card-text>
+            <div class="text-h4 font-weight-bold">
+              {{ formatCurrency(summary.balance) }}
+            </div>
+            <p class="text-caption text-medium-emphasis mt-2 mb-0">
+              Principal + repayments in − disbursements out. Use this when lending to keep rotation flowing.
+            </p>
+          </v-card-text>
+        </v-card>
+      </v-col>
       <v-col cols="12" sm="6" md="3">
         <v-card>
           <v-card-title class="d-flex align-center text-error">
@@ -38,7 +78,7 @@
         <v-card>
           <v-card-title class="d-flex align-center text-success">
             <v-icon start>mdi-cash-plus</v-icon>
-            Money in
+            What you got back
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -46,7 +86,7 @@
               {{ formatCurrency(summary.totalMoneyIn) }}
             </div>
             <p class="text-caption text-medium-emphasis mt-2 mb-0">
-              Amount paid by clients (repayments).
+              Total paid by clients (repayments). So you can see how much you got at the end.
             </p>
           </v-card-text>
         </v-card>
@@ -55,7 +95,7 @@
         <v-card>
           <v-card-title class="d-flex align-center text-warning">
             <v-icon start>mdi-currency-usd</v-icon>
-            Expected amount
+            Expected from clients
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -63,24 +103,7 @@
               {{ formatCurrency(summary.expectedAmount) }}
             </div>
             <p class="text-caption text-medium-emphasis mt-2 mb-0">
-              Pending payments from clients .
-            </p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-title class="d-flex align-center text-primary">
-            <v-icon start>mdi-bank-outline</v-icon>
-            Amount left
-          </v-card-title>
-          <v-divider />
-          <v-card-text>
-            <div class="text-h4 font-weight-bold">
-              {{ formatCurrency(summary.balance) }}
-            </div>
-            <p class="text-caption text-medium-emphasis mt-2 mb-0">
-              Money you currently have (initial + money in ).
+              Pending payments from clients (not yet received).
             </p>
           </v-card-text>
         </v-card>
@@ -95,7 +118,7 @@
       <v-divider />
       <v-card-text>
         <p class="text-body-2 text-medium-emphasis mb-4">
-          Add initial capital or top up the lending pool. When clients repay, that money is added to the pool automatically.
+          Add money from your pocket (we track it under &quot;What you put in&quot;). When clients repay, that goes to &quot;What you got back&quot; and into the pool so you can keep lending.
         </p>
         <v-form @submit.prevent="topUp">
           <v-row dense align="center">
@@ -131,6 +154,7 @@ import { formatCurrency } from "../utils/formatters";
 const store = useAppStore();
 const summary = ref({
   balance: 0,
+  principalAmount: 0,
   totalMoneyOut: 0,
   totalMoneyIn: 0,
   expectedAmount: 0
@@ -149,6 +173,7 @@ async function loadSummary() {
     const data = await store.fetchBusinessCapitalSummary();
     summary.value = {
       balance: data.balance ?? 0,
+      principalAmount: data.principalAmount ?? 0,
       totalMoneyOut: data.totalMoneyOut ?? 0,
       totalMoneyIn: data.totalMoneyIn ?? 0,
       expectedAmount: data.expectedAmount ?? 0
@@ -171,7 +196,7 @@ async function topUp() {
     await store.topUpBusinessCapital(amount);
     topUpAmount.value = "";
     await loadSummary();
-    message.value = `Added ${formatCurrency(amount)}. New balance: ${formatCurrency(summary.value.balance)}.`;
+    message.value = `Added ${formatCurrency(amount)} from your pocket. Total you put in: ${formatCurrency(summary.value.principalAmount)}. Money made (available to lend): ${formatCurrency(summary.value.balance)}.`;
   } catch (e) {
     error.value = e.response?.data?.message || "Could not add funds.";
   } finally {

@@ -36,15 +36,15 @@ public class LoanInterestSettingsController {
     }
 
     /**
-     * Expected amount due at end of default loan term for a given principal using current settings.
-     * If principal is omitted and caller is owner, uses current business capital balance (e.g. after top-up).
+     * Expected amount due at end of default loan term for a given loan amount using current settings.
+     * If principal is omitted and caller is owner, uses owner-added capital (principal amount) for the preview—not money made.
      */
     @GetMapping("/expected-amount")
     public ExpectedAmountAtEndOfTermResponse getExpectedAmountAtEndOfTerm(
         @RequestParam(required = false) BigDecimal principal
     ) {
         if (principal == null) {
-            principal = businessCapitalService.getBalance();
+            principal = businessCapitalService.getPrincipalAmount();
         }
         return loanInterestSettingsService.getExpectedAmountAtEndOfTerm(principal);
     }
