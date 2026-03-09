@@ -17,44 +17,31 @@
     </v-alert>
 
     <AppTableCard title="Loan Applications" :count-label="`${loans.length} loans`">
-      <template #header-actions>
-        <AppSearchField v-model="search" label="Search my loans" style="min-width: 240px;" @update:model-value="handleSearch" />
-      </template>
-      <v-table>
-        <thead>
-          <tr>
-            <th>Loan</th>
-            <th>Status</th>
-            <th>Amount</th>
-            <th>Total</th>
-            <th>Due</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="loan in loans" :key="loan.id">
-            <td>#{{ loan.id }}</td>
-            <td>
-              <v-chip :color="statusColor(loan.status)" size="small" variant="tonal">
-                {{ loan.status }}
-              </v-chip>
-            </td>
-            <td>{{ formatCurrency(loan.loanAmount) }}</td>
-            <td>{{ formatCurrency(loan.totalAmount) }}</td>
-            <td>{{ loan.dueDate || "-" }}</td>
-            <td>
-              <AppActionButton
-                size="small"
-                color="secondary"
-                variant="tonal"
-                text="View Schedule"
-                @click="openSchedule(loan.id)"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
-      <AppPaginationFooter v-model="page" :total-pages="loansPage.totalPages" :total-elements="loansPage.totalElements" @update:model-value="loadLoans" />
+      <AppDataTable
+        title=""
+        :headers="loanHeaders"
+        :items="loans"
+        :loading="loading"
+        show-search
+        search-placeholder="Search my loans"
+        no-data-message="No loans."
+        :items-per-page="8"
+        @update:search-value="onSearch"
+      >
+        <template #item.id="{ item }">#{{ item.id }}</template>
+        <template #item.status="{ item }">
+          <v-chip :color="statusColor(item.status)" size="small" variant="tonal">{{ item.status }}</v-chip>
+        </template>
+        <template #item.loanAmount="{ item }">{{ formatCurrency(item.loanAmount) }}</template>
+        <template #item.totalAmount="{ item }">{{ formatCurrency(item.totalAmount) }}</template>
+        <template #item.dueDate="{ item }">{{ item.dueDate || "-" }}</template>
+        <template #item.actions="{ item }">
+          <AppActionButton size="small" color="secondary" variant="tonal" text="View Schedule" @click="openSchedule(item.id)" />
+        </template>
+        <template #footer>
+          <AppPaginationFooter v-model="page" :total-pages="loansPage.totalPages" :total-elements="loansPage.totalElements" @update:model-value="loadLoans" />
+        </template>
+      </AppDataTable>
     </AppTableCard>
 
     <AppDialogCard v-model="showApplyDialog" title="Apply For A Loan" :max-width="520" @update:model-value="onApplyDialogToggle">
@@ -80,9 +67,9 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import AppActionButton from "../components/ui/AppActionButton.vue";
 import AppDialogCard from "../components/ui/AppDialogCard.vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
-import AppSearchField from "../components/ui/AppSearchField.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
 import api from "../services/api";
@@ -96,6 +83,16 @@ const message = ref("");
 const error = ref("");
 const search = ref("");
 const page = ref(0);
+const loading = ref(false);
+
+const loanHeaders = [
+  { title: "Loan", key: "id" },
+  { title: "Status", key: "status" },
+  { title: "Amount", key: "loanAmount" },
+  { title: "Total", key: "totalAmount" },
+  { title: "Due", key: "dueDate" },
+  { title: "Actions", key: "actions" }
+];
 
 const applyForm = reactive({
   loanAmount: 1000
@@ -154,7 +151,18 @@ function statusColor(status) {
 
 async function loadLoans(nextPage = page.value) {
   page.value = nextPage;
-  await store.fetchMyLoans({ q: search.value, page: page.value, size: 8 });
+  loading.value = true;
+  try {
+    await store.fetchMyLoans({ q: search.value, page: page.value, size: 8 });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function onSearch(value) {
+  search.value = value;
+  page.value = 0;
+  loadLoans(0);
 }
 
 async function handleSearch() {

@@ -18,44 +18,36 @@
     </v-alert>
 
     <AppTableCard title="All Users" :count-label="`${users.length} users`">
-      <template #header-actions>
-        <AppSearchField v-model="search" label="Search users" style="min-width: 240px;" @update:model-value="handleSearch" />
-      </template>
-        <v-table>
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Role</th>
-              <th>Status</th>
-              <!-- <th>Client Link</th> -->
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id">
-              <td>{{ user.username }}</td>
-              <td>
-                <v-chip color="info" size="small" variant="tonal">{{ user.role }}</v-chip>
-              </td>
-              <td>
-                <v-chip :color="user.status === 'ACTIVE' ? 'success' : 'warning'" size="small" variant="tonal">
-                  {{ user.status }}
-                </v-chip>
-              </td>
-              <!-- <td>{{ user.borrowerId ? `Client #${user.borrowerId}` : "-" }}</td> -->
-              <td>{{ formatDate(user.createdAt) }}</td>
-              <td>
-                <div class="d-flex ga-2 flex-wrap">
-                  <AppActionButton size="small" variant="tonal" text="Edit" @click="startEdit(user)" />
-                  <AppActionButton size="small" variant="tonal" text="Reset password" prepend-icon="mdi-lock-reset" @click="openResetPasswordDialog(user)" />
-                  <AppActionButton size="small" color="error" variant="tonal" text="Delete" @click="removeUser(user.id)" />
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
-      <AppPaginationFooter v-model="page" :total-pages="usersPage.totalPages" :total-elements="usersPage.totalElements" @update:model-value="loadUsers" />
+      <AppDataTable
+        title=""
+        :headers="userHeaders"
+        :items="users"
+        :loading="loading"
+        show-search
+        search-placeholder="Search users"
+        no-data-message="No users."
+        :items-per-page="8"
+        @update:search-value="onSearch"
+      >
+        <template #item.username="{ item }">{{ item.username }}</template>
+        <template #item.role="{ item }">
+          <v-chip color="info" size="small" variant="tonal">{{ item.role }}</v-chip>
+        </template>
+        <template #item.status="{ item }">
+          <v-chip :color="item.status === 'ACTIVE' ? 'success' : 'warning'" size="small" variant="tonal">{{ item.status }}</v-chip>
+        </template>
+        <template #item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
+        <template #item.actions="{ item }">
+          <div class="d-flex ga-2 flex-wrap">
+            <AppActionButton size="small" variant="tonal" text="Edit" @click="startEdit(item)" />
+            <AppActionButton size="small" variant="tonal" text="Reset password" prepend-icon="mdi-lock-reset" @click="openResetPasswordDialog(item)" />
+            <AppActionButton size="small" color="error" variant="tonal" text="Delete" @click="removeUser(item.id)" />
+          </div>
+        </template>
+        <template #footer>
+          <AppPaginationFooter v-model="page" :total-pages="usersPage.totalPages" :total-elements="usersPage.totalElements" @update:model-value="loadUsers" />
+        </template>
+      </AppDataTable>
     </AppTableCard>
 
     <AppDialogCard v-model="showFormDialog" :title="editingUserId ? 'Edit User' : 'Create User'">
@@ -113,9 +105,9 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import AppActionButton from "../components/ui/AppActionButton.vue";
 import AppDialogCard from "../components/ui/AppDialogCard.vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
-import AppSearchField from "../components/ui/AppSearchField.vue";
 import AppSelectField from "../components/ui/AppSelectField.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
@@ -132,6 +124,15 @@ const resetPasswordForm = ref({ newPassword: "", confirmPassword: "" });
 const resetPasswordLoading = ref(false);
 const search = ref("");
 const page = ref(0);
+const loading = ref(false);
+
+const userHeaders = [
+  { title: "Username", key: "username" },
+  { title: "Role", key: "role" },
+  { title: "Status", key: "status" },
+  { title: "Created", key: "createdAt" },
+  { title: "Actions", key: "actions" }
+];
 
 const roleOptions = ["OWNER", "CASHIER"];
 const statusOptions = ["ACTIVE", "DISABLED"];
@@ -211,7 +212,18 @@ function formatDate(value) {
 
 async function loadUsers(nextPage = page.value) {
   page.value = nextPage;
-  await store.fetchUsers({ q: search.value, page: page.value, size: 8 });
+  loading.value = true;
+  try {
+    await store.fetchUsers({ q: search.value, page: page.value, size: 8 });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function onSearch(value) {
+  search.value = value;
+  page.value = 0;
+  loadUsers(0);
 }
 
 async function handleSearch() {

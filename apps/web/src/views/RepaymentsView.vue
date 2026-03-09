@@ -14,45 +14,38 @@
       :count-label="`${repayments.length} payments`"
       chip-color="info"
     >
-      <template #header-actions>
-        <AppSearchField v-model="search" label="Search repayments" style="min-width: 240px;" @update:model-value="handleSearch" />
-        <AppActionButton
-          text="Load Loan History"
-          color="secondary"
-          variant="tonal"
-          prepend-icon="mdi-history"
-          @click="loadRepayments"
-        />
-      </template>
-      <v-table>
-        <thead>
-          <tr><th>Payer (full name)</th>
-            <!-- <th>ID</th> -->
-            <th>Loan</th>
-            
-            <th>Amount</th>
-            <th>Method</th>
-            <th>Reference</th>
-            <th>Recorded by</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="repayment in repayments" :key="repayment.id"> <td>{{ repayment.borrowerFullName || repayment.borrowerUsername || "—" }}</td>
-          
-            <!-- <td>#{{ repayment.id }}</td> -->
-            <td>{{ repayment.loanId }}</td>
-             <td>{{ formatCurrency(repayment.amountPaid) }}</td>
-            <td>
-              <v-chip color="success" size="small" variant="tonal">
-                {{ repayment.paymentMethod }}
-              </v-chip>
-            </td>
-            <td>{{ repayment.referenceNumber }}</td>
-            <td>{{ repayment.capturedByUsername || "—" }}</td>
-          </tr>
-        </tbody>
-      </v-table>
-      <AppPaginationFooter v-model="page" :total-pages="repaymentsPage.totalPages" :total-elements="repaymentsPage.totalElements" @update:model-value="loadRepayments" />
+      <AppDataTable
+        title=""
+        :headers="repaymentHeaders"
+        :items="repayments"
+        :loading="loading"
+        show-search
+        search-placeholder="Search repayments"
+        no-data-message="No repayments."
+        :items-per-page="8"
+        @update:search-value="onSearch"
+      >
+        <template #header-actions>
+          <AppActionButton
+            text="Load Loan History"
+            color="secondary"
+            variant="tonal"
+            prepend-icon="mdi-history"
+            @click="loadRepayments"
+          />
+        </template>
+        <template #item.borrowerFullName="{ item }">{{ item.borrowerFullName || item.borrowerUsername || "—" }}</template>
+        <template #item.loanId="{ item }">{{ item.loanId }}</template>
+        <template #item.amountPaid="{ item }">{{ formatCurrency(item.amountPaid) }}</template>
+        <template #item.paymentMethod="{ item }">
+          <v-chip color="success" size="small" variant="tonal">{{ item.paymentMethod }}</v-chip>
+        </template>
+        <template #item.referenceNumber="{ item }">{{ item.referenceNumber }}</template>
+        <template #item.capturedByUsername="{ item }">{{ item.capturedByUsername || "—" }}</template>
+        <template #footer>
+          <AppPaginationFooter v-model="page" :total-pages="repaymentsPage.totalPages" :total-elements="repaymentsPage.totalElements" @update:model-value="loadRepayments" />
+        </template>
+      </AppDataTable>
     </AppTableCard>
 
     <AppDialogCard v-model="showRepaymentDialog" title="Capture Payment" :max-width="520">
@@ -87,10 +80,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import AppActionButton from "../components/ui/AppActionButton.vue";
+import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppDialogCard from "../components/ui/AppDialogCard.vue";
 import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
-import AppSearchField from "../components/ui/AppSearchField.vue";
 import AppSelectField from "../components/ui/AppSelectField.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
@@ -124,6 +117,16 @@ const paymentMethods = ["CASH", "EFT", "MOBILE_TRANSFER"];
 const showRepaymentDialog = ref(false);
 const search = ref("");
 const page = ref(0);
+const loading = ref(false);
+
+const repaymentHeaders = [
+  { title: "Payer (full name)", key: "borrowerFullName" },
+  { title: "Loan", key: "loanId" },
+  { title: "Amount", key: "amountPaid" },
+  { title: "Method", key: "paymentMethod" },
+  { title: "Reference", key: "referenceNumber" },
+  { title: "Recorded by", key: "capturedByUsername" }
+];
 
 const form = reactive({
   loanId: null,
@@ -162,11 +165,20 @@ async function recordRepayment() {
 }
 
 async function loadRepayments(nextPage = page.value) {
-  if (!form.loanId) {
-    return;
-  }
+  if (!form.loanId) return;
   page.value = nextPage;
-  await store.fetchRepayments(form.loanId, { q: search.value, page: page.value, size: 8 });
+  loading.value = true;
+  try {
+    await store.fetchRepayments(form.loanId, { q: search.value, page: page.value, size: 8 });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function onSearch(value) {
+  search.value = value;
+  page.value = 0;
+  loadRepayments(0);
 }
 
 async function handleSearch() {
