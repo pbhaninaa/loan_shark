@@ -90,9 +90,9 @@ public class RepaymentService {
     }
 
     /**
-     * Records a payment against the selected loan. Every payment reduces the debt of the borrower
-     * who owns that loan: the amount is applied to that loan's repayment schedule (installments).
-     * The loan is chosen by the cashier/borrower in the UI; ensure the correct loan (payer) is selected.
+     * Records a payment against the selected loan. The borrower is not bound to installment amounts:
+     * they can pay in full, pay what they can afford, or pay any amount at any time. The payment
+     * is applied to the schedule in order (oldest unpaid first), reducing debt until the loan is paid off.
      */
     @Transactional
     public RepaymentResponse record(RepaymentRequest request) {
@@ -207,7 +207,7 @@ public class RepaymentService {
         );
     }
 
-    /** Applies the payment to this loan's installments, reducing the paying borrower's outstanding debt. */
+    /** Applies the payment to this loan's installments in order. Any amount is accepted; partial payments reduce the next installment's amount due. */
     private void applyPaymentToSchedule(Loan loan, BigDecimal amountPaid) {
         BigDecimal remaining = amountPaid;
         List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId());

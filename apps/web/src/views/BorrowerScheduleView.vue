@@ -22,6 +22,9 @@
     </AppTableCard>
 
     <AppTableCard title="Installment Schedule" :count-label="`${schedule.length} installments`" chip-color="info">
+      <p class="text-body-2 text-medium-emphasis mb-3">
+        Suggested installments and due dates. You are not bound to these amounts—pay any amount you can, in full or in parts, until the loan is paid off.
+      </p>
       <AppDataTable
         title=""
         :headers="scheduleHeaders"
@@ -56,10 +59,13 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-cash-check</v-icon>
-          Pay installment #{{ payForm.installmentNumber }}
+          Make a payment
         </v-card-title>
         <v-divider />
         <v-card-text>
+          <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+            Pay any amount you can afford. You can pay in full, pay one installment, or pay a partial amount—it all reduces your debt until the loan is paid off.
+          </v-alert>
           <v-alert v-if="payError" type="error" variant="tonal" class="mb-3" density="compact">
             {{ payError }}
           </v-alert>
@@ -71,7 +77,7 @@
               step="0.01"
               min="0.01"
               prepend-inner-icon="mdi-cash"
-              hint="Amount to pay for this installment."
+              hint="Enter any amount; suggested amount shown from this installment."
             />
             <AppSelectField
               v-model="payForm.paymentMethod"

@@ -61,7 +61,7 @@
                 type="number"
                 min="0"
                 prepend-inner-icon="mdi-timer-sand"
-                hint="Days after due date before extra interest applies (0 = no grace)."
+                hint="First N days after disbursement do not attract interest (0 = interest from day one)."
               />
             </v-col>
             <v-col cols="12" md="6">
