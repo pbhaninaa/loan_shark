@@ -18,7 +18,7 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
         where :query = '' or
               lower(str(c.type)) like lower(concat('%', :query, '%')) or
               lower(c.referenceNumber) like lower(concat('%', :query, '%')) or
-              str(c.loan.id) like concat('%', :query, '%')
+              (c.loan is not null and str(c.loan.id) like concat('%', :query, '%'))
         order by c.capturedAt desc
         """)
     List<CashTransaction> searchTop200(@Param("query") String query);

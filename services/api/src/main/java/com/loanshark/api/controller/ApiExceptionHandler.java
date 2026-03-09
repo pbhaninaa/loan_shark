@@ -20,11 +20,36 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    /** Invalid path/query params (e.g. "NaN" for UUID) -> 400 instead of 500 */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String param = ex.getName();
+        String message = "Invalid value for '" + param + "'. Expected a valid identifier.";
+        if (ex.getRequiredType() != null && ex.getRequiredType().getName().contains("UUID")) {
+            message = "Invalid ID format for '" + param + "'. Please refresh and try again.";
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error(message, null));
+    }
+
+    /** e.g. UUID.fromString("NaN") throws IllegalArgumentException */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        if (msg.contains("UUID") || msg.contains("Invalid") || msg.contains("NaN")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(error("Invalid ID or parameter format. Please refresh and try again.", null));
+        }
+        log.warn("Illegal argument: {}", msg);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error(msg.isEmpty() ? "Invalid request" : msg, null));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
@@ -54,6 +79,16 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadCredentials(Exception exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .body(error("Invalid username or password", null));
+    }
+
+    /** Invalid JSON or invalid UUID/type in request body (e.g. loanId: "NaN") -> 400 */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleMessageNotReadable(HttpMessageNotReadableException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        String userMsg = (msg.contains("UUID") || msg.contains("NaN") || msg.contains("Cannot deserialize"))
+            ? "Invalid request body or ID format (e.g. invalid loan ID). Please refresh and try again."
+            : "Invalid request body. Check the format of your request.";
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error(userMsg, null));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
