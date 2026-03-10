@@ -2,6 +2,7 @@ package com.loanshark.api.service;
 
 import com.loanshark.api.dto.ApiDtos.NotificationResponse;
 import com.loanshark.api.dto.ApiDtos.PageResponse;
+import com.loanshark.api.dto.RequestNotification;
 import com.loanshark.api.entity.Borrower;
 import com.loanshark.api.entity.Loan;
 import com.loanshark.api.entity.Notification;
@@ -17,22 +18,37 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
 @Service
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final CurrentUserService currentUserService;
     private final EmailNotificationService emailNotificationService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public NotificationService(
         NotificationRepository notificationRepository,
         CurrentUserService currentUserService,
-        EmailNotificationService emailNotificationService
+        EmailNotificationService emailNotificationService,
+        SimpMessagingTemplate messagingTemplate
     ) {
         this.notificationRepository = notificationRepository;
         this.currentUserService = currentUserService;
         this.emailNotificationService = emailNotificationService;
+        this.messagingTemplate = messagingTemplate;
+    }
+
+
+
+
+    public void notifyProvider(RequestNotification notification) {
+
+        messagingTemplate.convertAndSend(
+                "/topic/provider-requests",
+                notification
+        );
     }
 
     @Transactional(readOnly = true)
