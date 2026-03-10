@@ -2,15 +2,14 @@ package com.loanshark.api.controller;
 
 import com.loanshark.api.dto.ApiDtos.NotificationResponse;
 import com.loanshark.api.dto.ApiDtos.PageResponse;
-import java.util.UUID;
+import com.loanshark.api.dto.RequestNotification;
+import com.loanshark.api.dto.RequestNotificationRequest;
 import com.loanshark.api.service.NotificationService;
+
+import java.util.UUID;
+
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/notifications")
@@ -22,18 +21,31 @@ public class NotificationController {
         this.notificationService = notificationService;
     }
 
+    @PostMapping("/request")
+    public String createRequest(@RequestBody RequestNotificationRequest request) {
+
+        RequestNotification notification = new RequestNotification();
+        notification.setClientName(request.getClientName());
+        notification.setRequestId(request.getRequestId().toString());
+        notification.setMessage("New request received");
+
+        notificationService.notifyProvider(notification);
+
+        return "Request sent";
+    }
+
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
+    @PreAuthorize("hasAnyRole('OWNER','CASHIER','BORROWER')")
     public PageResponse<NotificationResponse> myNotifications(
-        @RequestParam(defaultValue = "") String q,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
         return notificationService.myNotifications(q, page, size);
     }
 
     @PostMapping("/{notificationId}/read")
-    @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
+    @PreAuthorize("hasAnyRole('OWNER','CASHIER','BORROWER')")
     public void markAsRead(@PathVariable UUID notificationId) {
         notificationService.markAsRead(notificationId);
     }
