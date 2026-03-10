@@ -1,55 +1,62 @@
-import SockJS from "sockjs-client"
-import Stomp from "stompjs"
+import { Client } from "@stomp/stompjs"
 
 import requestSound from "../assets/request.mp3"
 import notificationSound from "../assets/notification.mp3"
 
 let stompClient = null
 
-// Request sound (loops until accepted)
 let requestAudio = new Audio(requestSound)
 requestAudio.loop = true
 
-// Normal notification sound (plays once)
 let notificationAudio = new Audio(notificationSound)
 notificationAudio.loop = false
 
-
-// 🔔 Play when a new client request arrives
 export function playRequestSound(){
-  requestAudio.play()
+  requestAudio.play().catch(err => {
+    console.warn("Request sound blocked:", err)
+  })
 }
 
-// Stop request ringing
 export function stopRequestSound(){
   requestAudio.pause()
   requestAudio.currentTime = 0
 }
 
-// 🔔 Play normal notification
 export function playNotificationSound(){
-  notificationAudio.play()
+  notificationAudio.play().catch(err => {
+    console.warn("Notification sound blocked:", err)
+  })
 }
 
+export function connectNotificationSocket(callback){
 
-export function connectNotificationSocket(callback) {
+  stompClient = new Client({
+    brokerURL: "ws://localhost:8080/ws",
 
-  const socket = new SockJS("http://localhost:8080/ws")
+    reconnectDelay: 5000,
 
-  stompClient = Stomp.over(socket)
+    debug: () => {},
 
-  stompClient.connect({}, () => {
+    onConnect: () => {
 
-    console.log("Connected to notification socket")
+      console.log("Connected to notification socket")
 
-    stompClient.subscribe("/topic/provider-requests", (message) => {
+      stompClient.subscribe("/topic/provider-requests", (message) => {
 
         const data = JSON.parse(message.body)
 
         callback(data)
 
-    })
+      })
+
+    },
+
+    onStompError: (frame) => {
+      console.error("Broker error:", frame)
+    }
 
   })
+
+  stompClient.activate()
 
 }
