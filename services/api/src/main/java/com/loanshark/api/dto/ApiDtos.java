@@ -11,11 +11,8 @@ import com.loanshark.api.entity.UserRole;
 import com.loanshark.api.entity.UserStatus;
 import com.loanshark.api.entity.VerificationStatus;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.*;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -102,6 +99,21 @@ public final class ApiDtos {
         UserRole role,
         String email,
         UUID borrowerId
+    ) {}
+
+    public record BusinessContactUpdateRequest(
+        @NotBlank(message = "Business name is required")
+        String businessName,
+
+        @NotBlank(message = "Phone is required")
+        String phone,
+
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email must be valid")
+        String email,
+
+        @NotBlank(message = "Address is required")
+        String address
     ) {}
 
     public record UpdateEmailRequest(String email) {}
