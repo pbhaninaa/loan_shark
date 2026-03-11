@@ -3,15 +3,7 @@ package com.loanshark.api.service;
 import com.loanshark.api.dto.ApiDtos.PageResponse;
 import com.loanshark.api.dto.ApiDtos.RepaymentRequest;
 import com.loanshark.api.dto.ApiDtos.RepaymentResponse;
-import com.loanshark.api.entity.CashTransaction;
-import com.loanshark.api.entity.CashTransactionType;
-import com.loanshark.api.entity.Loan;
-import com.loanshark.api.entity.LoanStatus;
-import com.loanshark.api.entity.Repayment;
-import com.loanshark.api.entity.RepaymentSchedule;
-import com.loanshark.api.entity.ScheduleStatus;
-import com.loanshark.api.entity.User;
-import com.loanshark.api.entity.UserRole;
+import com.loanshark.api.entity.*;
 import com.loanshark.api.repository.CashTransactionRepository;
 import com.loanshark.api.repository.BorrowerRepository;
 import com.loanshark.api.service.BusinessCapitalService;
@@ -39,6 +31,7 @@ public class RepaymentService {
     private final CashTransactionRepository cashTransactionRepository;
     private final BorrowerRepository borrowerRepository;
     private final LoanService loanService;
+    private final BorrowerService borrowerService;
     private final CurrentUserService currentUserService;
     private final AuditLogService auditLogService;
     private final BorrowerVerificationService borrowerVerificationService;
@@ -55,7 +48,8 @@ public class RepaymentService {
         AuditLogService auditLogService,
         BorrowerVerificationService borrowerVerificationService,
         NotificationService notificationService,
-        BusinessCapitalService businessCapitalService
+        BusinessCapitalService businessCapitalService,
+        BorrowerService borrowerService
     ) {
         this.repaymentRepository = repaymentRepository;
         this.repaymentScheduleRepository = repaymentScheduleRepository;
@@ -67,6 +61,7 @@ public class RepaymentService {
         this.borrowerVerificationService = borrowerVerificationService;
         this.notificationService = notificationService;
         this.businessCapitalService = businessCapitalService;
+        this.borrowerService = borrowerService;
     }
 
     private static final Pattern REFERENCE_NUMBER_PATTERN = Pattern.compile("^PAY-(\\d+)$", Pattern.CASE_INSENSITIVE);
@@ -287,10 +282,8 @@ public class RepaymentService {
         if (!outstanding) {
             loan.setStatus(LoanStatus.COMPLETED);
             if (previousStatus != LoanStatus.COMPLETED) {
-                notificationService.notifyLoanStatusChanged(
-                    loan,
-                    "Your loan application #" + loan.getId() + " is now COMPLETED."
-                );
+                Borrower borrower = borrowerService.findBorrower(loan.getBorrower().getId());
+                notificationService.notifyBorrowerStatusChanged(borrower);
             }
         }
     }
