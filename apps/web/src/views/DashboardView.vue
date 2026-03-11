@@ -186,15 +186,16 @@ onMounted(async () => {
     await loadActions();
   }
 
-  // Unlock audio playback after first user interaction (click)
+  // TODO  This will be implemented later 
+  // alertSound();
+})
+function alertSound(){
   document.addEventListener("click", () => {
-    // Call play and stop to unlock audio
     playRequestSound()
     stopRequestSound()
     playNotificationSound()
   }, { once: true })
 
-  // Connect to WebSocket notifications
   connectNotificationSocket((data) => {
     console.log("Notification received:", data)
 
@@ -204,7 +205,7 @@ onMounted(async () => {
       playNotificationSound()
     }
   })
-})
+}
 function onRequestHandled() {
   stopRequestSound()
 }
