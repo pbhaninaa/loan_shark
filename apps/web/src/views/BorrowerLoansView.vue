@@ -116,7 +116,7 @@
         </v-alert>
         <AppTextField v-model.number="applyForm.loanAmount" label="Loan amount" type="number" prepend-inner-icon="mdi-cash-plus" />
         <div class="d-flex ga-2">
-          <AppActionButton text="Submit" type="submit" class="flex-1-1" />
+          <AppActionButton text="Submit" type="submit"  />
           <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="showApplyDialog = false" />
         </div>
       </v-form>
