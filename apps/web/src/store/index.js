@@ -275,6 +275,10 @@ export const useAppStore = defineStore("app", {
       const { data } = await api.get("/settings/lender-contact");
       return data;
     },
+    async updateBusinessContact(payload) {
+      const { data } = await api.put("/settings/lender-contact", payload);
+      return data;
+    },
     async fetchBlacklist(params = {}) {
       const { data } = await api.get("/blacklist", { params });
       this.applyPagedResult("blacklist", "blacklistPage", data);

@@ -91,6 +91,7 @@
         </template>
 
         <v-form v-else-if="!store.setup.ownerExists" @submit.prevent="createOwner">
+          <div class="text-subtitle-2 mb-2 text-primary">Owner Account</div>
           <AppTextField
             v-model="ownerForm.username"
             label="Owner username"
@@ -102,6 +103,36 @@
             type="password"
             label="Password"
             prepend-inner-icon="mdi-lock-outline"
+            required
+          />
+          <v-divider class="my-4"></v-divider>
+          <div class="text-subtitle-2 mb-2 text-primary">Business Contact Details</div>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            These details will be shown to borrowers on the help page.
+          </p>
+          <AppTextField
+            v-model="ownerForm.businessName"
+            label="Business name"
+            prepend-inner-icon="mdi-domain"
+            required
+          />
+          <AppTextField
+            v-model="ownerForm.businessPhone"
+            label="Business phone"
+            prepend-inner-icon="mdi-phone-outline"
+            required
+          />
+          <AppTextField
+            v-model="ownerForm.businessEmail"
+            label="Business email"
+            type="email"
+            prepend-inner-icon="mdi-email-outline"
+            required
+          />
+          <AppTextField
+            v-model="ownerForm.businessAddress"
+            label="Business address"
+            prepend-inner-icon="mdi-map-marker-outline"
             required
           />
           <AppActionButton type="submit" color="primary" size="large" block :loading="loading" text="Create Owner Account" />
@@ -346,7 +377,11 @@ const employmentTypeOptions = [
 
 const ownerForm = reactive({
   username: "",
-  password: ""
+  password: "",
+  businessName: "",
+  businessPhone: "",
+  businessEmail: "",
+  businessAddress: ""
 });
 
 const initialBorrowerForm = () => ({
@@ -515,7 +550,22 @@ async function createOwner() {
   error.value = "";
   infoMessage.value = "";
   try {
-    await store.createOwner(ownerForm);
+    await store.createOwner({
+      username: ownerForm.username,
+      password: ownerForm.password
+    });
+    // Create business contact settings
+    try {
+      await store.updateBusinessContact({
+        businessName: ownerForm.businessName,
+        phone: ownerForm.businessPhone,
+        email: ownerForm.businessEmail,
+        address: ownerForm.businessAddress
+      });
+    } catch (contactError) {
+      console.error("Failed to save business contact:", contactError);
+      infoMessage.value = "Owner created but business contact details need to be set in settings.";
+    }
     router.push("/account");
   } catch (requestError) {
     error.value = extractApiError(requestError, "Owner setup failed");

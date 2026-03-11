@@ -101,6 +101,7 @@ public class BorrowerService {
         return toResponse(borrower);
     }
 
+
     @Transactional
     public BorrowerResponse createBorrower(BorrowerRequest request) {
         ensureUnique(request.idNumber(), request.phone(), null);

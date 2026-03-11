@@ -5,17 +5,22 @@
       description="Your login details and email. You must add your email before you can use the system; it is also used to send password reset links."
     />
 
+    <!-- Email warning -->
     <v-alert v-if="me && !me.email?.trim()" type="warning" variant="tonal" class="mb-4" prominent>
       You must add and save your email below before you can access the rest of the system.
     </v-alert>
 
-    <v-alert v-if="message" type="success" variant="tonal" class="mb-4">
-      {{ message }}
+    <!-- Success messages -->
+    <v-alert v-if="successMessage" type="success" variant="tonal" class="mb-4">
+      {{ successMessage }}
     </v-alert>
+
+    <!-- Error messages -->
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
       {{ error }}
     </v-alert>
 
+    <!-- Account info -->
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-account-outline</v-icon>
@@ -46,6 +51,57 @@
       </v-alert>
     </v-card>
 
+    <!-- Business contact details -->
+    <v-card v-if="store.isOwner" class="mt-4">
+      <v-card-title class="d-flex align-center">
+        <v-icon start>mdi-domain</v-icon>
+        Business Contact Details
+      </v-card-title>
+      <v-divider />
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          These details are displayed to borrowers on the Help page so they can contact you with questions about their loans.
+        </p>
+        <v-form @submit.prevent="saveBusinessContact">
+          <v-row>
+            <v-col cols="12" md="6">
+              <AppTextField
+                v-model="businessContactForm.businessName"
+                label="Business name"
+                prepend-inner-icon="mdi-domain"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <AppTextField
+                v-model="businessContactForm.phone"
+                label="Phone"
+                prepend-inner-icon="mdi-phone-outline"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <AppTextField
+                v-model="businessContactForm.email"
+                label="Email"
+                type="email"
+                prepend-inner-icon="mdi-email-outline"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <AppTextField
+                v-model="businessContactForm.address"
+                label="Address"
+                prepend-inner-icon="mdi-map-marker-outline"
+              />
+            </v-col>
+          </v-row>
+          <div class="mt-3">
+            <AppActionButton text="Save business contact" type="submit" :loading="savingContact" prepend-icon="mdi-content-save" />
+          </div>
+        </v-form>
+      </v-card-text>
+    </v-card>
+
+    <!-- Reset history (owner only) -->
     <v-card v-if="store.isOwner" class="mt-4">
       <v-card-title class="d-flex align-center text-error">
         <v-icon start>mdi-database-refresh</v-icon>
@@ -84,23 +140,33 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import AppActionButton from "../components/ui/AppActionButton.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
 import { useAppStore } from "../store";
 
 const store = useAppStore();
-const message = ref("");
+
+const successMessage = ref("");
 const error = ref("");
 const loading = ref(true);
 const saving = ref(false);
-const emailInput = ref("");
-const showResetConfirm = ref(false);
+const savingContact = ref(false);
 const resetting = ref(false);
 
+const emailInput = ref("");
+const showResetConfirm = ref(false);
 const me = ref(null);
 
+const businessContactForm = reactive({
+  businessName: "",
+  phone: "",
+  email: "",
+  address: ""
+});
+
+// Load user data
 watch(
   () => store.authMe,
   (v) => {
@@ -113,11 +179,22 @@ watch(
 onMounted(async () => {
   loading.value = true;
   error.value = "";
-  message.value = "";
   try {
     const data = await store.fetchMe();
     me.value = data;
     emailInput.value = data?.email || "";
+
+    if (store.isOwner) {
+      try {
+        const contact = await store.fetchLenderContact();
+        businessContactForm.businessName = contact.name || "";
+        businessContactForm.phone = contact.phone || "";
+        businessContactForm.email = contact.email || "";
+        businessContactForm.address = contact.address || "";
+      } catch (contactError) {
+        console.error("Failed to load business contact:", contactError);
+      }
+    }
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to load account";
   } finally {
@@ -125,13 +202,14 @@ onMounted(async () => {
   }
 });
 
+// Save email
 async function saveEmail() {
   saving.value = true;
-  message.value = "";
+  successMessage.value = "";
   error.value = "";
   try {
     await store.updateMyEmail(emailInput.value?.trim() || "");
-    message.value = "Email saved. You can use it to receive password reset links.";
+    successMessage.value = "Email saved. You can use it to receive password reset links.";
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to save email";
   } finally {
@@ -139,16 +217,41 @@ async function saveEmail() {
   }
 }
 
+// Save business contact
+async function saveBusinessContact() {
+  savingContact.value = true;
+  successMessage.value = "";
+  error.value = "";
+  try {
+    await store.updateBusinessContact(businessContactForm);
+    successMessage.value = "Business contact details saved successfully.";
+  } catch (e) {
+    error.value = e.response?.data?.message || e.message || "Failed to save business contact";
+  } finally {
+    savingContact.value = false;
+  }
+}
+
+// Reset history
 async function confirmResetHistory() {
   resetting.value = true;
   error.value = "";
-  message.value = "";
+  successMessage.value = "";
+
   try {
-    await store.resetHistory();
+    const response = await store.resetHistory();
+
+    console.log("Reset response:", response);
+
     showResetConfirm.value = false;
-    message.value = "History reset. Users, clients and their profiles kept; business capital set to zero.";
+
+    successMessage.value =
+      response?.message;
+
   } catch (e) {
-    error.value = e.response?.data?.message || e.message || "Failed to reset history";
+    console.error("Reset history error:", e);
+    error.value =
+      e.response?.data?.message || e.message || "Failed to reset history";
   } finally {
     resetting.value = false;
   }

@@ -16,6 +16,65 @@
       {{ error }}
     </v-alert>
 
+    <!-- Loan Terms & Conditions Card -->
+    <v-card class="mb-4" elevation="2">
+      <v-card-title class="d-flex align-center ga-2">
+        <v-icon color="primary">mdi-information-outline</v-icon>
+        Loan Terms & Conditions
+      </v-card-title>
+      <v-card-text>
+        <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+          <strong>Important:</strong> Interest and terms are set by the business. Review these settings carefully before applying for a loan.
+        </v-alert>
+
+        <div v-if="loanSettings">
+          <v-row dense>
+            <v-col cols="12" sm="6" md="4">
+              <div class="text-caption text-medium-emphasis">Interest Rate</div>
+              <div class="text-h6 font-weight-bold text-primary">{{ loanSettings.defaultInterestRate }}%</div>
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <div class="text-caption text-medium-emphasis">Interest Type</div>
+              <div class="text-h6">{{ loanSettings.interestType }}</div>
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <div class="text-caption text-medium-emphasis">Interest Period</div>
+              <div class="text-h6">{{ loanSettings.interestPeriodDays }} days</div>
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <div class="text-caption text-medium-emphasis">Grace Period</div>
+              <div class="text-h6">{{ loanSettings.gracePeriodDays }} days</div>
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <div class="text-caption text-medium-emphasis">Default Loan Term</div>
+              <div class="text-h6">{{ loanSettings.defaultLoanTermDays }} days</div>
+            </v-col>
+          </v-row>
+
+          <v-divider class="my-3"></v-divider>
+
+          <div class="text-body-2">
+            <p class="mb-2">
+              <v-icon size="small" color="success">mdi-check-circle</v-icon>
+              <strong>Flexible Repayment:</strong> You can pay any amount at any time. Each payment reduces what you owe.
+            </p>
+            <p class="mb-2">
+              <v-icon size="small" color="info">mdi-information</v-icon>
+              <strong>How Interest Works:</strong> Interest starts when you receive the loan and accrues every {{ loanSettings.interestPeriodDays }} days using {{ loanSettings.interestType }} calculation at {{ loanSettings.defaultInterestRate }}% rate.
+            </p>
+            <p class="mb-0">
+              <v-icon size="small" color="warning">mdi-clock-outline</v-icon>
+              <strong>Grace Period:</strong> You have {{ loanSettings.gracePeriodDays }} days after each due date where no additional interest is charged. Interest continues to accrue per business rules until the loan is fully paid off.
+            </p>
+          </div>
+        </div>
+        <div v-else class="text-center py-4">
+          <v-progress-circular indeterminate color="primary"></v-progress-circular>
+          <div class="text-caption mt-2">Loading loan terms...</div>
+        </div>
+      </v-card-text>
+    </v-card>
+
     <AppTableCard title="Loan Applications" :count-label="`${loans.length} loans`">
       <AppDataTable
         title=""
@@ -50,14 +109,14 @@
           Money made (available for lending): <strong>{{ formatCurrency(availableBalance) }}</strong>. You can only be approved up to this amount. If you need more, the business must add funds first.
         </v-alert>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-          <div class="mb-2">Interest and terms are set by the business. You can pay any amount at any time; each payment reduces what you owe and interest continues per business rules until the loan is paid off.</div>
+          <div>By applying, you agree to the loan terms and conditions displayed above. You only choose the <strong>loan amount</strong>; all other terms are set by the business.</div>
           <div v-if="loanSettings" class="text-caption mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.2);">
-            <strong>Current settings:</strong> {{ loanSettings.defaultInterestRate }}% interest ({{ loanSettings.interestType }}), interest period {{ loanSettings.interestPeriodDays }} days, grace period {{ loanSettings.gracePeriodDays }} days, default loan term {{ loanSettings.defaultLoanTermDays }} days.
+            <strong>Quick summary:</strong> {{ loanSettings.defaultInterestRate }}% interest ({{ loanSettings.interestType }}), {{ loanSettings.interestPeriodDays }}-day periods, {{ loanSettings.gracePeriodDays }}-day grace, {{ loanSettings.defaultLoanTermDays }}-day term.
           </div>
         </v-alert>
         <AppTextField v-model.number="applyForm.loanAmount" label="Loan amount" type="number" prepend-inner-icon="mdi-cash-plus" />
         <div class="d-flex ga-2">
-          <AppActionButton text="Submit" type="submit" class="flex-1-1" />
+          <AppActionButton text="Submit" type="submit"  />
           <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="showApplyDialog = false" />
         </div>
       </v-form>
@@ -106,7 +165,8 @@ const loanSettings = ref(null);
 function onApplyDialogToggle(isOpen) {
   if (isOpen) {
     store.fetchBusinessCapitalBalance().then((b) => { availableBalance.value = b; }).catch(() => { availableBalance.value = null; });
-    store.fetchLoanInterestSettings().then((s) => { loanSettings.value = s; }).catch(() => { loanSettings.value = null; });
+    // Refresh settings in case they changed
+    loadSettings();
   }
 }
 
@@ -116,11 +176,20 @@ const loansPage = computed(() => store.loansPage);
 onMounted(async () => {
   try {
     await loadLoans();
+    await loadSettings();
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Could not load loans";
   }
 });
 
+async function loadSettings() {
+  try {
+    loanSettings.value = await store.fetchLoanInterestSettings();
+  } catch (requestError) {
+    console.error("Could not load loan settings:", requestError);
+    loanSettings.value = null;
+  }
+}
 async function applyLoan() {
   message.value = "";
   error.value = "";

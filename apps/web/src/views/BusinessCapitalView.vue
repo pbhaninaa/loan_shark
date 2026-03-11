@@ -17,7 +17,7 @@
     </v-alert>
 
     <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-      <strong>You put in:</strong> {{ formatCurrency(summary.principalAmount) }} from your pocket
+      <strong>Capital Invested:</strong> {{ formatCurrency(summary.principalAmount) }} from your pocket
       &nbsp;·&nbsp;
       <strong>You got back:</strong> {{ formatCurrency(summary.totalMoneyIn) }} from clients (repayments)
     </v-alert>
@@ -44,7 +44,7 @@
         <v-card>
           <v-card-title class="d-flex align-center text-primary">
             <v-icon start>mdi-cash-multiple</v-icon>
-            Money made
+         Working Capital
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -61,7 +61,7 @@
         <v-card>
           <v-card-title class="d-flex align-center text-error">
             <v-icon start>mdi-cash-minus</v-icon>
-            Money out
+            Funds Disbursed
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -78,7 +78,7 @@
         <v-card>
           <v-card-title class="d-flex align-center text-success">
             <v-icon start>mdi-cash-plus</v-icon>
-            What you got back
+          Cash Inflow
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -95,7 +95,7 @@
         <v-card>
           <v-card-title class="d-flex align-center text-warning">
             <v-icon start>mdi-currency-usd</v-icon>
-            Expected from clients
+           Outstanding Loans
           </v-card-title>
           <v-divider />
           <v-card-text>

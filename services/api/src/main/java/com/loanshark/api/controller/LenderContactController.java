@@ -1,34 +1,30 @@
 package com.loanshark.api.controller;
 
+import com.loanshark.api.dto.ApiDtos.BusinessContactUpdateRequest;
 import com.loanshark.api.dto.ApiDtos.LenderContactResponse;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.loanshark.api.service.BusinessContactService;
+import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/settings/lender-contact")
 public class LenderContactController {
 
-    @Value("${app.lender.name:Loan Shark Lending}")
-    private String lenderName;
+    private final BusinessContactService businessContactService;
 
-    @Value("${app.lender.phone:}")
-    private String lenderPhone;
-
-    @Value("${app.lender.email:}")
-    private String lenderEmail;
-
-    @Value("${app.lender.address:}")
-    private String lenderAddress;
+    public LenderContactController(BusinessContactService businessContactService) {
+        this.businessContactService = businessContactService;
+    }
 
     @GetMapping
     public LenderContactResponse get() {
-        return new LenderContactResponse(
-            lenderName != null ? lenderName : "",
-            lenderPhone != null ? lenderPhone : "",
-            lenderEmail != null ? lenderEmail : "",
-            lenderAddress != null ? lenderAddress : ""
-        );
+        return businessContactService.get();
+    }
+
+    @PutMapping
+    @PreAuthorize("hasRole('OWNER')")
+    public LenderContactResponse update(@Valid @RequestBody BusinessContactUpdateRequest request) {
+        return businessContactService.createOrUpdate(request);
     }
 }
