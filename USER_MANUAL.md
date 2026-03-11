@@ -165,27 +165,72 @@ The system has three parts:
 
 ## 6. Borrower
 
-### 6.1 Before verification (PENDING_VERIFICATION)
+### 6.1 Viewing loan terms and system settings
+
+Before applying for a loan, borrowers can view the current system loan settings set by the business:
+
+- **Interest rate (%)** — The percentage rate applied to your loan.
+- **Interest type** — Simple or Compound interest calculation.
+- **Interest period** — How often interest is calculated (e.g. every 30 days).
+- **Grace period** — Days after a due date where no additional interest accrues.
+- **Default loan term** — The standard loan duration in days.
+
+**How to view:**
+- In the **My Loans** page, there is a **"View Loan Terms"** button or info section showing these details.
+- Review these settings carefully before submitting a loan application.
+- These terms apply to all loans; you only choose the **amount** when applying.
+
+**Important:** You can pay any amount at any time. Each payment reduces what you owe, and interest continues to accrue per the business rules shown above until the loan is fully paid off.
+
+### 6.2 Before verification (PENDING_VERIFICATION)
 
 - After registration you can **log in** but only see **Verification Status**.
 - This page explains that your profile is under review.
 - You cannot open **My Profile**, **My Loans**, **Repayment Schedule**, or **Notifications** until status is **ACTIVE**.
 
-### 6.2 After verification (ACTIVE)
+### 6.3 After verification (ACTIVE)
 
 - **My Profile** — View your borrower details.
-- **My Loans** — See your loans and **apply for a new loan** (enter **amount only**; interest and term are set by the business).
+- **My Loans** — See your loans, **view loan terms and conditions** (interest rate, type, periods, grace period, default term), and **apply for a new loan** (enter **amount only**; interest and term are set by the business based on system settings).
 - **Repayment Schedule** — See when and how much to pay.
 - **Notifications** — In-app list; notifications are marked read and can disappear from the list (but stay in the database). You also get **email** notifications for important events (profile created, status change, application status change).
+
+**Before applying for a loan:** Always review the loan terms and conditions displayed in the **My Loans** page. You will see the current interest rate percentage, how interest is calculated, payment flexibility, and all terms set by the business.
 
 ---
 
 ## 7. Business rules (interest & terms)
 
-- **Interest** starts when the borrower **receives** the money (e.g. from first day).
-- It then accrues every **interest period** (e.g. every 30 days), depending on **Simple** or **Compound** setting in **Loan interest & term**.
-- **Grace period:** For a given due date, no extra interest is added for that many days (e.g. 2 days). After the grace period, interest accrues as per settings.
-- **Term:** The borrower does **not** choose a fixed repayment period. They only choose the **amount**. The **default loan term (days)** from admin is used for due date and interest calculation. Repayment is flexible: any payment reduces what they owe, and interest continues per business rules until the loan is fully paid.
+### 7.1 How loans work
+
+**Interest and terms are set by the business.** As a borrower, you can view all current loan settings before applying:
+
+- **Interest rate (%)** — The percentage rate applied (set by the business owner/admin).
+- **Interest type** — Simple or Compound.
+- **Interest period** — How often interest accrues (e.g. every 30 days).
+- **Grace period** — Days after each due date where no additional interest is charged.
+- **Default loan term** — The standard duration for loans (e.g. 365 days).
+
+### 7.2 When does interest start?
+
+- **Interest starts** when you **receive** the loan money (from day one).
+- It then accrues every **interest period** (e.g. every 30 days), calculated as either **Simple** or **Compound** based on the business settings.
+
+### 7.3 Grace period
+
+For any due date, you have a **grace period** (e.g. 2 days) during which no extra interest is added. After the grace period ends, interest continues to accrue as per the business settings.
+
+### 7.4 Repayment flexibility
+
+**You can pay any amount at any time.** Each payment reduces what you owe, and interest continues to accrue per the business rules until the loan is fully paid off.
+
+- You **only choose the loan amount** when applying.
+- The **term and interest rate** come from the system settings (which you can view before applying).
+- There is no fixed repayment schedule; pay as much as you can, whenever you can, to reduce your total interest cost.
+
+### 7.5 Viewing your loan terms before applying
+
+Before submitting a loan application, **always review the loan terms** displayed in the **My Loans** page. This shows you the exact interest rate percentage, interest type, all periods, and terms that will apply to your loan.
 
 ---
 

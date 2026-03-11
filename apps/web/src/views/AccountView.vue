@@ -47,6 +47,55 @@
     </v-card>
 
     <v-card v-if="store.isOwner" class="mt-4">
+      <v-card-title class="d-flex align-center">
+        <v-icon start>mdi-domain</v-icon>
+        Business Contact Details
+      </v-card-title>
+      <v-divider />
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          These details are displayed to borrowers on the Help page so they can contact you with questions about their loans.
+        </p>
+        <v-form @submit.prevent="saveBusinessContact">
+          <v-row>
+            <v-col cols="12" md="6">
+              <AppTextField
+                v-model="businessContactForm.businessName"
+                label="Business name"
+                prepend-inner-icon="mdi-domain"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <AppTextField
+                v-model="businessContactForm.phone"
+                label="Phone"
+                prepend-inner-icon="mdi-phone-outline"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <AppTextField
+                v-model="businessContactForm.email"
+                label="Email"
+                type="email"
+                prepend-inner-icon="mdi-email-outline"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <AppTextField
+                v-model="businessContactForm.address"
+                label="Address"
+                prepend-inner-icon="mdi-map-marker-outline"
+              />
+            </v-col>
+          </v-row>
+          <div class="mt-3">
+            <AppActionButton text="Save business contact" type="submit" :loading="savingContact" prepend-icon="mdi-content-save" />
+          </div>
+        </v-form>
+      </v-card-text>
+    </v-card>
+
+    <v-card v-if="store.isOwner" class="mt-4">
       <v-card-title class="d-flex align-center text-error">
         <v-icon start>mdi-database-refresh</v-icon>
         Reset database (owner only)
@@ -84,7 +133,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import AppActionButton from "../components/ui/AppActionButton.vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
@@ -95,11 +144,19 @@ const message = ref("");
 const error = ref("");
 const loading = ref(true);
 const saving = ref(false);
+const savingContact = ref(false);
 const emailInput = ref("");
 const showResetConfirm = ref(false);
 const resetting = ref(false);
 
 const me = ref(null);
+
+const businessContactForm = reactive({
+  businessName: "",
+  phone: "",
+  email: "",
+  address: ""
+});
 
 watch(
   () => store.authMe,
@@ -118,6 +175,19 @@ onMounted(async () => {
     const data = await store.fetchMe();
     me.value = data;
     emailInput.value = data?.email || "";
+
+    // Load business contact details for owners
+    if (store.isOwner) {
+      try {
+        const contact = await store.fetchLenderContact();
+        businessContactForm.businessName = contact.name || "";
+        businessContactForm.phone = contact.phone || "";
+        businessContactForm.email = contact.email || "";
+        businessContactForm.address = contact.address || "";
+      } catch (contactError) {
+        console.error("Failed to load business contact:", contactError);
+      }
+    }
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to load account";
   } finally {
@@ -136,6 +206,20 @@ async function saveEmail() {
     error.value = e.response?.data?.message || e.message || "Failed to save email";
   } finally {
     saving.value = false;
+  }
+}
+
+async function saveBusinessContact() {
+  savingContact.value = true;
+  message.value = "";
+  error.value = "";
+  try {
+    await store.updateBusinessContact(businessContactForm);
+    message.value = "Business contact details saved successfully.";
+  } catch (e) {
+    error.value = e.response?.data?.message || e.message || "Failed to save business contact";
+  } finally {
+    savingContact.value = false;
   }
 }
 
