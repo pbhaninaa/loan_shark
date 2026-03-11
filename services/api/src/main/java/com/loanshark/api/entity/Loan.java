@@ -30,6 +30,7 @@ public class Loan {
     @Id
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(columnDefinition = "CHAR(36)")
+//    TODO we need to change this to derive this id from borrower info like: Loan ID = LN + Initials + PhoneSuffix + Timestamp + 2-char random
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)

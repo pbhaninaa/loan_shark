@@ -5,17 +5,22 @@
       description="Your login details and email. You must add your email before you can use the system; it is also used to send password reset links."
     />
 
+    <!-- Email warning -->
     <v-alert v-if="me && !me.email?.trim()" type="warning" variant="tonal" class="mb-4" prominent>
       You must add and save your email below before you can access the rest of the system.
     </v-alert>
 
-    <v-alert v-if="message" type="success" variant="tonal" class="mb-4">
-      {{ message }}
+    <!-- Success messages -->
+    <v-alert v-if="successMessage" type="success" variant="tonal" class="mb-4">
+      {{ successMessage }}
     </v-alert>
+
+    <!-- Error messages -->
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
       {{ error }}
     </v-alert>
 
+    <!-- Account info -->
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-account-outline</v-icon>
@@ -46,6 +51,7 @@
       </v-alert>
     </v-card>
 
+    <!-- Business contact details -->
     <v-card v-if="store.isOwner" class="mt-4">
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-domain</v-icon>
@@ -95,6 +101,7 @@
       </v-card-text>
     </v-card>
 
+    <!-- Reset history (owner only) -->
     <v-card v-if="store.isOwner" class="mt-4">
       <v-card-title class="d-flex align-center text-error">
         <v-icon start>mdi-database-refresh</v-icon>
@@ -140,15 +147,16 @@ import AppTextField from "../components/ui/AppTextField.vue";
 import { useAppStore } from "../store";
 
 const store = useAppStore();
-const message = ref("");
+
+const successMessage = ref("");
 const error = ref("");
 const loading = ref(true);
 const saving = ref(false);
 const savingContact = ref(false);
-const emailInput = ref("");
-const showResetConfirm = ref(false);
 const resetting = ref(false);
 
+const emailInput = ref("");
+const showResetConfirm = ref(false);
 const me = ref(null);
 
 const businessContactForm = reactive({
@@ -158,6 +166,7 @@ const businessContactForm = reactive({
   address: ""
 });
 
+// Load user data
 watch(
   () => store.authMe,
   (v) => {
@@ -170,13 +179,11 @@ watch(
 onMounted(async () => {
   loading.value = true;
   error.value = "";
-  message.value = "";
   try {
     const data = await store.fetchMe();
     me.value = data;
     emailInput.value = data?.email || "";
 
-    // Load business contact details for owners
     if (store.isOwner) {
       try {
         const contact = await store.fetchLenderContact();
@@ -195,13 +202,14 @@ onMounted(async () => {
   }
 });
 
+// Save email
 async function saveEmail() {
   saving.value = true;
-  message.value = "";
+  successMessage.value = "";
   error.value = "";
   try {
     await store.updateMyEmail(emailInput.value?.trim() || "");
-    message.value = "Email saved. You can use it to receive password reset links.";
+    successMessage.value = "Email saved. You can use it to receive password reset links.";
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to save email";
   } finally {
@@ -209,13 +217,14 @@ async function saveEmail() {
   }
 }
 
+// Save business contact
 async function saveBusinessContact() {
   savingContact.value = true;
-  message.value = "";
+  successMessage.value = "";
   error.value = "";
   try {
     await store.updateBusinessContact(businessContactForm);
-    message.value = "Business contact details saved successfully.";
+    successMessage.value = "Business contact details saved successfully.";
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to save business contact";
   } finally {
@@ -223,16 +232,26 @@ async function saveBusinessContact() {
   }
 }
 
+// Reset history
 async function confirmResetHistory() {
   resetting.value = true;
   error.value = "";
-  message.value = "";
+  successMessage.value = "";
+
   try {
-    await store.resetHistory();
+    const response = await store.resetHistory();
+
+    console.log("Reset response:", response);
+
     showResetConfirm.value = false;
-    message.value = "History reset. Users, clients and their profiles kept; business capital set to zero.";
+
+    successMessage.value =
+      response?.message;
+
   } catch (e) {
-    error.value = e.response?.data?.message || e.message || "Failed to reset history";
+    console.error("Reset history error:", e);
+    error.value =
+      e.response?.data?.message || e.message || "Failed to reset history";
   } finally {
     resetting.value = false;
   }

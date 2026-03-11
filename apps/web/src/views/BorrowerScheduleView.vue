@@ -70,15 +70,16 @@
             {{ payError }}
           </v-alert>
           <v-form ref="payFormRef" @submit.prevent="submitPay">
-            <AppTextField
-              v-model.number="payForm.amountPaid"
-              label="Amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              prepend-inner-icon="mdi-cash"
-              hint="Enter any amount; suggested amount shown from this installment."
-            />
+           <AppTextField
+            v-model.number="payForm.amountPaid"
+            label="Amount"
+            type="number"
+            step="0.01"
+            min="0.01"
+            :max="totalPendingAmount"
+            prepend-inner-icon="mdi-cash"
+            :hint="`Enter any amount up to ${formatCurrency(totalPendingAmount)}`"
+          />
             <AppSelectField
               v-model="payForm.paymentMethod"
               label="Payment method"
@@ -235,7 +236,16 @@ function generatePaymentReference(loanId, installmentNumber, payerId) {
   const payer = payerId != null ? payerId : store.borrowerId ?? store.userId ?? "";
   return `Loan-${loanId}-Inst-${installmentNumber}-Payer-${payer}-${timestamp}`;
 }
-
+const totalPendingAmount = computed(() => {
+  const uniqueInstallments = new Map();
+  schedule.value.forEach(item => {
+    if (item.status !== "PAID" && !uniqueInstallments.has(item.installmentNumber)) {
+      uniqueInstallments.set(item.installmentNumber, Number(item.amountDue));
+    }
+  });
+  return Array.from(uniqueInstallments.values()).reduce((sum, amount) => sum + amount, 0);
+});
+ 
 function openPayDialog(item) {
   payingInstallment.value = item.installmentNumber;
   const loanId = selectedLoanId.value;
@@ -262,13 +272,21 @@ async function submitPay() {
     payError.value = "Please select a loan.";
     return;
   }
+
   const amount = Number(payForm.value.amountPaid);
   if (!amount || amount <= 0) {
     payError.value = "Enter a valid amount.";
     return;
   }
+
+ if (amount > totalPendingAmount.value) {
+  payError.value = `You cannot pay more than your total pending amount: ${formatCurrency(totalPendingAmount.value)}`;
+  return;
+}
+
   payError.value = "";
   payLoading.value = true;
+
   try {
     await api.post("/repayments", {
       loanId: selectedLoanId.value,

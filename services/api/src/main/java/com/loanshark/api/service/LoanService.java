@@ -194,14 +194,10 @@ public class LoanService {
         riskService.persistAssessment(borrower, loan, result);
 
         auditLogService.record(currentUser.getId(), "APPLY_LOAN", "Loan", loan.getId().toString(), String.join("; ", result.factors()));
-        notificationService.notifyLoanStatusChanged(
-            loan,
-            "Your loan application #" + loan.getId() + " was submitted and is currently " + loan.getStatus().name() + "."
-        );
+        notificationService.notifyBorrowerStatusChanged(borrower);
         return toResponse(loan);
     }
-
-    @Transactional(readOnly = true)
+     @Transactional(readOnly = true)
     public PageResponse<LoanResponse> listAll(String query, List<LoanStatus> statuses, int page, int size) {
         Page<Loan> loanPage;
         if (statuses != null && !statuses.isEmpty()) {
@@ -335,7 +331,8 @@ public class LoanService {
         loan.setApprovedBy(currentUser);
         loanRepository.save(loan);
         auditLogService.record(currentUser.getId(), "REJECT_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
-        notificationService.notifyLoanRejected(loan, request.note());
+        Borrower borrower = borrowerService.findBorrower(loan.getBorrower().getId());
+        notificationService.notifyBorrowerStatusChanged(borrower);
         return toResponse(loan);
     }
 
@@ -378,7 +375,8 @@ public class LoanService {
         if (!hasOverdue) {
             throw new ResponseStatusException(BAD_REQUEST, "This loan has no overdue or past-due installments");
         }
-        notificationService.notifyOverdueReminder(loan);
+        Borrower borrower = borrowerService.findBorrower(loan.getBorrower().getId());
+        notificationService.notifyBorrowerLoanOverdue(loan,borrower);
     }
 
     private void enforceBorrowerOwnershipIfNeeded(Loan loan) {
