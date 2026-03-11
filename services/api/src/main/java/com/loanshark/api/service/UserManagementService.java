@@ -84,6 +84,9 @@ public class UserManagementService {
     public UserResponse updateUser(UUID id, UserRequest request) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "User not found"));
+        if (user.getRole().toString().equals("BORROWER") && request.role() != user.getRole()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Cannot change a Borrower's role");
+        }
 
         ensureUsernameAvailable(request.username(), user.getId());
         protectLastOwner(user, request.role());
