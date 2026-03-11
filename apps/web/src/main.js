@@ -8,11 +8,16 @@ import "vuetify/styles";
 import "@mdi/font/css/materialdesignicons.css";
 import "./styles/main.css";
 
+// Fix for libraries expecting Node global (SockJS / some STOMP libs)
+window.global = window;
+
 const app = createApp(App);
 const pinia = createPinia();
+
 app.use(pinia);
 app.use(router);
 app.use(vuetify);
+
 app.mount("#app");
 
 // When token expires or 401, clear session and ensure user is logged out

@@ -108,7 +108,12 @@ import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTruncateText from "../components/ui/AppTruncateText.vue";
 import { useAppStore } from "../store";
 import { formatCurrency, formatDateTime } from "../utils/formatters";
-
+import {
+  connectNotificationSocket,
+  playRequestSound,
+  playNotificationSound,
+  stopRequestSound
+} from "../services/socket"
 const store = useAppStore();
 const search = ref("");
 const page = ref(0);
@@ -176,11 +181,34 @@ const metricCards = computed(() => [
 
 onMounted(async () => {
   await store.fetchDashboard();
+
   if (store.isOwner) {
     await loadActions();
   }
-});
 
+  // TODO  This will be implemented later 
+  // alertSound();
+})
+function alertSound(){
+  document.addEventListener("click", () => {
+    playRequestSound()
+    stopRequestSound()
+    playNotificationSound()
+  }, { once: true })
+
+  connectNotificationSocket((data) => {
+    console.log("Notification received:", data)
+
+    if (data.type === "REQUEST") {
+      playRequestSound()
+    } else if (data.type === "NOTIFICATION") {
+      playNotificationSound()
+    }
+  })
+}
+function onRequestHandled() {
+  stopRequestSound()
+}
 async function loadActions(nextPage = page.value) {
   page.value = nextPage;
   loading.value = true;

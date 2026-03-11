@@ -47,11 +47,14 @@
         </template>
         <template #item.monthlyIncome="{ item }">{{ formatCurrency(item.monthlyIncome) }}</template>
         <template #item.actions="{ item }">
-          <AppActionButton size="small" variant="tonal" text="View profile" prepend-icon="mdi-account-eye-outline" @click="openProfileDialog(item.id)" />
+             <div class="d-flex ga-2 flex-wrap">
+              <AppActionButton size="small" variant="tonal" text="View profile" prepend-icon="mdi-account-eye-outline" @click="openProfileDialog(item.id)" />
           <template v-if="store.isOwner">
             <AppActionButton size="small" variant="tonal" text="Edit" prepend-icon="mdi-pencil-outline" @click="openEditDialog(item)" />
             <AppActionButton size="small" color="error" variant="tonal" text="Delete" prepend-icon="mdi-delete-outline" :loading="deletingId === item.id" @click="confirmDeleteClient(item)" />
           </template>
+             </div>
+          
         </template>
         <template #footer>
           <AppPaginationFooter v-model="page" :total-pages="borrowersPage.totalPages" :total-elements="borrowersPage.totalElements" @update:model-value="loadBorrowers" />
