@@ -22,6 +22,7 @@
           v-for="notification in notifications"
           :key="notification.id"
           :title="notification.channel"
+          
           @click="openMessageDialog(notification)"
         >
           <template #subtitle>
@@ -79,7 +80,7 @@ async function loadNotifications(nextPage = page.value) {
   error.value = "";
   page.value = nextPage;
   try {
-    await store.fetchMyNotifications({ q: search.value, page: page.value, size: 8 });
+    await store.fetchMyNotifications({ q: search.value, page: page.value, size: 5 });
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Could not load notifications";
   }

@@ -29,6 +29,7 @@
         title=""
         :headers="scheduleHeaders"
         :items="schedule"
+        :items-per-page="5"
         no-data-message="Select a loan to view its repayment schedule."
       >
         <template #item.installmentNumber="{ item }">{{ item.installmentNumber }}</template>
@@ -51,6 +52,9 @@
             />
             <span v-else class="text-medium-emphasis text-caption">—</span>
           </div>
+        </template>
+         <template #footer>
+          <AppPaginationFooter v-model="page" :total-pages="repaymentsPage.totalPages" :total-elements="repaymentsPage.totalElements" @update:model-value="loadRepayments" />
         </template>
       </AppDataTable>
     </AppTableCard>
@@ -125,12 +129,14 @@ import AppTextField from "../components/ui/AppTextField.vue";
 import api from "../services/api";
 import { useAppStore } from "../store";
 import { formatCurrency } from "../utils/formatters";
+import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 
 const route = useRoute();
 const router = useRouter();
 const store = useAppStore();
 const error = ref("");
 const selectedLoanId = ref(null);
+const repaymentsPage = computed(() => store.repaymentsPage);
 
 const paymentMethods = ["CASH", "EFT", "MOBILE_TRANSFER"];
 const showPayDialog = ref(false);

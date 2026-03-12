@@ -119,7 +119,7 @@ async function loadBlacklist(nextPage = page.value) {
   page.value = nextPage;
   loading.value = true;
   try {
-    await store.fetchBlacklist({ q: search.value, page: page.value, size: 8 });
+    await store.fetchBlacklist({ q: search.value, page: page.value, size: 5});
   } finally {
     loading.value = false;
   }
