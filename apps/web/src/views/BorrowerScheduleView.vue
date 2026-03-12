@@ -136,6 +136,7 @@ const paymentMethods = ["CASH", "EFT", "MOBILE_TRANSFER"];
 const showPayDialog = ref(false);
 const payLoading = ref(false);
 const payError = ref("");
+const message = ref("");
 const payingInstallment = ref(null);
 const payForm = ref({
   installmentNumber: null,
@@ -258,11 +259,13 @@ function openPayDialog(item) {
     referenceNumber: ref
   };
   payError.value = "";
+  message.value="";
   showPayDialog.value = true;
 }
 
 function closePayDialog() {
   showPayDialog.value = false;
+  message.value="";
   payError.value = "";
   payingInstallment.value = null;
 }
@@ -285,6 +288,7 @@ async function submitPay() {
 }
 
   payError.value = "";
+  message.value="";
   payLoading.value = true;
 
   try {
@@ -294,6 +298,8 @@ async function submitPay() {
       paymentMethod: payForm.value.paymentMethod,
       referenceNumber: String(payForm.value.referenceNumber).trim()
     });
+  message.value="Payment saved successfully";
+
     closePayDialog();
     await loadSchedule(selectedLoanId.value);
   } catch (e) {

@@ -42,12 +42,12 @@
             <v-card color="rgba(255,255,255,0.08)" rounded="xl" class="mb-4">
               <v-card-text>
                 <div class="text-subtitle-2">Signed in as</div>
-                <div class="text-h6">{{ displayName }}</div>
+                <div class="text">{{ displayName }}</div>
                 <div class="text-caption text-medium-emphasis mt-1">{{ roleLabel }}</div>
               </v-card-text>
             </v-card>
 
-            <v-btn color="primary" variant="tonal" block prepend-icon="mdi-lock-reset" class="mb-2" @click="showChangePasswordDialog = true">
+            <v-btn color="secondery" variant="tonal" block prepend-icon="mdi-lock-reset" class="mb-2" @click="showChangePasswordDialog = true">
               Change password
             </v-btn>
             <v-btn color="error" block prepend-icon="mdi-logout" @click="logout">
