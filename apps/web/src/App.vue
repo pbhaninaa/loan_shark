@@ -81,7 +81,7 @@
         </template>
 
         <v-main>
-          <v-container fluid class="pa-4 pa-md-8" style="background-color: blueviolet;">
+          <v-container fluid class="pa-4 pa-md-8">
             <router-view />
           </v-container>
         </v-main>
