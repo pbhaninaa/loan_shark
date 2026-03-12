@@ -84,7 +84,7 @@
         show-search
         search-placeholder="Search my loans"
         no-data-message="No loans."
-        :items-per-page="8"
+        :items-per-page="2"
         @update:search-value="onSearch"
       >
         <template #item.id="{ item }">#{{ item.id }}</template>
@@ -95,8 +95,15 @@
         <template #item.totalAmount="{ item }">{{ formatCurrency(item.totalAmount) }}</template>
         <template #item.dueDate="{ item }">{{ item.dueDate || "None" }}</template>
         <template #item.actions="{ item }">
-          <AppActionButton size="small" color="secondary" variant="tonal" text="View Schedule" @click="openSchedule(item.id)" />
-        </template>
+        <AppActionButton
+            size="small"
+            color="primary"
+            variant="tonal"
+            text="View"
+            class="d-inline-flex"
+          @click="openSchedule(item.id)"
+        />
+      </template>
         <template #footer>
           <AppPaginationFooter v-model="page" :total-pages="loansPage.totalPages" :total-elements="loansPage.totalElements" @update:model-value="loadLoans" />
         </template>
@@ -148,12 +155,12 @@ const page = ref(0);
 const loading = ref(false);
 
 const loanHeaders = [
-  { title: "Loan", key: "id" },
-  { title: "Status", key: "status" },
-  { title: "Amount", key: "loanAmount" },
-  { title: "Total", key: "totalAmount" },
-  { title: "Due", key: "dueDate" },
-  { title: "Actions", key: "actions" }
+  { title: "Loan", value: "id" },
+  { title: "Status", value: "status" },
+  { title: "Amount", value: "loanAmount" },
+  { title: "Total", value: "totalAmount" },
+  { title: "Due", value: "dueDate" },
+  { title: "Actions", value: "actions" } // <-- important
 ];
 
 const applyForm = reactive({
@@ -227,7 +234,7 @@ async function loadLoans(nextPage = page.value) {
   page.value = nextPage;
   loading.value = true;
   try {
-    await store.fetchMyLoans({ q: search.value, page: page.value, size: 8 });
+    await store.fetchMyLoans({ q: search.value, page: page.value, size: 5 });
   } finally {
     loading.value = false;
   }

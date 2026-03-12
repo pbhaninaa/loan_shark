@@ -341,7 +341,7 @@ async function loadPendingLoans(nextPage = pendingPage.value) {
   pendingPage.value = nextPage;
   pendingLoading.value = true;
   try {
-    await store.fetchPendingLoans({ q: pendingSearch.value, page: pendingPage.value, size: 8 });
+    await store.fetchPendingLoans({ q: pendingSearch.value, page: pendingPage.value, size: 5});
   } finally {
     pendingLoading.value = false;
   }
@@ -360,7 +360,7 @@ async function loadLoansTable(nextPage = loansPageNum.value) {
     await store.fetchLoans({
       q: loansSearch.value,
       page: loansPageNum.value,
-      size: 8,
+      size: 5,
       status: ["ACTIVE", "COMPLETED"]
     });
   } finally {
