@@ -25,7 +25,7 @@
         show-search
         search-placeholder="Search pending requests"
         no-data-message="No pending loan requests."
-        :items-per-page="8"
+        :items-per-page="3"
         @update:search-value="onPendingSearch"
       >
         <template #item.id="{ item }">#{{ item.id }}</template>

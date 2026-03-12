@@ -35,6 +35,7 @@ public class LoanService {
     private final InterestCalculationService interestCalculationService;
     private final BusinessCapitalService businessCapitalService;
     private final RepaymentRepository repaymentRepository;
+    private final LoanInterestSettingsService loanInterestSettingsService;
 
     private static final BigDecimal EIGHTY_PERCENT = new BigDecimal("0.80");
 
@@ -62,7 +63,7 @@ public class LoanService {
             LoanInterestSettingsRepository loanInterestSettingsRepository,
             InterestCalculationService interestCalculationService,
             BusinessCapitalService businessCapitalService,
-            RepaymentRepository repaymentRepository
+            RepaymentRepository repaymentRepository, LoanInterestSettingsService loanInterestSettingsService
     ) {
         this.loanRepository = loanRepository;
         this.repaymentScheduleRepository = repaymentScheduleRepository;
@@ -78,6 +79,7 @@ public class LoanService {
         this.interestCalculationService = interestCalculationService;
         this.businessCapitalService = businessCapitalService;
         this.repaymentRepository = repaymentRepository;
+        this.loanInterestSettingsService = loanInterestSettingsService;
     }
 
     // -------------------- APPLY LOAN --------------------
@@ -92,13 +94,17 @@ public class LoanService {
         for (Loan active : activeLoans) {
             BigDecimal totalOwed = active.getTotalAmount();
             BigDecimal paid = repaymentRepository.sumAmountPaidByLoanId(active.getId());
+            BigDecimal limitPercent = loanInterestSettingsService.get().borrowerLimitPercentage(); // e.g., 10 = 10%
             if (paid == null) paid = BigDecimal.ZERO;
-            BigDecimal requiredMin = totalOwed.multiply(EIGHTY_PERCENT);
+
+// Convert percentage to decimal
+            BigDecimal requiredMin = totalOwed.multiply(limitPercent).divide(BigDecimal.valueOf(100));
+
             if (paid.compareTo(requiredMin) < 0) {
                 throw new ResponseStatusException(
                         BAD_REQUEST,
-                        "You must pay at least 80% of your current loan (Loan #" + active.getId()
-                                + ": " + paid + " of " + totalOwed + " paid) before applying for a new loan."
+                        "You must pay at least " + limitPercent + "% of your current loan " +
+                                "(Loan #" + active.getId() + ": " + paid + " of " + totalOwed + " paid) before applying for a new loan."
                 );
             }
         }
