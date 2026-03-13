@@ -109,7 +109,7 @@ async function loadRepayments(nextPage = page.value) {
   loading.value = true;
   try {
     const loanId = filterLoanId.value ?? null;
-    await store.fetchRepayments(loanId, { q: search.value, page: page.value, size: 8 });
+    await store.fetchRepayments(loanId, { q: search.value, page: page.value, size: 5 });
   } finally {
     loading.value = false;
   }

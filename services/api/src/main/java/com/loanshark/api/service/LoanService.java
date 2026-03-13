@@ -1,47 +1,22 @@
 package com.loanshark.api.service;
 
-import com.loanshark.api.dto.ApiDtos.PageResponse;
-import com.loanshark.api.dto.ApiDtos.LoanApplicationRequest;
-import com.loanshark.api.dto.ApiDtos.LoanDecisionRequest;
-import com.loanshark.api.dto.ApiDtos.LoanResponse;
-import com.loanshark.api.dto.ApiDtos.LoanUpdateRequest;
-import com.loanshark.api.dto.ApiDtos.RiskCheckResponse;
-import com.loanshark.api.dto.ApiDtos.ScheduleResponse;
-import com.loanshark.api.entity.Borrower;
-import com.loanshark.api.entity.CashTransaction;
-import com.loanshark.api.entity.CashTransactionType;
-import com.loanshark.api.entity.InterestType;
-import com.loanshark.api.entity.Loan;
-import com.loanshark.api.entity.LoanInterestSettings;
-import com.loanshark.api.entity.LoanStatus;
-import com.loanshark.api.entity.RepaymentSchedule;
-import com.loanshark.api.entity.RiskBand;
-import com.loanshark.api.entity.ScheduleStatus;
-import com.loanshark.api.entity.User;
-import com.loanshark.api.entity.UserRole;
-import com.loanshark.api.repository.CashTransactionRepository;
-import com.loanshark.api.repository.BorrowerRepository;
-import com.loanshark.api.repository.LoanInterestSettingsRepository;
-import com.loanshark.api.service.BusinessCapitalService;
-import com.loanshark.api.repository.LoanRepository;
-import com.loanshark.api.repository.RepaymentRepository;
-import com.loanshark.api.repository.RepaymentScheduleRepository;
+import com.loanshark.api.dto.ApiDtos.*;
+import com.loanshark.api.entity.*;
+import com.loanshark.api.repository.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import jakarta.annotation.PostConstruct;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.FORBIDDEN;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
+
+import static org.springframework.http.HttpStatus.*;
 
 @Service
 public class LoanService {
@@ -60,6 +35,7 @@ public class LoanService {
     private final InterestCalculationService interestCalculationService;
     private final BusinessCapitalService businessCapitalService;
     private final RepaymentRepository repaymentRepository;
+    private final LoanInterestSettingsService loanInterestSettingsService;
 
     private static final BigDecimal EIGHTY_PERCENT = new BigDecimal("0.80");
 
@@ -74,20 +50,20 @@ public class LoanService {
     }
 
     public LoanService(
-        LoanRepository loanRepository,
-        RepaymentScheduleRepository repaymentScheduleRepository,
-        CashTransactionRepository cashTransactionRepository,
-        BorrowerRepository borrowerRepository,
-        BorrowerService borrowerService,
-        RiskService riskService,
-        CurrentUserService currentUserService,
-        AuditLogService auditLogService,
-        BorrowerVerificationService borrowerVerificationService,
-        NotificationService notificationService,
-        LoanInterestSettingsRepository loanInterestSettingsRepository,
-        InterestCalculationService interestCalculationService,
-        BusinessCapitalService businessCapitalService,
-        RepaymentRepository repaymentRepository
+            LoanRepository loanRepository,
+            CashTransactionRepository cashTransactionRepository,
+            RepaymentScheduleRepository repaymentScheduleRepository,
+            BorrowerRepository borrowerRepository,
+            BorrowerService borrowerService,
+            RiskService riskService,
+            CurrentUserService currentUserService,
+            AuditLogService auditLogService,
+            BorrowerVerificationService borrowerVerificationService,
+            NotificationService notificationService,
+            LoanInterestSettingsRepository loanInterestSettingsRepository,
+            InterestCalculationService interestCalculationService,
+            BusinessCapitalService businessCapitalService,
+            RepaymentRepository repaymentRepository, LoanInterestSettingsService loanInterestSettingsService
     ) {
         this.loanRepository = loanRepository;
         this.repaymentScheduleRepository = repaymentScheduleRepository;
@@ -103,8 +79,10 @@ public class LoanService {
         this.interestCalculationService = interestCalculationService;
         this.businessCapitalService = businessCapitalService;
         this.repaymentRepository = repaymentRepository;
+        this.loanInterestSettingsService = loanInterestSettingsService;
     }
 
+    // -------------------- APPLY LOAN --------------------
     @Transactional
     public LoanResponse apply(LoanApplicationRequest request) {
         Borrower borrower = borrowerService.findBorrower(request.borrowerId());
@@ -116,13 +94,17 @@ public class LoanService {
         for (Loan active : activeLoans) {
             BigDecimal totalOwed = active.getTotalAmount();
             BigDecimal paid = repaymentRepository.sumAmountPaidByLoanId(active.getId());
+            BigDecimal limitPercent = loanInterestSettingsService.get().borrowerLimitPercentage(); // e.g., 10 = 10%
             if (paid == null) paid = BigDecimal.ZERO;
-            BigDecimal requiredMin = totalOwed.multiply(EIGHTY_PERCENT);
+
+// Convert percentage to decimal
+            BigDecimal requiredMin = totalOwed.multiply(limitPercent).divide(BigDecimal.valueOf(100));
+
             if (paid.compareTo(requiredMin) < 0) {
                 throw new ResponseStatusException(
-                    BAD_REQUEST,
-                    "You must pay at least 80% of your current loan (Loan #" + active.getId()
-                        + ": " + paid + " of " + totalOwed + " paid) before applying for a new loan."
+                        BAD_REQUEST,
+                        "You must pay at least " + limitPercent + "% of your current loan " +
+                                "(Loan #" + active.getId() + ": " + paid + " of " + totalOwed + " paid) before applying for a new loan."
                 );
             }
         }
@@ -131,8 +113,8 @@ public class LoanService {
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
-                .map(Borrower::getId)
-                .orElseThrow();
+                    .map(Borrower::getId)
+                    .orElseThrow();
             if (!currentBorrowerId.equals(request.borrowerId())) {
                 throw new ResponseStatusException(FORBIDDEN, "Borrowers can only apply for themselves");
             }
@@ -141,38 +123,35 @@ public class LoanService {
         BigDecimal available = businessCapitalService.getBalance();
         if (available.compareTo(request.loanAmount()) < 0) {
             throw new ResponseStatusException(
-                BAD_REQUEST,
-                "Insufficient funds to disburse this loan. Available: " + available + ". Required: " + request.loanAmount() + ". Please ask the admin to add funds before applying."
+                    BAD_REQUEST,
+                    "Insufficient funds to disburse this loan. Available: " + available + ". Required: " + request.loanAmount()
             );
         }
 
-        LoanInterestSettings settings = loanInterestSettingsRepository.findById(com.loanshark.api.entity.UuidConstants.LOAN_INTEREST_SETTINGS_ID).orElse(null);
-        if (settings == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured; contact the administrator.");
-        }
+        LoanInterestSettings settings = loanInterestSettingsRepository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured"));
+
         BigDecimal limitPct = settings.getBorrowerLimitPercentage() != null ? settings.getBorrowerLimitPercentage() : BigDecimal.valueOf(100);
         BigDecimal monthlyIncome = borrower.getMonthlyIncome() != null ? borrower.getMonthlyIncome() : BigDecimal.ZERO;
         BigDecimal maxAllowed = monthlyIncome.multiply(limitPct).divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
         if (request.loanAmount().compareTo(maxAllowed) > 0) {
             throw new ResponseStatusException(
-                BAD_REQUEST,
-                "Loan amount exceeds the limit. Maximum allowed is " + limitPct + "% of monthly income (R" + maxAllowed + "). Your monthly income: R" + monthlyIncome + "."
+                    BAD_REQUEST,
+                    "Loan amount exceeds the limit. Maximum allowed is " + limitPct + "% of monthly income (R" + maxAllowed + "). Your monthly income: R" + monthlyIncome + "."
             );
         }
+
         BigDecimal rate = settings.getDefaultInterestRate();
         InterestType interestType = settings.getInterestType();
         int periodDays = settings.getInterestPeriodDays() != null ? settings.getInterestPeriodDays() : 30;
         int gracePeriodDays = settings.getGracePeriodDays() != null ? settings.getGracePeriodDays() : 0;
         int defaultTerm = settings.getDefaultLoanTermDays() != null && settings.getDefaultLoanTermDays() > 0
-            ? settings.getDefaultLoanTermDays()
-            : 365;
+                ? settings.getDefaultLoanTermDays() : 365;
         int termDays = request.loanTermDays() != null && request.loanTermDays() > 0
-            ? request.loanTermDays()
-            : defaultTerm;
+                ? request.loanTermDays() : defaultTerm;
+
         BigDecimal totalAmount = interestCalculationService.computeTotalAmount(
-            request.loanAmount(),
-            termDays,
-            settings
+                request.loanAmount(), termDays, settings
         );
 
         Loan loan = new Loan();
@@ -195,29 +174,32 @@ public class LoanService {
 
         auditLogService.record(currentUser.getId(), "APPLY_LOAN", "Loan", loan.getId().toString(), String.join("; ", result.factors()));
         notificationService.notifyBorrowerStatusChanged(borrower);
+
         return toResponse(loan);
     }
-     @Transactional(readOnly = true)
+
+    // -------------------- LIST LOANS --------------------
+    @Transactional(readOnly = true)
     public PageResponse<LoanResponse> listAll(String query, List<LoanStatus> statuses, int page, int size) {
         Page<Loan> loanPage;
         if (statuses != null && !statuses.isEmpty()) {
             loanPage = loanRepository.searchByStatusIn(
-                query == null ? "" : query.trim(),
-                statuses,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+                    query == null ? "" : query.trim(),
+                    statuses,
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
             );
         } else {
             loanPage = loanRepository.search(
-                query == null ? "" : query.trim(),
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+                    query == null ? "" : query.trim(),
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
             );
         }
         return new PageResponse<>(
-            loanPage.getContent().stream().map(this::toResponse).toList(),
-            loanPage.getNumber(),
-            loanPage.getSize(),
-            loanPage.getTotalElements(),
-            loanPage.getTotalPages()
+                loanPage.getContent().stream().map(this::toResponse).toList(),
+                loanPage.getNumber(),
+                loanPage.getSize(),
+                loanPage.getTotalElements(),
+                loanPage.getTotalPages()
         );
     }
 
@@ -226,20 +208,20 @@ public class LoanService {
         User currentUser = currentUserService.requireCurrentUser();
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
         UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
-            .map(Borrower::getId)
-            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower profile not found"));
+                .map(Borrower::getId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower profile not found"));
 
         Page<Loan> loanPage = loanRepository.searchMyLoans(
-            borrowerId,
-            query == null ? "" : query.trim(),
-            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+                borrowerId,
+                query == null ? "" : query.trim(),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return new PageResponse<>(
-            loanPage.getContent().stream().map(this::toResponse).toList(),
-            loanPage.getNumber(),
-            loanPage.getSize(),
-            loanPage.getTotalElements(),
-            loanPage.getTotalPages()
+                loanPage.getContent().stream().map(this::toResponse).toList(),
+                loanPage.getNumber(),
+                loanPage.getSize(),
+                loanPage.getTotalElements(),
+                loanPage.getTotalPages()
         );
     }
 
@@ -254,16 +236,10 @@ public class LoanService {
     public LoanResponse approve(LoanDecisionRequest request) {
         Loan loan = findLoan(request.loanId());
         User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() == UserRole.OWNER) {
-            // owner can approve any loan
-        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0) {
-            // cashier can approve loans under the limit
-        } else {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can approve loans over " + cashierApprovalLimit + "; cashiers may approve loans under that amount.");
+        if (currentUser.getRole() != UserRole.OWNER && !(currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0)) {
+            throw new ResponseStatusException(FORBIDDEN, "Only owner can approve loans over limit; cashiers may approve smaller loans");
         }
-        if (loan.getStatus() != LoanStatus.PENDING) {
-            throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be approved");
-        }
+        if (loan.getStatus() != LoanStatus.PENDING) throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be approved");
 
         loan.setStatus(LoanStatus.ACTIVE);
         loan.setIssueDate(LocalDate.now());
@@ -276,42 +252,40 @@ public class LoanService {
         createCashDisbursement(loan);
         auditLogService.record(currentUser.getId(), "APPROVE_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
         notificationService.notifyLoanApproved(loan);
+
         return toResponse(loan);
     }
 
-    /** Update a PENDING loan (amount and/or term). Owner only. Recomputes total amount from current settings. */
     @Transactional
     public LoanResponse updateLoan(UUID loanId, LoanUpdateRequest request) {
         Loan loan = findLoan(loanId);
-        if (loan.getStatus() != LoanStatus.PENDING) {
-            throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be updated");
-        }
-        LoanInterestSettings settings = loanInterestSettingsRepository.findById(com.loanshark.api.entity.UuidConstants.LOAN_INTEREST_SETTINGS_ID).orElse(null);
-        if (settings == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured");
-        }
-        int termDays = request.loanTermDays() != null && request.loanTermDays() > 0
-            ? request.loanTermDays()
-            : loan.getLoanTermDays();
+        if (loan.getStatus() != LoanStatus.PENDING) throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be updated");
+
+        LoanInterestSettings settings = loanInterestSettingsRepository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured"));
+
+        int termDays = request.loanTermDays() != null && request.loanTermDays() > 0 ? request.loanTermDays() : loan.getLoanTermDays();
         BigDecimal totalAmount = interestCalculationService.computeTotalAmount(request.loanAmount(), termDays, settings);
+
         loan.setLoanAmount(request.loanAmount());
         loan.setLoanTermDays(termDays);
         loan.setTotalAmount(totalAmount);
         loanRepository.save(loan);
+
         User currentUser = currentUserService.requireCurrentUser();
         auditLogService.record(currentUser.getId(), "UPDATE_LOAN", "Loan", loan.getId().toString(), "amount=" + request.loanAmount() + ", term=" + termDays);
+
         return toResponse(loan);
     }
 
-    /** Cancel (delete) a PENDING loan. Owner only. */
     @Transactional
     public void cancelLoan(UUID loanId) {
         Loan loan = findLoan(loanId);
-        if (loan.getStatus() != LoanStatus.PENDING) {
-            throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be cancelled");
-        }
+        if (loan.getStatus() != LoanStatus.PENDING) throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be cancelled");
+
         riskService.deleteAssessmentsByLoanId(loanId);
         loanRepository.delete(loan);
+
         User currentUser = currentUserService.requireCurrentUser();
         auditLogService.record(currentUser.getId(), "CANCEL_LOAN", "Loan", loanId.toString(), "Pending loan cancelled");
     }
@@ -320,19 +294,18 @@ public class LoanService {
     public LoanResponse reject(LoanDecisionRequest request) {
         Loan loan = findLoan(request.loanId());
         User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() == UserRole.OWNER) {
-            // owner can reject any loan
-        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0) {
-            // cashier can reject loans under the limit
-        } else {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can reject loans over " + cashierApprovalLimit + "; cashiers may reject loans under that amount.");
+        if (currentUser.getRole() != UserRole.OWNER && !(currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0)) {
+            throw new ResponseStatusException(FORBIDDEN, "Only owner can reject loans over limit; cashiers may reject smaller loans");
         }
+
         loan.setStatus(LoanStatus.REJECTED);
         loan.setApprovedBy(currentUser);
         loanRepository.save(loan);
+
         auditLogService.record(currentUser.getId(), "REJECT_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
         Borrower borrower = borrowerService.findBorrower(loan.getBorrower().getId());
         notificationService.notifyBorrowerStatusChanged(borrower);
+
         return toResponse(loan);
     }
 
@@ -340,83 +313,117 @@ public class LoanService {
     public List<ScheduleResponse> listSchedule(UUID loanId) {
         Loan loan = findLoan(loanId);
         enforceBorrowerOwnershipIfNeeded(loan);
-        return repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loanId).stream()
-            .map(schedule -> new ScheduleResponse(
-                schedule.getInstallmentNumber(),
-                schedule.getDueDate(),
-                schedule.getAmountDue(),
-                schedule.getStatus()
-            ))
-            .toList();
+        return repaymentScheduleRepository.findByLoanIdOrderByStatusPendingFirst(loanId).stream()
+                .map(s -> new ScheduleResponse(s.getInstallmentNumber(), s.getDueDate(), s.getAmountDue(), s.getStatus()))
+                .toList();
     }
 
-    public Loan findLoan(UUID loanId) {
-        return loanRepository.findById(loanId)
-            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
-    }
-
-    /** Send overdue payment reminder to borrower (staff only). Loan must have at least one overdue or past-due schedule. */
     @Transactional
     public void sendOverdueReminder(UUID loanId) {
         Loan loan = findLoan(loanId);
         User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() != UserRole.OWNER && currentUser.getRole() != UserRole.CASHIER) {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner or cashier can send payment reminders");
-        }
-        if (loan.getStatus() != LoanStatus.ACTIVE) {
-            throw new ResponseStatusException(BAD_REQUEST, "Only active loans can have payment reminders sent");
-        }
+        if (currentUser.getRole() != UserRole.OWNER && currentUser.getRole() != UserRole.CASHIER) throw new ResponseStatusException(FORBIDDEN, "Only owner or cashier can send reminders");
+        if (loan.getStatus() != LoanStatus.ACTIVE) throw new ResponseStatusException(BAD_REQUEST, "Only active loans can have payment reminders sent");
+
         List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loanId);
         LocalDate today = LocalDate.now();
         boolean hasOverdue = schedules.stream().anyMatch(s ->
-            s.getStatus() == ScheduleStatus.OVERDUE
-                || (s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(today))
+                s.getStatus() == ScheduleStatus.OVERDUE || (s.getStatus() != ScheduleStatus.PAID && s.getDueDate().isBefore(today))
         );
-        if (!hasOverdue) {
-            throw new ResponseStatusException(BAD_REQUEST, "This loan has no overdue or past-due installments");
-        }
+        if (!hasOverdue) throw new ResponseStatusException(BAD_REQUEST, "This loan has no overdue or past-due installments");
+
         Borrower borrower = borrowerService.findBorrower(loan.getBorrower().getId());
-        notificationService.notifyBorrowerLoanOverdue(loan,borrower);
+        notificationService.notifyBorrowerLoanOverdue(loan, borrower);
     }
 
-    private void enforceBorrowerOwnershipIfNeeded(Loan loan) {
-        User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() != UserRole.BORROWER) {
+    @Transactional
+    public void recordPayment(UUID loanId, BigDecimal amount) {
+        Loan loan = findLoan(loanId);
+        CashTransaction payment = new CashTransaction();
+        payment.setLoan(loan);
+        payment.setAmount(amount);
+        payment.setType(CashTransactionType.REPAYMENT);
+        payment.setReferenceNumber("PAY-" + UUID.randomUUID());
+        payment.setCapturedBy(currentUserService.requireCurrentUser());
+        cashTransactionRepository.save(payment);
+
+        recalculateScheduleAfterPayment(loan);
+    }
+
+    @Transactional
+    public void recalculateScheduleAfterPayment(Loan loan) {
+        List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId());
+        BigDecimal totalPaid = repaymentRepository.sumAmountPaidByLoanId(loan.getId());
+        if (totalPaid == null) totalPaid = BigDecimal.ZERO;
+
+        BigDecimal remaining = loan.getTotalAmount().subtract(totalPaid).max(BigDecimal.ZERO);
+        if (remaining.compareTo(BigDecimal.ZERO) == 0) {
+            schedules.forEach(s -> {
+                if (s.getStatus() != ScheduleStatus.PAID) {
+                    s.setAmountDue(BigDecimal.ZERO);
+                    s.setStatus(ScheduleStatus.PAID);
+                }
+            });
+            repaymentScheduleRepository.saveAll(schedules);
             return;
         }
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
 
-        UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
-            .map(Borrower::getId)
-            .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
+        int remainingInstallments = (int) schedules.stream().filter(s -> s.getStatus() != ScheduleStatus.PAID).count();
+        if (remainingInstallments == 0) return;
 
-        if (!loan.getBorrower().getId().equals(borrowerId)) {
-            throw new ResponseStatusException(FORBIDDEN, "Borrowers can only view their own loans");
+        BigDecimal baseAmount = remaining.divide(BigDecimal.valueOf(remainingInstallments), 2, RoundingMode.DOWN);
+        BigDecimal scheduledTotal = BigDecimal.ZERO;
+        LocalDate loanDueDate = loan.getDueDate() != null ? loan.getDueDate() : loan.getIssueDate().plusDays(loan.getLoanTermDays());
+
+        int i = 1;
+        for (RepaymentSchedule s : schedules) {
+            if (s.getStatus() == ScheduleStatus.PAID) continue;
+
+            BigDecimal amount = (i == remainingInstallments) ? remaining.subtract(scheduledTotal) : baseAmount;
+            if (i != remainingInstallments) scheduledTotal = scheduledTotal.add(amount);
+
+            s.setAmountDue(amount);
+            if (s.getDueDate().isAfter(loanDueDate)) s.setDueDate(loanDueDate);
+            s.setStatus(ScheduleStatus.PENDING);
+            i++;
         }
+        repaymentScheduleRepository.saveAll(schedules);
     }
 
-    /**
-     * Generates repayment schedule from loan total amount, term and interest period (from settings).
-     * Number of installments = ceil(loanTermDays / interestPeriodDays); due dates align with each period.
-     */
     private void generateSchedule(Loan loan) {
+        repaymentScheduleRepository.deleteByLoanId(loan.getId());
         int termDays = loan.getLoanTermDays() != null && loan.getLoanTermDays() > 0 ? loan.getLoanTermDays() : 365;
-        int periodDays = loan.getInterestPeriodDays() != null && loan.getInterestPeriodDays() > 0
-            ? loan.getInterestPeriodDays()
-            : 30;
-        int installments = Math.max(1, (termDays + periodDays - 1) / periodDays);
+        int periodDays = loan.getInterestPeriodDays() != null && loan.getInterestPeriodDays() > 0 ? loan.getInterestPeriodDays() : 30;
         BigDecimal total = loan.getTotalAmount();
-        BigDecimal amountPerInstallment = total.divide(new BigDecimal(installments), 2, RoundingMode.HALF_UP);
+        if (total == null || total.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalStateException("Loan total must be > 0");
+
+        int installments = Math.max(1, (termDays + periodDays - 1) / periodDays);
+        BigDecimal amountPerInstallment = total.divide(BigDecimal.valueOf(installments), 2, RoundingMode.DOWN);
+
         LocalDate issueDate = loan.getIssueDate() != null ? loan.getIssueDate() : LocalDate.now();
+        BigDecimal scheduledTotal = BigDecimal.ZERO;
+
         for (int i = 1; i <= installments; i++) {
             RepaymentSchedule schedule = new RepaymentSchedule();
             schedule.setLoan(loan);
             schedule.setInstallmentNumber(i);
+
             int daysFromIssue = Math.min(i * periodDays, termDays);
-            schedule.setDueDate(issueDate.plusDays(daysFromIssue));
-            schedule.setAmountDue(i == installments
-                ? total.subtract(amountPerInstallment.multiply(new BigDecimal(installments - 1)))
-                : amountPerInstallment);
+            LocalDate dueDate = issueDate.plusDays(daysFromIssue);
+
+            if (loan.getDueDate() != null && dueDate.isAfter(loan.getDueDate())) {
+                dueDate = loan.getDueDate();
+            }
+            schedule.setDueDate(dueDate);
+
+            BigDecimal amount;
+            if (i == installments) amount = total.subtract(scheduledTotal);
+            else {
+                amount = amountPerInstallment;
+                scheduledTotal = scheduledTotal.add(amount);
+            }
+
+            schedule.setAmountDue(amount);
             schedule.setStatus(ScheduleStatus.PENDING);
             repaymentScheduleRepository.save(schedule);
         }
@@ -434,46 +441,60 @@ public class LoanService {
         cashTransactionRepository.save(transaction);
     }
 
+    Loan findLoan(UUID loanId) {
+        return loanRepository.findById(loanId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
+    }
+
+    private void enforceBorrowerOwnershipIfNeeded(Loan loan) {
+        User currentUser = currentUserService.requireCurrentUser();
+        if (currentUser.getRole() == UserRole.BORROWER) {
+            UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId()).map(Borrower::getId).orElseThrow();
+            if (!loan.getBorrower().getId().equals(borrowerId)) {
+                throw new ResponseStatusException(FORBIDDEN, "Borrowers can only access their own loans");
+            }
+        }
+    }
+
     private LoanResponse toResponse(Loan loan) {
         String borrowerUsername = null;
         String borrowerFullName = null;
-        if (loan.getBorrower() != null) {
-            if (loan.getBorrower().getUser() != null) {
-                borrowerUsername = loan.getBorrower().getUser().getUsername();
-            }
-            String first = loan.getBorrower().getFirstName();
-            String last = loan.getBorrower().getLastName();
-            if (first != null || last != null) {
-                borrowerFullName = (first != null ? first : "").trim() + " " + (last != null ? last : "").trim();
-                borrowerFullName = borrowerFullName.trim();
-                if (borrowerFullName.isEmpty()) borrowerFullName = null;
-            }
+        if (loan.getBorrower() != null && loan.getBorrower().getUser() != null) {
+            borrowerUsername = loan.getBorrower().getUser().getUsername();
         }
-        boolean hasOverdue = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId()).stream()
-            .anyMatch(s -> s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(LocalDate.now()));
+        String first = loan.getBorrower() != null ? loan.getBorrower().getFirstName() : null;
+        String last = loan.getBorrower() != null ? loan.getBorrower().getLastName() : null;
+        if (first != null || last != null) {
+            borrowerFullName = (first != null ? first : "") + " " + (last != null ? last : "");
+        }
+
+        boolean hasOverdue = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId())
+                .stream().anyMatch(s -> s.getStatus() != ScheduleStatus.PAID && s.getDueDate().isBefore(LocalDate.now()));
+
         BigDecimal total = loan.getTotalAmount() != null ? loan.getTotalAmount() : BigDecimal.ZERO;
         BigDecimal amountPaid = repaymentRepository.sumAmountPaidByLoanId(loan.getId()) != null
-            ? repaymentRepository.sumAmountPaidByLoanId(loan.getId()) : BigDecimal.ZERO;
+                ? repaymentRepository.sumAmountPaidByLoanId(loan.getId()) : BigDecimal.ZERO;
         BigDecimal pendingAmount = total.subtract(amountPaid).max(BigDecimal.ZERO);
+
         return new LoanResponse(
-            loan.getId(),
-            loan.getBorrower().getId(),
-            borrowerUsername,
-            borrowerFullName,
-            loan.getLoanAmount(),
-            loan.getInterestRate(),
-            loan.getTotalAmount(),
-            pendingAmount,
-            loan.getLoanTermDays(),
-            loan.getIssueDate(),
-            loan.getDueDate(),
-            loan.getStatus(),
-            loan.getRiskScore(),
-            loan.getRiskBand(),
-            loan.getInterestType(),
-            loan.getInterestPeriodDays(),
-            loan.getGracePeriodDays() != null ? loan.getGracePeriodDays() : 0,
-            hasOverdue
+                loan.getId(),
+                loan.getBorrower().getId(),
+                borrowerUsername,
+                borrowerFullName,
+                loan.getLoanAmount(),
+                loan.getInterestRate(),
+                loan.getTotalAmount(),
+                pendingAmount,
+                loan.getLoanTermDays(),
+                loan.getIssueDate(),
+                loan.getDueDate(),
+                loan.getStatus(),
+                loan.getRiskScore(),
+                loan.getRiskBand(),
+                loan.getInterestType(),
+                loan.getInterestPeriodDays(),
+                loan.getGracePeriodDays() != null ? loan.getGracePeriodDays() : 0,
+                hasOverdue
         );
     }
 }

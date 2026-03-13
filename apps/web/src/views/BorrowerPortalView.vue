@@ -47,6 +47,7 @@
             title=""
             :headers="portalLoanHeaders"
             :items="loans"
+            :items-per-page="5"
             no-data-message="No loans."
           >
             <template #item.id="{ item }">#{{ item.id }}</template>
@@ -77,6 +78,7 @@
               title=""
               :headers="portalScheduleHeaders"
               :items="schedule"
+              :items-per-page="8"
               no-data-message="Choose a loan to view its repayment schedule."
             >
               <template #item.installmentNumber="{ item }">{{ item.installmentNumber }}</template>
