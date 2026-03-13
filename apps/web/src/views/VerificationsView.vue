@@ -13,10 +13,11 @@
     </v-alert>
 
     <AppTableCard title="Manual Review Queue" :count-label="`${verifications.length} cases`" chip-color="warning">
-      <AppDataTable
+      <AppDataTableInstallment Schedule
         title=""
         :headers="verificationHeaders"
         :items="verifications"
+        :items-per-page="3"
         no-data-message="No client verifications need manual review."
       >
         <template #item.borrowerId="{ item }">#{{ item.borrowerId }}</template>
@@ -35,7 +36,7 @@
             <AppActionButton size="small" color="error" variant="tonal" text="Reject" @click="openDialog(item, 'reject')" />
           </div>
         </template>
-      </AppDataTable>
+      </AppDataTableInstallment>
     </AppTableCard>
 
     <AppDialogCard v-model="showDialog" :title="dialogTitle" :max-width="1200">

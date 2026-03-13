@@ -507,7 +507,7 @@ async function loadBorrowers(nextPage = page.value) {
   page.value = nextPage;
   loading.value = true;
   try {
-    await store.fetchBorrowers({ q: search.value, page: page.value, size: 8 });
+    await store.fetchBorrowers({ q: search.value, page: page.value, size: 5 });
   } finally {
     loading.value = false;
   }
