@@ -314,7 +314,9 @@ public final class ApiDtos {
         @NotNull UUID loanId,
         @NotNull @DecimalMin("0.01") BigDecimal amountPaid,
         @NotNull PaymentMethod paymentMethod,
-        @NotBlank String referenceNumber
+        @NotBlank String referenceNumber,
+        String proof
+
     ) {
     }
 
@@ -327,7 +329,8 @@ public final class ApiDtos {
         Instant paymentDate,
         PaymentMethod paymentMethod,
         String referenceNumber,
-        String capturedByUsername
+        String capturedByUsername,
+        String proof // optional
     ) {
     }
 
