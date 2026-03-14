@@ -74,7 +74,7 @@
         <v-divider />
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-            Pay any amount you can afford. You can pay in full, pay one installment, or pay a partial amount—it all reduces your debt until the loan is paid off.
+            Pay any amount you can afford. You can pay in full, pay one installment, or pay a partial amount it all reduces your debt until the loan is paid off.
           </v-alert>
           <v-alert v-if="payError" type="error" variant="tonal" class="mb-3" density="compact">
             {{ payError }}
@@ -96,9 +96,9 @@
               :items="paymentMethods"
               class="mt-2"
             />
-            <!-- PDF Proof for CASH payments -->
+           
             <AppTextField
-              v-if="payForm.paymentMethod === 'CASH'"
+              v-if="payForm.paymentMethod === 'MOBILE_TRANSFER'"
               type="file"
               label="Proof of Payment (PDF)"
               accept="application/pdf"
@@ -154,7 +154,7 @@ const error = ref("");
 const selectedLoanId = ref(null);
 const repaymentsPage = computed(() => store.repaymentsPage);
 
-const paymentMethods = ["CASH", "EFT", "MOBILE_TRANSFER"];
+const paymentMethods = ["EFT", "MOBILE_TRANSFER"];
 const showPayDialog = ref(false);
 const payLoading = ref(false);
 const payError = ref("");
@@ -165,7 +165,7 @@ const proofFile = ref(null);
 const payForm = ref({
   installmentNumber: null,
   amountPaid: 0,
-  paymentMethod: "CASH",
+  paymentMethod: "MOBILE_TRANSFER",
   referenceNumber: ""
 });
 
@@ -282,7 +282,7 @@ function openPayDialog(item) {
   payForm.value = {
     installmentNumber: item.installmentNumber,
     amountPaid: Number(item.amountDue) || 0,
-    paymentMethod: "CASH",
+    paymentMethod: "MOBILE_TRANSFER",
     referenceNumber: ref
   };
   proofFile.value = null;
@@ -341,7 +341,7 @@ async function submitPay() {
     return;
   }
 
-  if (payForm.value.paymentMethod === "CASH" && !proofFile.value) {
+  if (payForm.value.paymentMethod === "MOBILE_TRANSFER" && !proofFile.value) {
     payError.value = "You must upload a PDF proof of payment for CASH payments.";
     return;
   }
@@ -352,7 +352,7 @@ async function submitPay() {
 
   try {
     let proofBase64 = null;
-    if (payForm.value.paymentMethod === "CASH" && proofFile.value) {
+    if (payForm.value.paymentMethod === "MOBILE_TRANSFER" && proofFile.value) {
       proofBase64 = await fileToBase64(proofFile.value);
     }
 

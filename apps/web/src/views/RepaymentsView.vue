@@ -98,7 +98,7 @@
         <AppSelectField v-model="form.paymentMethod" label="Payment method" :items="paymentMethods" />
 
         <!-- Upload proof for CASH -->
-        <div v-if="form.paymentMethod === 'CASH'" class="mt-2">
+        <div v-if="form.paymentMethod === 'MOBILE_TRANSFER'" class="mt-2 mb-4">
           <label class="text-caption">Upload proof (PDF only)</label>
           <input type="file" accept="application/pdf" @change="onFileSelected" />
         </div>
