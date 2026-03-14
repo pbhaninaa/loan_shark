@@ -94,6 +94,8 @@
         <template #item.loanAmount="{ item }">{{ formatCurrency(item.loanAmount) }}</template>
         <template #item.totalAmount="{ item }">{{ formatCurrency(item.totalAmount) }}</template>
         <template #item.dueDate="{ item }">{{ item.dueDate || "None" }}</template>
+        <template #item.pendingAmount="{ item }">{{ formatCurrency(item.pendingAmount) }}</template>
+
         <template #item.actions="{ item }">
         <AppActionButton
             size="small"
@@ -161,6 +163,7 @@ const loanHeaders = [
   { title: "Amount", value: "loanAmount" },
   { title: "Total", value: "totalAmount" },
   { title: "Due", value: "dueDate" },
+  {title:"Pending Amount",value:"pendingAmount"},
   { title: "Actions", value: "actions" } 
 ];
 
