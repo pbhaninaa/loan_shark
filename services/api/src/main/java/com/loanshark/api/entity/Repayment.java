@@ -51,6 +51,10 @@ public class Repayment {
 
     @Column(name = "reference_number", nullable = false)
     private String referenceNumber;
+    // in Repayment.java
+    @Column(columnDefinition = "LONGTEXT") // for MySQL
+    private String proof;
+
 
     @PrePersist
     void onPrePersist() {

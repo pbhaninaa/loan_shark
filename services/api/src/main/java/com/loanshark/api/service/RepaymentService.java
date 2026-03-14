@@ -106,11 +106,18 @@ public class RepaymentService {
             }
         }
         Repayment repayment = new Repayment();
+
         repayment.setLoan(loan);
         repayment.setAmountPaid(request.amountPaid());
         repayment.setPaymentMethod(request.paymentMethod());
         repayment.setReferenceNumber(request.referenceNumber());
         repayment.setCapturedBy(currentUser);
+        if ("CASH".equalsIgnoreCase(String.valueOf(request.paymentMethod())) && request.proof() != null) {
+            repayment.setProof(request.proof());
+        }
+        if ("CASH".equalsIgnoreCase(String.valueOf(request.paymentMethod())) && (request.proof() == null || request.proof().isBlank())) {
+            throw new ResponseStatusException(BAD_REQUEST, "Proof of payment PDF is required for CASH payments");
+        }
         repayment = repaymentRepository.save(repayment);
 
         applyPaymentToSchedule(loan, request.amountPaid());
@@ -152,7 +159,8 @@ public class RepaymentService {
             repayment.getPaymentDate(),
             repayment.getPaymentMethod(),
             repayment.getReferenceNumber(),
-            repayment.getCapturedBy() != null ? repayment.getCapturedBy().getUsername() : null
+            repayment.getCapturedBy() != null ? repayment.getCapturedBy().getUsername() : null,
+                repayment.getProof()
         );
     }
 
@@ -248,7 +256,8 @@ public class RepaymentService {
             repayment.getPaymentDate(),
             repayment.getPaymentMethod(),
             repayment.getReferenceNumber(),
-            repayment.getCapturedBy() != null ? repayment.getCapturedBy().getUsername() : null
+            repayment.getCapturedBy() != null ? repayment.getCapturedBy().getUsername() : null,
+                repayment.getProof()
         );
     }
 

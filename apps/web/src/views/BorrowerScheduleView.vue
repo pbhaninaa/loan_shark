@@ -53,12 +53,18 @@
             <span v-else class="text-medium-emphasis text-caption">—</span>
           </div>
         </template>
-         <template #footer>
-          <AppPaginationFooter v-model="page" :total-pages="repaymentsPage.totalPages" :total-elements="repaymentsPage.totalElements" @update:model-value="loadRepayments" />
+        <template #footer>
+          <AppPaginationFooter
+            v-model="page"
+            :total-pages="repaymentsPage.totalPages"
+            :total-elements="repaymentsPage.totalElements"
+            @update:model-value="loadRepayments"
+          />
         </template>
       </AppDataTable>
     </AppTableCard>
 
+    <!-- Payment Dialog -->
     <v-dialog v-model="showPayDialog" max-width="440" persistent>
       <v-card>
         <v-card-title class="d-flex align-center">
@@ -74,21 +80,30 @@
             {{ payError }}
           </v-alert>
           <v-form ref="payFormRef" @submit.prevent="submitPay">
-           <AppTextField
-            v-model.number="payForm.amountPaid"
-            label="Amount"
-            type="number"
-            step="0.01"
-            min="0.01"
-            :max="totalPendingAmount"
-            prepend-inner-icon="mdi-cash"
-            :hint="`Enter any amount up to ${formatCurrency(totalPendingAmount)}`"
-          />
+            <AppTextField
+              v-model.number="payForm.amountPaid"
+              label="Amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              :max="totalPendingAmount"
+              prepend-inner-icon="mdi-cash"
+              :hint="`Enter any amount up to ${formatCurrency(totalPendingAmount)}`"
+            />
             <AppSelectField
               v-model="payForm.paymentMethod"
               label="Payment method"
               :items="paymentMethods"
               class="mt-2"
+            />
+            <!-- PDF Proof for CASH payments -->
+            <AppTextField
+              v-if="payForm.paymentMethod === 'CASH'"
+              type="file"
+              label="Proof of Payment (PDF)"
+              accept="application/pdf"
+              prepend-inner-icon="mdi-file-pdf"
+              @change="handleFileUpload"
             />
             <AppTextField
               v-model="payForm.referenceNumber"
@@ -126,14 +141,15 @@ import AppDataTable from "../components/ui/AppDataTable.vue";
 import AppSelectField from "../components/ui/AppSelectField.vue";
 import AppTableCard from "../components/ui/AppTableCard.vue";
 import AppTextField from "../components/ui/AppTextField.vue";
+import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 import api from "../services/api";
 import { useAppStore } from "../store";
 import { formatCurrency } from "../utils/formatters";
-import AppPaginationFooter from "../components/ui/AppPaginationFooter.vue";
 
 const route = useRoute();
 const router = useRouter();
 const store = useAppStore();
+
 const error = ref("");
 const selectedLoanId = ref(null);
 const repaymentsPage = computed(() => store.repaymentsPage);
@@ -144,6 +160,8 @@ const payLoading = ref(false);
 const payError = ref("");
 const message = ref("");
 const payingInstallment = ref(null);
+const proofFile = ref(null);
+
 const payForm = ref({
   installmentNumber: null,
   amountPaid: 0,
@@ -159,16 +177,22 @@ const scheduleHeaders = [
   { title: "Status", key: "status" },
   { title: "Actions", key: "actions" }
 ];
+
 const loanOptions = computed(() =>
-  store.loans.map((loan) => {
-    const id = loan?.id != null ? String(loan.id) : "";
-    return {
-      title: `Loan #${id || "—"} - ${formatCurrency(loan.totalAmount)} - ${loan.status}`,
-      value: id
-    };
-  }).filter((opt) => opt.value)
+  store.loans
+    .map((loan) => {
+      const id = loan?.id != null ? String(loan.id) : "";
+      return {
+        title: `Loan #${id || "—"} - ${formatCurrency(loan.totalAmount)} - ${loan.status}`,
+        value: id
+      };
+    })
+    .filter((opt) => opt.value)
 );
-const selectedLoanLabel = computed(() => (selectedLoanId.value ? `Loan #${selectedLoanId.value}` : "Choose loan"));
+
+const selectedLoanLabel = computed(() =>
+  selectedLoanId.value ? `Loan #${selectedLoanId.value}` : "Choose loan"
+);
 
 function normalizeLoanId(val) {
   if (val == null || val === "") return null;
@@ -222,12 +246,8 @@ async function loadSchedule(loanId) {
 }
 
 function scheduleColor(status) {
-  if (status === "OVERDUE") {
-    return "error";
-  }
-  if (status === "PAID") {
-    return "success";
-  }
+  if (status === "OVERDUE") return "error";
+  if (status === "PAID") return "success";
   return "warning";
 }
 
@@ -243,16 +263,17 @@ function generatePaymentReference(loanId, installmentNumber, payerId) {
   const payer = payerId != null ? payerId : store.borrowerId ?? store.userId ?? "";
   return `Loan-${loanId}-Inst-${installmentNumber}-Payer-${payer}-${timestamp}`;
 }
+
 const totalPendingAmount = computed(() => {
   const uniqueInstallments = new Map();
-  schedule.value.forEach(item => {
+  schedule.value.forEach((item) => {
     if (item.status !== "PAID" && !uniqueInstallments.has(item.installmentNumber)) {
       uniqueInstallments.set(item.installmentNumber, Number(item.amountDue));
     }
   });
   return Array.from(uniqueInstallments.values()).reduce((sum, amount) => sum + amount, 0);
 });
- 
+
 function openPayDialog(item) {
   payingInstallment.value = item.installmentNumber;
   const loanId = selectedLoanId.value;
@@ -264,15 +285,42 @@ function openPayDialog(item) {
     paymentMethod: "CASH",
     referenceNumber: ref
   };
+  proofFile.value = null;
   payError.value = "";
-  message.value="";
+  message.value = "";
   showPayDialog.value = true;
+}
+
+// Convert file to Base64 for DB storage
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) {
+    proofFile.value = null;
+    return;
+  }
+  if (file.type !== "application/pdf") {
+    payError.value = "Only PDF files are allowed for proof of payment.";
+    proofFile.value = null;
+    return;
+  }
+  payError.value = "";
+  proofFile.value = file;
 }
 
 function closePayDialog() {
   showPayDialog.value = false;
-  message.value="";
+  message.value = "";
   payError.value = "";
+  proofFile.value = null;
   payingInstallment.value = null;
 }
 
@@ -288,24 +336,35 @@ async function submitPay() {
     return;
   }
 
- if (amount > totalPendingAmount.value) {
-  payError.value = `You cannot pay more than your total pending amount: ${formatCurrency(totalPendingAmount.value)}`;
-  return;
-}
+  if (amount > totalPendingAmount.value) {
+    payError.value = `You cannot pay more than your total pending amount: ${formatCurrency(totalPendingAmount.value)}`;
+    return;
+  }
+
+  if (payForm.value.paymentMethod === "CASH" && !proofFile.value) {
+    payError.value = "You must upload a PDF proof of payment for CASH payments.";
+    return;
+  }
 
   payError.value = "";
-  message.value="";
+  message.value = "";
   payLoading.value = true;
 
   try {
+    let proofBase64 = null;
+    if (payForm.value.paymentMethod === "CASH" && proofFile.value) {
+      proofBase64 = await fileToBase64(proofFile.value);
+    }
+
     await api.post("/repayments", {
       loanId: selectedLoanId.value,
       amountPaid: amount,
       paymentMethod: payForm.value.paymentMethod,
-      referenceNumber: String(payForm.value.referenceNumber).trim()
+      referenceNumber: String(payForm.value.referenceNumber).trim(),
+      proof: proofBase64 // send Base64 to backend
     });
-  message.value="Payment saved successfully";
 
+    message.value = "Payment saved successfully";
     closePayDialog();
     await loadSchedule(selectedLoanId.value);
   } catch (e) {
