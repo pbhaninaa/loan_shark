@@ -123,7 +123,7 @@
         </v-alert>
         <AppTextField v-model.number="applyForm.loanAmount" label="Loan amount" type="number" prepend-inner-icon="mdi-cash-plus" />
         <div class="d-flex ga-2">
-          <AppActionButton text="Submit" type="submit"  />
+          <AppActionButton   :loading="submitting" text="Submit" type="submit"  />
           <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="showApplyDialog = false" />
         </div>
       </v-form>
@@ -153,6 +153,7 @@ const error = ref("");
 const search = ref("");
 const page = ref(0);
 const loading = ref(false);
+const submitting = ref(false);
 
 const loanHeaders = [
   { title: "Loan", value: "id" },
@@ -160,11 +161,11 @@ const loanHeaders = [
   { title: "Amount", value: "loanAmount" },
   { title: "Total", value: "totalAmount" },
   { title: "Due", value: "dueDate" },
-  { title: "Actions", value: "actions" } // <-- important
+  { title: "Actions", value: "actions" } 
 ];
 
 const applyForm = reactive({
-  loanAmount: 1000
+  loanAmount: null
 });
 const availableBalance = ref(null);
 const loanSettings = ref(null);
@@ -172,7 +173,7 @@ const loanSettings = ref(null);
 function onApplyDialogToggle(isOpen) {
   if (isOpen) {
     store.fetchBusinessCapitalBalance().then((b) => { availableBalance.value = b; }).catch(() => { availableBalance.value = null; });
-    // Refresh settings in case they changed
+   
     loadSettings();
   }
 }
@@ -200,16 +201,27 @@ async function loadSettings() {
 async function applyLoan() {
   message.value = "";
   error.value = "";
+
+  if (submitting.value) return;
+
+  submitting.value = true;
+
   try {
     await api.post("/loans/apply", {
       borrowerId: store.borrowerId,
       loanAmount: applyForm.loanAmount
     });
+
     showApplyDialog.value = false;
     message.value = "Loan application submitted successfully.";
+    applyForm.loanAmount = null;
     await loadLoans();
   } catch (requestError) {
-    error.value = requestError.response?.data?.message || "Could not submit loan application";
+    error.value =
+      requestError.response?.data?.message ||
+      "Could not submit loan application";
+  } finally {
+    submitting.value = false;
   }
 }
 
