@@ -115,14 +115,14 @@ public class RepaymentService {
         }
 
         // ----------------------------
-        // IF CASH, VERIFY PDF PROOF
+        // IF MOBILE_TRANSFER, VERIFY PDF PROOF
         // ----------------------------
-        if ("CASH".equalsIgnoreCase(String.valueOf(request.paymentMethod()))) {
+        if ("MOBILE_TRANSFER".equalsIgnoreCase(String.valueOf(request.paymentMethod()))) {
             if (request.proof() == null || request.proof().isBlank()) {
-                throw new ResponseStatusException(BAD_REQUEST, "Proof of payment PDF is required for CASH payments");
+                throw new ResponseStatusException(BAD_REQUEST, "Proof of payment PDF is required for MOBILE TRANSFER payments");
             }
 
-            BigDecimal pdfAmount = extractAmountFromPdf(request.proof());
+            BigDecimal pdfAmount = extractAmountFromPdfAndValidateDate(request.proof());
             if (pdfAmount == null || pdfAmount.compareTo(request.amountPaid()) != 0) {
                 throw new ResponseStatusException(BAD_REQUEST,
                         "Payment amount does not match the amount in PDF proof. Payment rejected.");
@@ -191,43 +191,68 @@ public class RepaymentService {
     // ----------------------------
     // EXTRACT AMOUNT FROM PDF (PDFBox 3.0.6 COMPATIBLE)
     // ----------------------------
-    private BigDecimal extractAmountFromPdf(String base64Pdf) {
+    private BigDecimal extractAmountFromPdfAndValidateDate(String base64Pdf) {
         try {
-            // Remove possible "data:application/pdf;base64," prefix
-            String base64Content = base64Pdf.contains(",")
-                    ? base64Pdf.split(",")[1]
-                    : base64Pdf;
-
+            // Decode Base64 PDF
+            String base64Content = base64Pdf.contains(",") ? base64Pdf.split(",")[1] : base64Pdf;
             byte[] pdfBytes = Base64.getDecoder().decode(base64Content);
 
             try (PDDocument document = Loader.loadPDF(new RandomAccessReadBuffer(pdfBytes))) {
-
                 PDFTextStripper stripper = new PDFTextStripper();
                 String text = stripper.getText(document);
 
+                // Clean whitespace
+                String cleanedText = text.replaceAll("\\s+", "");
 
+                // -----------------------
+                // 1. Extract the largest numeric amount
+                // -----------------------
                 Pattern amountPattern = Pattern.compile(
                         "R?\\s*(\\d{1,3}(?:[ ,]\\d{3})*(?:\\.\\d{2})|\\d+\\.\\d{2})"
                 );
-
-                Matcher matcher = amountPattern.matcher(text);
-
+                Matcher amountMatcher = amountPattern.matcher(cleanedText);
                 BigDecimal largestAmount = null;
 
-                while (matcher.find()) {
-                    String value = matcher.group(1);
-                    // Remove spaces and commas
-                    value = value.replaceAll("[ ,]", "");
+                while (amountMatcher.find()) {
+                    String value = amountMatcher.group(1).replaceAll("[ ,]", "");
+                    if (value.chars().filter(ch -> ch == '.').count() > 1) continue;
 
                     try {
                         BigDecimal amount = new BigDecimal(value);
-
                         if (largestAmount == null || amount.compareTo(largestAmount) > 0) {
                             largestAmount = amount;
                         }
+                    } catch (NumberFormatException ignored) {}
+                }
 
-                    } catch (NumberFormatException ignored) {
-                    }
+                if (largestAmount == null) {
+                    throw new ResponseStatusException(BAD_REQUEST, "No valid amount found in PDF proof");
+                }
+
+                // -----------------------
+                // 2. Extract and validate date
+                // -----------------------
+                Pattern datePattern = Pattern.compile(
+                        "\\b(\\d{2}/\\d{2}/\\d{4})\\b"  // matches dd/MM/yyyy
+                );
+                Matcher dateMatcher = datePattern.matcher(text);
+
+                boolean validDate = false;
+                java.time.LocalDate today = java.time.LocalDate.now();
+
+                while (dateMatcher.find()) {
+                    String dateStr = dateMatcher.group(1);
+                    try {
+                        java.time.LocalDate pdfDate = java.time.LocalDate.parse(dateStr, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                        if (pdfDate.equals(today)) {
+                            validDate = true;
+                            break;
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                if (!validDate) {
+                    throw new ResponseStatusException(BAD_REQUEST, "PDF proof date does not match today");
                 }
 
                 return largestAmount;
@@ -241,7 +266,6 @@ public class RepaymentService {
             );
         }
     }
-
     // ----------------------------
     // LISTING METHODS
     // ----------------------------
