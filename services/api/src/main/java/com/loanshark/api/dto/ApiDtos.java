@@ -278,19 +278,43 @@ public final class ApiDtos {
         Integer gracePeriodDays,
         Integer defaultLoanTermDays,
         BigDecimal borrowerLimitPercentage,
-        Instant updatedAt
+        BigDecimal borrowerLimitPercentageFromActiveLoan,
+        Instant updatedAt,
+        BigDecimal borrowerLimitPercentageSalaryBased,
+        BigDecimal borrowerLimitPercentagePreviousLoan
     ) {
     }
 
     public record LoanInterestSettingsUpdateRequest(
-        @NotNull @DecimalMin("0.01") BigDecimal defaultInterestRate,
-        @NotNull InterestType interestType,
-        @NotNull @Positive Integer interestPeriodDays,
-        @NotNull @jakarta.validation.constraints.Min(0) Integer gracePeriodDays,
-        @NotNull @Positive Integer defaultLoanTermDays,
-        @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal borrowerLimitPercentage
-    ) {
-    }
+            @NotNull
+            @DecimalMin("0.01")
+            BigDecimal defaultInterestRate,
+
+            @NotNull
+            InterestType interestType,
+
+            @NotNull
+            @Positive
+            Integer interestPeriodDays,
+
+            @NotNull
+            @jakarta.validation.constraints.Min(0)
+            Integer gracePeriodDays,
+
+            @NotNull
+            @Positive
+            Integer defaultLoanTermDays,
+
+            @NotNull
+            @DecimalMin("0.00")
+            @DecimalMax("100.00")
+            BigDecimal borrowerLimitPercentageSalaryBased,
+
+            @NotNull
+            @DecimalMin("0.00")
+            @DecimalMax("100.00")
+            BigDecimal borrowerLimitPercentagePreviousLoan
+    ) {}
 
     /** Expected amount due at end of default loan term for a given principal using current loan interest settings. */
     public record ExpectedAmountAtEndOfTermResponse(
