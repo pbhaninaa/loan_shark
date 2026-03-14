@@ -13,12 +13,9 @@
       {{ error }}
     </v-alert>
 
-    <AppTableCard
-      title="Manual Review Queue"
-      :count-label="`${verifications.length} cases`"
-      chip-color="warning"
-    >
+    <AppTableCard title="Manual Review Queue" :count-label="`${verifications.length} cases`" chip-color="warning">
       <AppDataTable
+        title=""
         :headers="verificationHeaders"
         :items="verifications"
         :items-per-page="3"
