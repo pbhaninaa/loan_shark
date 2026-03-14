@@ -14,12 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LoanInterestSettingsService {
 
+    private static final BigDecimal DEFAULT_LIMIT = BigDecimal.valueOf(100);
+    private static final int DEFAULT_TERM = 365;
+    private static final int DEFAULT_GRACE = 0;
+
     private final LoanInterestSettingsRepository repository;
     private final InterestCalculationService interestCalculationService;
 
     public LoanInterestSettingsService(
-        LoanInterestSettingsRepository repository,
-        InterestCalculationService interestCalculationService
+            LoanInterestSettingsRepository repository,
+            InterestCalculationService interestCalculationService
     ) {
         this.repository = repository;
         this.interestCalculationService = interestCalculationService;
@@ -27,82 +31,165 @@ public class LoanInterestSettingsService {
 
     @Transactional
     public LoanInterestSettingsResponse get() {
-        LoanInterestSettings settings = repository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
-            .orElseGet(this::createDefaultSettings);
+
+        LoanInterestSettings settings = repository
+                .findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
+                .orElseGet(this::createDefaultSettings);
+
+        BigDecimal salaryLimit =
+                settings.getBorrowerLimitPercentageSalaryBased() != null
+                        ? settings.getBorrowerLimitPercentageSalaryBased()
+                        : DEFAULT_LIMIT;
+
+        BigDecimal previousLoanLimit =
+                settings.getBorrowerLimitPercentagePreviousLoan() != null
+                        ? settings.getBorrowerLimitPercentagePreviousLoan()
+                        : DEFAULT_LIMIT;
+
+        int graceDays =
+                settings.getGracePeriodDays() != null
+                        ? settings.getGracePeriodDays()
+                        : DEFAULT_GRACE;
+
+        int termDays =
+                settings.getDefaultLoanTermDays() != null
+                        ? settings.getDefaultLoanTermDays()
+                        : DEFAULT_TERM;
+
         return new LoanInterestSettingsResponse(
-            settings.getDefaultInterestRate(),
-            settings.getInterestType(),
-            settings.getInterestPeriodDays(),
-            settings.getGracePeriodDays() != null ? settings.getGracePeriodDays() : 0,
-            settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365,
-            settings.getBorrowerLimitPercentage() != null ? settings.getBorrowerLimitPercentage() : new BigDecimal("100.00"),
-            settings.getUpdatedAt()
+                settings.getDefaultInterestRate(),
+                settings.getInterestType(),
+                settings.getInterestPeriodDays(),
+                graceDays,
+                termDays,
+                salaryLimit,
+                previousLoanLimit,
+                settings.getUpdatedAt(),
+                settings.getBorrowerLimitPercentageSalaryBased(),
+                settings.getBorrowerLimitPercentagePreviousLoan()
         );
     }
 
     private LoanInterestSettings createDefaultSettings() {
+
         LoanInterestSettings s = new LoanInterestSettings();
+
         s.setId(UuidConstants.LOAN_INTEREST_SETTINGS_ID);
         s.setDefaultInterestRate(new BigDecimal("30.00"));
         s.setInterestType(InterestType.SIMPLE);
         s.setInterestPeriodDays(30);
-        s.setGracePeriodDays(0);
-        s.setDefaultLoanTermDays(365);
-        s.setBorrowerLimitPercentage(new BigDecimal("100.00"));
+        s.setGracePeriodDays(DEFAULT_GRACE);
+        s.setDefaultLoanTermDays(DEFAULT_TERM);
+        s.setBorrowerLimitPercentageSalaryBased(DEFAULT_LIMIT);
+        s.setBorrowerLimitPercentagePreviousLoan(DEFAULT_LIMIT);
+
         s.touch();
+
         return repository.save(s);
     }
 
     @Transactional
-    public LoanInterestSettingsResponse update(LoanInterestSettingsUpdateRequest request) {
-        LoanInterestSettings settings = repository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID).orElseGet(() -> {
-            LoanInterestSettings newSettings = new LoanInterestSettings();
-            newSettings.setId(UuidConstants.LOAN_INTEREST_SETTINGS_ID);
-            newSettings.setDefaultInterestRate(request.defaultInterestRate());
-            newSettings.setInterestType(request.interestType());
-            newSettings.setInterestPeriodDays(request.interestPeriodDays());
-            newSettings.setGracePeriodDays(request.gracePeriodDays() != null ? request.gracePeriodDays() : 0);
-            newSettings.setDefaultLoanTermDays(request.defaultLoanTermDays() != null ? request.defaultLoanTermDays() : 365);
-            newSettings.setBorrowerLimitPercentage(request.borrowerLimitPercentage() != null ? request.borrowerLimitPercentage() : new BigDecimal("100.00"));
-            newSettings.touch();
-            return repository.save(newSettings);
-        });
+    public LoanInterestSettingsResponse update(
+            LoanInterestSettingsUpdateRequest request
+    ) {
+
+        LoanInterestSettings settings = repository
+                .findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
+                .orElseGet(this::createDefaultSettings);
+
         settings.setDefaultInterestRate(request.defaultInterestRate());
         settings.setInterestType(request.interestType());
         settings.setInterestPeriodDays(request.interestPeriodDays());
-        settings.setGracePeriodDays(request.gracePeriodDays() != null ? request.gracePeriodDays() : 0);
-        settings.setDefaultLoanTermDays(request.defaultLoanTermDays() != null ? request.defaultLoanTermDays() : 365);
-        settings.setBorrowerLimitPercentage(request.borrowerLimitPercentage() != null ? request.borrowerLimitPercentage() : new BigDecimal("100.00"));
+
+        settings.setGracePeriodDays(
+                request.gracePeriodDays() != null ? request.gracePeriodDays() : DEFAULT_GRACE
+        );
+
+        settings.setDefaultLoanTermDays(
+                request.defaultLoanTermDays() != null ? request.defaultLoanTermDays() : DEFAULT_TERM
+        );
+
+        settings.setBorrowerLimitPercentageSalaryBased(
+                request.borrowerLimitPercentageSalaryBased() != null
+                        ? request.borrowerLimitPercentageSalaryBased()
+                        : DEFAULT_LIMIT
+        );
+
+        settings.setBorrowerLimitPercentagePreviousLoan(
+                request.borrowerLimitPercentagePreviousLoan() != null
+                        ? request.borrowerLimitPercentagePreviousLoan()
+                        : DEFAULT_LIMIT
+        );
+
         settings.touch();
+
         repository.save(settings);
+
+        // Calculate values for response
+        BigDecimal salaryLimit =
+                settings.getBorrowerLimitPercentageSalaryBased() != null
+                        ? settings.getBorrowerLimitPercentageSalaryBased()
+                        : DEFAULT_LIMIT;
+
+        BigDecimal previousLoanLimit =
+                settings.getBorrowerLimitPercentagePreviousLoan() != null
+                        ? settings.getBorrowerLimitPercentagePreviousLoan()
+                        : DEFAULT_LIMIT;
+
+        int graceDays =
+                settings.getGracePeriodDays() != null
+                        ? settings.getGracePeriodDays()
+                        : DEFAULT_GRACE;
+
+        int termDays =
+                settings.getDefaultLoanTermDays() != null
+                        ? settings.getDefaultLoanTermDays()
+                        : DEFAULT_TERM;
+
         return new LoanInterestSettingsResponse(
-            settings.getDefaultInterestRate(),
-            settings.getInterestType(),
-            settings.getInterestPeriodDays(),
-            settings.getGracePeriodDays() != null ? settings.getGracePeriodDays() : 0,
-            settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365,
-            settings.getBorrowerLimitPercentage() != null ? settings.getBorrowerLimitPercentage() : new BigDecimal("100.00"),
-            settings.getUpdatedAt()
+                settings.getDefaultInterestRate(),
+                settings.getInterestType(),
+                settings.getInterestPeriodDays(),
+                graceDays,
+                termDays,
+                salaryLimit,
+                previousLoanLimit,
+                settings.getUpdatedAt(),
+                settings.getBorrowerLimitPercentageSalaryBased(),
+                settings.getBorrowerLimitPercentagePreviousLoan()
         );
     }
 
-    /**
-     * Compute expected amount due at end of default loan term for a given principal using current settings.
-     * Principal is typically what the owner put in (total owner added); it updates as the owner continuously adds more in Business capital.
-     */
     @Transactional(readOnly = true)
-    public ExpectedAmountAtEndOfTermResponse getExpectedAmountAtEndOfTerm(BigDecimal principal) {
-        LoanInterestSettings settings = repository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
-            .orElseGet(this::createDefaultSettings);
+    public ExpectedAmountAtEndOfTermResponse getExpectedAmountAtEndOfTerm(
+            BigDecimal principal
+    ) {
+
+        LoanInterestSettings settings = repository
+                .findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
+                .orElseGet(this::createDefaultSettings);
+
         if (principal == null || principal.compareTo(BigDecimal.ZERO) <= 0) {
             return new ExpectedAmountAtEndOfTermResponse(
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    settings.getDefaultLoanTermDays()
             );
         }
-        int termDays = settings.getDefaultLoanTermDays() != null ? settings.getDefaultLoanTermDays() : 365;
-        BigDecimal expectedDue = interestCalculationService.computeTotalAmount(principal, termDays, settings);
-        return new ExpectedAmountAtEndOfTermResponse(principal, expectedDue, termDays);
+
+        int termDays = settings.getDefaultLoanTermDays();
+
+        BigDecimal expectedDue =
+                interestCalculationService.computeTotalAmount(
+                        principal,
+                        termDays,
+                        settings
+                );
+
+        return new ExpectedAmountAtEndOfTermResponse(
+                principal,
+                expectedDue,
+                termDays
+        );
     }
 }
