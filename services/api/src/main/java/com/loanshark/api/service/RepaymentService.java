@@ -95,6 +95,11 @@ public class RepaymentService {
     // ----------------------------
     // RECORD REPAYMENT
     // ----------------------------
+    /**
+     * Records a payment against the selected loan. The borrower is not bound to installment amounts:
+     * they can pay in full, pay what they can afford, or pay any amount at any time. The payment
+     * is applied to the schedule in order (oldest unpaid first), reducing debt until the loan is paid off.
+     */
     @Transactional
     public RepaymentResponse record(RepaymentRequest request) {
         Loan loan = loanService.findLoan(request.loanId());
@@ -103,49 +108,44 @@ public class RepaymentService {
         }
 
         User currentUser = currentUserService.requireCurrentUser();
-
-        // Borrower can only pay own loans
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
-                    .map(Borrower::getId)
+                    .map(com.loanshark.api.entity.Borrower::getId)
                     .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
             if (!loan.getBorrower().getId().equals(borrowerId)) {
                 throw new ResponseStatusException(FORBIDDEN, "You can only record repayments for your own loans");
             }
         }
-
-        // ----------------------------
-        // IF MOBILE_TRANSFER, VERIFY PDF PROOF
-        // ----------------------------
-        if ("MOBILE_TRANSFER".equalsIgnoreCase(String.valueOf(request.paymentMethod()))) {
-            if (request.proof() == null || request.proof().isBlank()) {
-                throw new ResponseStatusException(BAD_REQUEST, "Proof of payment PDF is required for MOBILE TRANSFER payments");
-            }
-
-            BigDecimal pdfAmount = extractAmountFromPdfAndValidateDate(request.proof());
-            if (pdfAmount == null || pdfAmount.compareTo(request.amountPaid()) != 0) {
-                throw new ResponseStatusException(BAD_REQUEST,
-                        "Payment amount does not match the amount in PDF proof. Payment rejected.");
-            }
-        }
-
-        // ----------------------------
-        // SAVE REPAYMENT
-        // ----------------------------
         Repayment repayment = new Repayment();
         repayment.setLoan(loan);
         repayment.setAmountPaid(request.amountPaid());
         repayment.setPaymentMethod(request.paymentMethod());
         repayment.setReferenceNumber(request.referenceNumber());
         repayment.setCapturedBy(currentUser);
-        repayment.setProof(request.proof());
         repayment = repaymentRepository.save(repayment);
+        if ("MOBILE_TRANSFER".equalsIgnoreCase(String.valueOf(request.paymentMethod()))) {
 
-        // Apply payment to schedule
+            if (request.proof() == null || request.proof().isBlank()) {
+                throw new ResponseStatusException(BAD_REQUEST,
+                        "Proof of payment PDF is required for MOBILE TRANSFER payments");
+            }
+
+            BigDecimal pdfAmount = extractAmountFromPdfAndValidateDate(request.proof());
+
+            if (pdfAmount == null || pdfAmount.compareTo(request.amountPaid()) != 0) {
+                throw new ResponseStatusException(BAD_REQUEST,
+                        "Payment amount does not match the amount in PDF proof.");
+            }
+        }
+        // Apply repayment across schedule
         applyPaymentToSchedule(loan, request.amountPaid());
+
+// Then recalc loan totals
+        loanService.recalculateScheduleAfterPayment(loan);
         updateLoanCompletion(loan);
 
-        // Record cash transaction
+
+
         CashTransaction cashTransaction = new CashTransaction();
         cashTransaction.setLoan(loan);
         cashTransaction.setAmount(request.amountPaid());
@@ -156,6 +156,7 @@ public class RepaymentService {
         cashTransactionRepository.save(cashTransaction);
 
         businessCapitalService.addRepayment(request.amountPaid());
+
         auditLogService.record(currentUser.getId(), "RECORD_REPAYMENT", "Repayment", repayment.getId().toString(), request.referenceNumber());
 
         String borrowerUsername = loan.getBorrower() != null && loan.getBorrower().getUser() != null
@@ -165,7 +166,6 @@ public class RepaymentService {
                 + " " + (loan.getBorrower().getLastName() != null ? loan.getBorrower().getLastName() : "").trim()
                 : null;
         if (borrowerFullName != null) borrowerFullName = borrowerFullName.trim();
-
         if (borrowerUsername != null) {
             notificationService.notifyUser(
                     loan.getBorrower().getUser().getId(),
@@ -187,7 +187,6 @@ public class RepaymentService {
                 repayment.getProof()
         );
     }
-
     // ----------------------------
     // EXTRACT AMOUNT FROM PDF (PDFBox 3.0.6 COMPATIBLE)
     // ----------------------------
@@ -363,27 +362,34 @@ public class RepaymentService {
         );
     }
 
-    // ----------------------------
-    // APPLY PAYMENT TO SCHEDULE
-    // ----------------------------
-    private void applyPaymentToSchedule(Loan loan, BigDecimal amountPaid) {
-        BigDecimal remaining = amountPaid;
-        List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId());
+
+    private void applyPaymentToSchedule(Loan loan, BigDecimal paymentAmount) {
+        List<RepaymentSchedule> schedules = repaymentScheduleRepository
+                .findByLoanIdOrderByInstallmentNumberAsc(loan.getId());
+
+        BigDecimal remainingPayment = paymentAmount;
+
         for (RepaymentSchedule schedule : schedules) {
             if (schedule.getStatus() == ScheduleStatus.PAID) continue;
-            if (remaining.compareTo(schedule.getAmountDue()) >= 0) {
-                remaining = remaining.subtract(schedule.getAmountDue());
+
+            BigDecimal due = schedule.getAmountDue();
+            if (remainingPayment.compareTo(due) >= 0) {
+                // Full installment paid
                 schedule.setAmountDue(BigDecimal.ZERO);
                 schedule.setStatus(ScheduleStatus.PAID);
+                remainingPayment = remainingPayment.subtract(due);
             } else {
-                schedule.setAmountDue(schedule.getAmountDue().subtract(remaining));
-                remaining = BigDecimal.ZERO;
+                // Partial payment
+                schedule.setAmountDue(due.subtract(remainingPayment));
+                schedule.setStatus(ScheduleStatus.PENDING);
+                remainingPayment = BigDecimal.ZERO;
             }
+
             repaymentScheduleRepository.save(schedule);
-            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+
+            if (remainingPayment.compareTo(BigDecimal.ZERO) <= 0) break;
         }
     }
-
     private void updateLoanCompletion(Loan loan) {
         LoanStatus previousStatus = loan.getStatus();
         boolean outstanding = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId()).stream()
