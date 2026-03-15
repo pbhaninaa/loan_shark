@@ -32,7 +32,7 @@ LendHand is a full-stack loan management system for micro-lenders and loan provi
   - Dropdown of **active loans only**.
   - **Payer (borrower) full name** shown when selecting a loan and in repayment history to avoid crediting the wrong account.
   - **Auto-generated reference numbers** (e.g. PAY-1001, PAY-1002) based on the last repayment in the system.
-  - Payment method (e.g. CASH, EFT, MOBILE_TRANSFER) and reference.
+  - Payment method (e.g. CASH, EFT, MOBILE TRANSFER) and reference.
 - **Repayment history** — View repayments per loan with payer name, amount, method, reference, and who recorded it.
 - **Users** — Owner can create staff (e.g. Cashier), manage accounts, and reset passwords.
 - **Verifications** — Owner reviews borrower verification requests (e.g. ID and selfie), approve or reject with notes.

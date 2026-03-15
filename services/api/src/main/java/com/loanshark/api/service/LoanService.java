@@ -85,76 +85,169 @@ public class LoanService {
     // -------------------- APPLY LOAN --------------------
     @Transactional
     public LoanResponse apply(LoanApplicationRequest request) {
+
         Borrower borrower = borrowerService.findBorrower(request.borrowerId());
+
         if (borrowerService.isBlacklisted(borrower.getId())) {
             throw new ResponseStatusException(BAD_REQUEST, "Borrower is blacklisted");
         }
 
-        List<Loan> activeLoans = loanRepository.findByBorrowerIdAndStatus(borrower.getId(), LoanStatus.ACTIVE);
+        LoanInterestSettings settings = loanInterestSettingsRepository
+                .findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured"));
+
+        BigDecimal salaryLimitPct = settings.getBorrowerLimitPercentageSalaryBased() != null
+                ? settings.getBorrowerLimitPercentageSalaryBased()
+                : BigDecimal.valueOf(100);
+
+        BigDecimal previousLoanLimitPct = settings.getBorrowerLimitPercentagePreviousLoan() != null
+                ? settings.getBorrowerLimitPercentagePreviousLoan()
+                : BigDecimal.valueOf(100);
+
+    /*
+     ------------------------------------------------
+     CHECK ACTIVE LOANS REPAYMENT REQUIREMENT
+     ------------------------------------------------
+    */
+
+        List<Loan> activeLoans = loanRepository.findByBorrowerIdAndStatus(
+                borrower.getId(),
+                LoanStatus.ACTIVE
+        );
+
         for (Loan active : activeLoans) {
+
             BigDecimal totalOwed = active.getTotalAmount();
+
             BigDecimal paid = repaymentRepository.sumAmountPaidByLoanId(active.getId());
-            BigDecimal limitPercent = loanInterestSettingsService.get().borrowerLimitPercentage(); // e.g., 10 = 10%
-            if (paid == null) paid = BigDecimal.ZERO;
+            if (paid == null) {
+                paid = BigDecimal.ZERO;
+            }
 
-// Convert percentage to decimal
-            BigDecimal requiredMin = totalOwed.multiply(limitPercent).divide(BigDecimal.valueOf(100));
+            BigDecimal requiredPaid = totalOwed
+                    .multiply(previousLoanLimitPct)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
 
-            if (paid.compareTo(requiredMin) < 0) {
+            if (paid.compareTo(requiredPaid) < 0) {
+
                 throw new ResponseStatusException(
                         BAD_REQUEST,
-                        "You must pay at least " + limitPercent + "% of your current loan " +
-                                "(Loan #" + active.getId() + ": " + paid + " of " + totalOwed + " paid) before applying for a new loan."
+                        "You must repay at least " + previousLoanLimitPct + "% of your current loan before applying for another.\n" +
+                                "Loan ID: " + active.getId() +
+                                "\nTotal Loan: R" + totalOwed +
+                                "\nAmount Paid: R" + paid +
+                                "\nRequired Paid: R" + requiredPaid
                 );
             }
         }
 
+    /*
+     ------------------------------------------------
+     BORROWER ACCESS VALIDATION
+     ------------------------------------------------
+    */
+
         User currentUser = currentUserService.requireCurrentUser();
+
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
+
         if (currentUser.getRole() == UserRole.BORROWER) {
+
             UUID currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
                     .map(Borrower::getId)
                     .orElseThrow();
+
             if (!currentBorrowerId.equals(request.borrowerId())) {
-                throw new ResponseStatusException(FORBIDDEN, "Borrowers can only apply for themselves");
+                throw new ResponseStatusException(
+                        FORBIDDEN,
+                        "Borrowers can only apply for themselves"
+                );
             }
         }
 
+    /*
+     ------------------------------------------------
+     BUSINESS CAPITAL CHECK
+     ------------------------------------------------
+    */
+
         BigDecimal available = businessCapitalService.getBalance();
+
         if (available.compareTo(request.loanAmount()) < 0) {
+
             throw new ResponseStatusException(
                     BAD_REQUEST,
-                    "Insufficient funds to disburse this loan. Available: " + available + ". Required: " + request.loanAmount()
+                    "Insufficient funds to disburse this loan. Available: R" +
+                            available + ". Required: R" + request.loanAmount()
             );
         }
 
-        LoanInterestSettings settings = loanInterestSettingsRepository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
-                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured"));
+    /*
+     ------------------------------------------------
+     SALARY BASED LOAN LIMIT
+     ------------------------------------------------
+    */
 
-        BigDecimal limitPct = settings.getBorrowerLimitPercentage() != null ? settings.getBorrowerLimitPercentage() : BigDecimal.valueOf(100);
-        BigDecimal monthlyIncome = borrower.getMonthlyIncome() != null ? borrower.getMonthlyIncome() : BigDecimal.ZERO;
-        BigDecimal maxAllowed = monthlyIncome.multiply(limitPct).divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
+        BigDecimal monthlyIncome = borrower.getMonthlyIncome() != null
+                ? borrower.getMonthlyIncome()
+                : BigDecimal.ZERO;
+
+        BigDecimal maxAllowed = monthlyIncome
+                .multiply(salaryLimitPct)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
+
         if (request.loanAmount().compareTo(maxAllowed) > 0) {
+
             throw new ResponseStatusException(
                     BAD_REQUEST,
-                    "Loan amount exceeds the limit. Maximum allowed is " + limitPct + "% of monthly income (R" + maxAllowed + "). Your monthly income: R" + monthlyIncome + "."
+                    "Loan amount exceeds the limit. Maximum allowed is " +
+                            salaryLimitPct + "% of your monthly income (R" +
+                            maxAllowed + "). Your monthly income: R" +
+                            monthlyIncome + "."
             );
         }
+
+    /*
+     ------------------------------------------------
+     LOAN CALCULATION
+     ------------------------------------------------
+    */
 
         BigDecimal rate = settings.getDefaultInterestRate();
         InterestType interestType = settings.getInterestType();
-        int periodDays = settings.getInterestPeriodDays() != null ? settings.getInterestPeriodDays() : 30;
-        int gracePeriodDays = settings.getGracePeriodDays() != null ? settings.getGracePeriodDays() : 0;
-        int defaultTerm = settings.getDefaultLoanTermDays() != null && settings.getDefaultLoanTermDays() > 0
-                ? settings.getDefaultLoanTermDays() : 365;
-        int termDays = request.loanTermDays() != null && request.loanTermDays() > 0
-                ? request.loanTermDays() : defaultTerm;
+
+        int periodDays = settings.getInterestPeriodDays() != null
+                ? settings.getInterestPeriodDays()
+                : 30;
+
+        int gracePeriodDays = settings.getGracePeriodDays() != null
+                ? settings.getGracePeriodDays()
+                : 0;
+
+        int defaultTerm = settings.getDefaultLoanTermDays() != null
+                && settings.getDefaultLoanTermDays() > 0
+                ? settings.getDefaultLoanTermDays()
+                : 365;
+
+        int termDays = request.loanTermDays() != null
+                && request.loanTermDays() > 0
+                ? request.loanTermDays()
+                : defaultTerm;
 
         BigDecimal totalAmount = interestCalculationService.computeTotalAmount(
-                request.loanAmount(), termDays, settings
+                request.loanAmount(),
+                termDays,
+                settings
         );
 
+    /*
+     ------------------------------------------------
+     CREATE LOAN
+     ------------------------------------------------
+    */
+
         Loan loan = new Loan();
+
         loan.setBorrower(borrower);
         loan.setLoanAmount(request.loanAmount());
         loan.setInterestRate(rate);
@@ -164,20 +257,36 @@ public class LoanService {
         loan.setTotalAmount(totalAmount);
         loan.setLoanTermDays(termDays);
         loan.setCreatedBy(currentUser);
+
         loan = loanRepository.save(loan);
 
+    /*
+     ------------------------------------------------
+     RISK CHECK
+     ------------------------------------------------
+    */
+
         RiskCheckResponse result = riskService.assess(borrower, request.loanAmount());
+
         loan.setRiskScore(result.score());
         loan.setRiskBand(result.band());
+
         loanRepository.save(loan);
+
         riskService.persistAssessment(borrower, loan, result);
 
-        auditLogService.record(currentUser.getId(), "APPLY_LOAN", "Loan", loan.getId().toString(), String.join("; ", result.factors()));
+        auditLogService.record(
+                currentUser.getId(),
+                "APPLY_LOAN",
+                "Loan",
+                loan.getId().toString(),
+                String.join("; ", result.factors())
+        );
+
         notificationService.notifyBorrowerStatusChanged(borrower);
 
         return toResponse(loan);
     }
-
     // -------------------- LIST LOANS --------------------
     @Transactional(readOnly = true)
     public PageResponse<LoanResponse> listAll(String query, List<LoanStatus> statuses, int page, int size) {
