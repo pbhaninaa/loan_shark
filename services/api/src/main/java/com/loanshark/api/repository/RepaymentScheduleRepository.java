@@ -6,6 +6,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface RepaymentScheduleRepository extends JpaRepository<RepaymentSchedule, UUID> {
     @org.springframework.data.jpa.repository.Query("""
@@ -34,4 +36,11 @@ public interface RepaymentScheduleRepository extends JpaRepository<RepaymentSche
     List<UUID> findLoanIdsWithOverdueSchedules(@org.springframework.data.repository.query.Param("today") LocalDate today);
 
     void deleteByLoanId(UUID id);
+
+    @Query("""
+        SELECT s FROM RepaymentSchedule s
+        WHERE s.loan.id IN :loanIds
+        ORDER BY s.loan.id, s.installmentNumber ASC
+        """)
+    List<RepaymentSchedule> findByLoanIdsOrderByInstallmentNumber(@Param("loanIds") List<UUID> loanIds);
 }
