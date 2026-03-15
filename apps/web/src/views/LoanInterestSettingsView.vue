@@ -12,6 +12,7 @@
     <v-alert v-if="message" type="success" variant="tonal" class="mb-4">
       {{ message }}
     </v-alert>
+
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
       {{ error }}
     </v-alert>
@@ -21,10 +22,33 @@
         <v-icon start>mdi-cog-outline</v-icon>
         Current settings
       </v-card-title>
-      <v-divider />
+
+      <div
+        v-if="expectedAmount != null"
+        class="expected-amount pa-4 rounded"
+      >
+        <div class="text-caption text-medium-emphasis mb-1">
+          Expected amount at end of term
+        </div>
+
+        <div class="text-h5 font-weight-bold text-primary">
+          {{ formatCurrency(expectedAmount.expectedAmountDue) }}
+        </div>
+
+        <p class="text-caption text-medium-emphasis mt-2 mb-0">
+          Based on <strong>what you put in</strong>
+          ({{ formatCurrency(expectedAmount.principal) }}) over
+          {{ expectedAmount.termDays }} days, using rate, type,
+          period & grace above. This updates when you add more
+          funds in Business capital.
+        </p>
+      </div>
+
       <v-card-text>
         <v-form v-if="settings" @submit.prevent="save">
           <v-row dense>
+
+            <!-- Interest Rate -->
             <v-col cols="12" md="6">
               <AppTextField
                 v-model.number="form.defaultInterestRate"
@@ -36,6 +60,8 @@
                 hint="Used for new loans when not overridden."
               />
             </v-col>
+
+            <!-- Interest Type -->
             <v-col cols="12" md="6">
               <AppSelectField
                 v-model="form.interestType"
@@ -44,6 +70,8 @@
                 hint="Simple: interest on principal only. Compound: interest on principal + accrued interest each period."
               />
             </v-col>
+
+            <!-- Interest Period -->
             <v-col cols="12" md="6">
               <AppTextField
                 v-model.number="form.interestPeriodDays"
@@ -51,9 +79,11 @@
                 type="number"
                 min="1"
                 prepend-inner-icon="mdi-calendar"
-                hint="E.g. 30 = interest accrues every 30 days from disbursement."
+                hint="Example: 30 = interest accrues every 30 days."
               />
             </v-col>
+
+            <!-- Grace Period -->
             <v-col cols="12" md="6">
               <AppTextField
                 v-model.number="form.gracePeriodDays"
@@ -61,9 +91,11 @@
                 type="number"
                 min="0"
                 prepend-inner-icon="mdi-timer-sand"
-                hint="First N days after disbursement do not attract interest (0 = interest from day one)."
+                hint="First N days after disbursement do not attract interest."
               />
             </v-col>
+
+            <!-- Default Loan Term -->
             <v-col cols="12" md="6">
               <AppTextField
                 v-model.number="form.defaultLoanTermDays"
@@ -71,41 +103,61 @@
                 type="number"
                 min="1"
                 prepend-inner-icon="mdi-calendar-range"
-                hint="Used when client only specifies amount (nominal term for due date; actual payoff by repayments)."
+                hint="Nominal loan term used when client does not specify a term."
               />
             </v-col>
+
+            <!-- Salary Based Borrower Limit -->
             <v-col cols="12" md="6">
               <AppTextField
-                v-model.number="form.borrowerLimitPercentage"
+                v-model.number="form.borrowerLimitPercentageSalaryBased"
                 label="Borrower limit (% of salary)"
                 type="number"
                 step="0.01"
                 min="0"
                 max="100"
                 prepend-inner-icon="mdi-percent"
-                hint="Maximum loan amount as % of client's monthly income (e.g. 25 = client can borrow up to 25% of their salary)."
+                hint="Maximum loan allowed as a percentage of the client's monthly income."
               />
             </v-col>
+
+            <!-- Previous Loan Repayment Limit -->
             <v-col cols="12" md="6">
-              <div v-if="expectedAmount != null" class="expected-amount-box pa-4 rounded border">
-                <div class="text-caption text-medium-emphasis mb-1">Expected amount at end of term</div>
-                <div class="text-h5 font-weight-bold text-primary">
-                  {{ formatCurrency(expectedAmount.expectedAmountDue) }}
-                </div>
-                <p class="text-caption text-medium-emphasis mt-2 mb-0">
-                  Based on <strong>what you put in</strong> ({{ formatCurrency(expectedAmount.principal) }}) over {{ expectedAmount.termDays }} days, using rate, type, period &amp; grace above. This updates when you add more funds in Business capital.
-                </p>
-              </div>
+              <AppTextField
+                v-model.number="form.borrowerLimitPercentagePreviousLoan"
+                label="Borrower limit (% of amount repaid)"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                prepend-inner-icon="mdi-percent"
+                hint="Client can borrow a percentage of the amount already repaid on their active loan."
+              />
             </v-col>
+
           </v-row>
+
           <div class="mt-4 d-flex ga-2">
-            <AppActionButton text="Save settings" type="submit" :loading="saving" />
+            <AppActionButton
+              text="Save settings"
+              type="submit"
+              :loading="saving"
+            />
           </div>
         </v-form>
-        <v-progress-linear v-else-if="loading" indeterminate color="primary" class="my-4" />
+
+        <v-progress-linear
+          v-else-if="loading"
+          indeterminate
+          color="primary"
+          class="my-4"
+        />
+
         <v-alert v-else type="warning" variant="tonal">
-          Could not load settings. Run database migrations and ensure loan_interest_settings has a row.
+          Could not load settings. Run database migrations and ensure
+          loan_interest_settings has a row.
         </v-alert>
+
       </v-card-text>
     </v-card>
   </div>
@@ -121,10 +173,12 @@ import { formatCurrency } from "../utils/formatters";
 import { useAppStore } from "../store";
 
 const store = useAppStore();
+
 const message = ref("");
 const error = ref("");
 const loading = ref(true);
 const saving = ref(false);
+
 const settings = ref(null);
 const expectedAmount = ref(null);
 
@@ -134,25 +188,41 @@ const form = reactive({
   interestPeriodDays: 30,
   gracePeriodDays: 0,
   defaultLoanTermDays: 365,
-  borrowerLimitPercentage: 100
+  borrowerLimitPercentageSalaryBased: 100,
+  borrowerLimitPercentagePreviousLoan: 100
 });
 
 function assignForm() {
   if (!settings.value) return;
-  form.defaultInterestRate = Number(settings.value.defaultInterestRate) || 30;
-  form.interestType = settings.value.interestType || "SIMPLE";
-  form.interestPeriodDays = Number(settings.value.interestPeriodDays) || 30;
-  form.gracePeriodDays = Number(settings.value.gracePeriodDays) ?? 0;
-  form.defaultLoanTermDays = Number(settings.value.defaultLoanTermDays) ?? 365;
-  form.borrowerLimitPercentage = Number(settings.value.borrowerLimitPercentage) ?? 100;
-}
 
+  form.defaultInterestRate =
+    Number(settings.value.defaultInterestRate) || 30;
+
+  form.interestType =
+    settings.value.interestType || "SIMPLE";
+
+  form.interestPeriodDays =
+    Number(settings.value.interestPeriodDays) || 30;
+
+  form.gracePeriodDays =
+    Number(settings.value.gracePeriodDays) ?? 0;
+
+  form.defaultLoanTermDays =
+    Number(settings.value.defaultLoanTermDays) ?? 365;
+
+  form.borrowerLimitPercentageSalaryBased =
+    Number(settings.value.borrowerLimitPercentageSalaryBased) ?? 100;
+
+  form.borrowerLimitPercentagePreviousLoan =
+    Number(settings.value.borrowerLimitPercentagePreviousLoan) ?? 100;
+}
 
 watch(settings, assignForm, { immediate: true });
 
 async function loadExpectedAmount() {
   try {
-    expectedAmount.value = await store.fetchExpectedAmountAtEndOfTerm();
+    expectedAmount.value =
+      await store.fetchExpectedAmountAtEndOfTerm();
   } catch {
     expectedAmount.value = null;
   }
@@ -161,11 +231,17 @@ async function loadExpectedAmount() {
 onMounted(async () => {
   loading.value = true;
   error.value = "";
+
   try {
-    settings.value = await store.fetchLoanInterestSettings();
+    settings.value =
+      await store.fetchLoanInterestSettings();
+
     await loadExpectedAmount();
   } catch (e) {
-    error.value = e.response?.data?.message || e.message || "Failed to load settings";
+    error.value =
+      e.response?.data?.message ||
+      e.message ||
+      "Failed to load settings";
   } finally {
     loading.value = false;
   }
@@ -175,20 +251,31 @@ async function save() {
   saving.value = true;
   message.value = "";
   error.value = "";
+
   try {
-    const updated = await store.updateLoanInterestSettings({
-      defaultInterestRate: form.defaultInterestRate,
-      interestType: form.interestType,
-      interestPeriodDays: form.interestPeriodDays,
-      gracePeriodDays: form.gracePeriodDays,
-      defaultLoanTermDays: form.defaultLoanTermDays,
-      borrowerLimitPercentage: form.borrowerLimitPercentage
-    });
+    const updated =
+      await store.updateLoanInterestSettings({
+        defaultInterestRate: form.defaultInterestRate,
+        interestType: form.interestType,
+        interestPeriodDays: form.interestPeriodDays,
+        gracePeriodDays: form.gracePeriodDays,
+        defaultLoanTermDays: form.defaultLoanTermDays,
+        borrowerLimitPercentageSalaryBased:
+          form.borrowerLimitPercentageSalaryBased,
+        borrowerLimitPercentagePreviousLoan:
+          form.borrowerLimitPercentagePreviousLoan
+      });
+
     settings.value = updated;
+
     message.value = "Settings saved.";
+
     await loadExpectedAmount();
   } catch (e) {
-    error.value = e.response?.data?.message || e.message || "Failed to save settings";
+    error.value =
+      e.response?.data?.message ||
+      e.message ||
+      "Failed to save settings";
   } finally {
     saving.value = false;
   }

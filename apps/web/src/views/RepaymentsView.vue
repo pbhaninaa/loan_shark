@@ -40,6 +40,7 @@
             @update:model-value="onFilterLoanChange"
           />
         </template>
+
         <template #item.borrowerFullName="{ item }">{{ item.borrowerFullName || item.borrowerUsername || "None" }}</template>
         <template #item.loanId="{ item }">#{{ item.loanId }}</template>
         <template #item.amountPaid="{ item }">{{ formatCurrency(item.amountPaid) }}</template>
@@ -49,8 +50,29 @@
         </template>
         <template #item.referenceNumber="{ item }">{{ item.referenceNumber }}</template>
         <template #item.capturedByUsername="{ item }">{{ item.capturedByUsername || "None" }}</template>
+
+        <!-- Proof column -->
+        <template #item.proof="{ item }">
+          <div v-if="item.paymentMethod === 'CASH' && item.proof">
+            <v-btn
+              small
+              color="primary"
+              variant="outlined"
+              @click="viewProof(item.proof, item.referenceNumber)"
+            >
+              View Proof
+            </v-btn>
+          </div>
+          <span v-else></span>
+        </template>
+
         <template #footer>
-          <AppPaginationFooter v-model="page" :total-pages="repaymentsPage.totalPages" :total-elements="repaymentsPage.totalElements" @update:model-value="loadRepayments" />
+          <AppPaginationFooter
+            v-model="page"
+            :total-pages="repaymentsPage.totalPages"
+            :total-elements="repaymentsPage.totalElements"
+            @update:model-value="loadRepayments"
+          />
         </template>
       </AppDataTable>
     </AppTableCard>
@@ -60,25 +82,33 @@
         Select the loan and enter the amount received. The borrower can pay in full, pay installments as due, or pay whatever they can afford at any time—any amount is applied to their balance until the loan is paid off.
       </v-alert>
       <v-form @submit.prevent="recordRepayment">
-            <AppSelectField
-              v-model="form.loanId"
-              label="Loan (payer account)"
-              prepend-inner-icon="mdi-pound"
-              :items="loanOptions"
-              item-title="title"
-              item-value="value"
-            />
-            <v-alert v-if="selectedLoan" type="warning" variant="tonal" density="compact" class="mt-2 mb-2">
-              <strong>Paying for:</strong> {{ selectedLoan.borrowerFullName || selectedLoan.borrowerUsername || `Client #${selectedLoan.borrowerId}` }}
-              <span class="text-caption d-block mt-1">Confirm this is the person making the payment to avoid crediting the wrong account.</span>
-            </v-alert>
-            <AppTextField v-model.number="form.amountPaid" label="Amount paid" type="number" prepend-inner-icon="mdi-cash" />
-            <AppSelectField v-model="form.paymentMethod" label="Payment method" :items="paymentMethods" />
-            <AppTextField v-model="form.referenceNumber" label="Reference number" prepend-inner-icon="mdi-receipt-text-outline" />
-            <div class="d-flex ga-2">
-              <AppActionButton text="Record Payment" type="submit" prepend-icon="mdi-cash-check" class="flex-1-1" />
-              <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="showRepaymentDialog = false" />
-            </div>
+        <AppSelectField
+          v-model="form.loanId"
+          label="Loan (payer account)"
+          prepend-inner-icon="mdi-pound"
+          :items="loanOptions"
+          item-title="title"
+          item-value="value"
+        />
+        <v-alert v-if="selectedLoan" type="warning" variant="tonal" density="compact" class="mt-2 mb-2">
+          <strong>Paying for:</strong> {{ selectedLoan.borrowerFullName || selectedLoan.borrowerUsername || `Client #${selectedLoan.borrowerId}` }}
+          <span class="text-caption d-block mt-1">Confirm this is the person making the payment to avoid crediting the wrong account.</span>
+        </v-alert>
+        <AppTextField v-model.number="form.amountPaid" label="Amount paid" type="number" prepend-inner-icon="mdi-cash" />
+        <AppSelectField v-model="form.paymentMethod" label="Payment method" :items="paymentMethods" />
+
+        <!-- Upload proof for CASH -->
+        <div v-if="form.paymentMethod === 'MOBILE_TRANSFER'" class="mt-2 mb-4">
+          <label class="text-caption">Upload proof (PDF only)</label>
+          <input type="file" accept="application/pdf" @change="onFileSelected" />
+        </div>
+
+        <AppTextField v-model="form.referenceNumber" label="Reference number" prepend-inner-icon="mdi-receipt-text-outline" class="mt-2" />
+
+        <div class="d-flex ga-2 mt-3">
+          <AppActionButton text="Record Payment" type="submit" prepend-icon="mdi-cash-check" class="flex-1-1" />
+          <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="showRepaymentDialog = false" />
+        </div>
       </v-form>
     </AppDialogCard>
   </div>
@@ -101,6 +131,7 @@ import { formatCurrency } from "../utils/formatters";
 const store = useAppStore();
 const repayments = computed(() => store.repayments);
 const repaymentsPage = computed(() => store.repaymentsPage);
+
 const loanOptions = computed(() =>
   store.loans
     .filter((loan) => loan.status === "ACTIVE")
@@ -112,9 +143,11 @@ const loanOptions = computed(() =>
       };
     })
 );
+
 const selectedLoan = computed(() =>
   form.loanId ? store.loans.find((l) => l.id === form.loanId) : null
 );
+
 const filterLoanId = ref(null);
 const loanFilterOptions = computed(() => [
   { title: "All loans", value: null },
@@ -123,6 +156,7 @@ const loanFilterOptions = computed(() => [
     return { title: `Loan #${loan.id} — ${label}`, value: loan.id };
   })
 ]);
+
 const paymentMethods = ["CASH", "EFT", "MOBILE_TRANSFER"];
 const showRepaymentDialog = ref(false);
 const search = ref("");
@@ -136,14 +170,16 @@ const repaymentHeaders = [
   { title: "Date", key: "paymentDate" },
   { title: "Method", key: "paymentMethod" },
   { title: "Reference", key: "referenceNumber" },
-  { title: "Recorded by", key: "capturedByUsername" }
+  { title: "Recorded by", key: "capturedByUsername" },
+  { title: "Proof", key: "proof" } 
 ];
 
 const form = reactive({
   loanId: null,
-  amountPaid: 325,
+  amountPaid: 0,
   paymentMethod: "CASH",
-  referenceNumber: ""
+  referenceNumber: "",
+  proof: null // Base64 of uploaded PDF
 });
 
 onMounted(async () => {
@@ -180,7 +216,27 @@ async function openCapturePaymentDialog() {
   showRepaymentDialog.value = true;
 }
 
+// Convert uploaded PDF to Base64
+function onFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.type !== "application/pdf") {
+    alert("Only PDF files are allowed for proof.");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    form.proof = e.target.result; // Base64 string
+  };
+  reader.readAsDataURL(file);
+}
+
+// Record repayment
 async function recordRepayment() {
+  if (form.paymentMethod === "CASH" && !form.proof) {
+    alert("Please upload a PDF proof for CASH payments.");
+    return;
+  }
   const res = await api.post("/repayments", form);
   showRepaymentDialog.value = false;
   await loadRepayments(0);
@@ -191,20 +247,38 @@ async function recordRepayment() {
   }
 }
 
+// Load repayments
 async function loadRepayments(nextPage = page.value) {
   page.value = nextPage;
   loading.value = true;
   try {
     const loanId = filterLoanId.value ?? null;
-    await store.fetchRepayments(loanId, { q: search.value, page: page.value, size:5 });
+    await store.fetchRepayments(loanId, { q: search.value, page: page.value, size: 5 });
   } finally {
     loading.value = false;
   }
 }
 
+// Search
 function onSearch(value) {
   search.value = value;
   page.value = 0;
   loadRepayments(0);
+}
+
+// View proof PDF in new tab
+function viewProof(base64Pdf, referenceNumber) {
+  if (!base64Pdf) return;
+
+  const base64Data = base64Pdf.split(",")[1] ?? base64Pdf;
+  const byteCharacters = atob(base64Data);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: "application/pdf" });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, "_blank");
 }
 </script>
