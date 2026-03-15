@@ -141,7 +141,7 @@ public class RepaymentService {
         applyPaymentToSchedule(loan, request.amountPaid());
 
 // Then recalc loan totals
-        loanService.recalculateScheduleAfterPayment(loan);
+//        loanService.recalculateScheduleAfterPayment(loan);
         updateLoanCompletion(loan);
 
 
