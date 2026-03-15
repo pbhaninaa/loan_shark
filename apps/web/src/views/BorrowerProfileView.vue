@@ -27,6 +27,7 @@
             {{ profile.status }}
           </v-chip>
           <v-chip color="info" variant="tonal">Risk Score: {{ profile.riskScore ?? "N/A" }}</v-chip>
+          <v-chip color="warning" variant="tonal">To update profile contact admin</v-chip>
         </div>
         <p class="text-caption text-medium-emphasis mt-3 mb-0">
           To receive password reset links by email, add or update your email in

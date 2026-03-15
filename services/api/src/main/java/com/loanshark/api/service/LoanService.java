@@ -30,7 +30,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -74,20 +76,20 @@ public class LoanService {
     }
 
     public LoanService(
-        LoanRepository loanRepository,
-        RepaymentScheduleRepository repaymentScheduleRepository,
-        CashTransactionRepository cashTransactionRepository,
-        BorrowerRepository borrowerRepository,
-        BorrowerService borrowerService,
-        RiskService riskService,
-        CurrentUserService currentUserService,
-        AuditLogService auditLogService,
-        BorrowerVerificationService borrowerVerificationService,
-        NotificationService notificationService,
-        LoanInterestSettingsRepository loanInterestSettingsRepository,
-        InterestCalculationService interestCalculationService,
-        BusinessCapitalService businessCapitalService,
-        RepaymentRepository repaymentRepository
+            LoanRepository loanRepository,
+            RepaymentScheduleRepository repaymentScheduleRepository,
+            CashTransactionRepository cashTransactionRepository,
+            BorrowerRepository borrowerRepository,
+            BorrowerService borrowerService,
+            RiskService riskService,
+            CurrentUserService currentUserService,
+            AuditLogService auditLogService,
+            BorrowerVerificationService borrowerVerificationService,
+            NotificationService notificationService,
+            LoanInterestSettingsRepository loanInterestSettingsRepository,
+            InterestCalculationService interestCalculationService,
+            BusinessCapitalService businessCapitalService,
+            RepaymentRepository repaymentRepository
     ) {
         this.loanRepository = loanRepository;
         this.repaymentScheduleRepository = repaymentScheduleRepository;
@@ -120,9 +122,9 @@ public class LoanService {
             BigDecimal requiredMin = totalOwed.multiply(EIGHTY_PERCENT);
             if (paid.compareTo(requiredMin) < 0) {
                 throw new ResponseStatusException(
-                    BAD_REQUEST,
-                    "You must pay at least 80% of your current loan (Loan #" + active.getId()
-                        + ": " + paid + " of " + totalOwed + " paid) before applying for a new loan."
+                        BAD_REQUEST,
+                        "You must pay at least 80% of your current loan (Loan #" + active.getId()
+                                + ": " + paid + " of " + totalOwed + " paid) before applying for a new loan."
                 );
             }
         }
@@ -131,8 +133,8 @@ public class LoanService {
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
-                .map(Borrower::getId)
-                .orElseThrow();
+                    .map(Borrower::getId)
+                    .orElseThrow();
             if (!currentBorrowerId.equals(request.borrowerId())) {
                 throw new ResponseStatusException(FORBIDDEN, "Borrowers can only apply for themselves");
             }
@@ -141,8 +143,8 @@ public class LoanService {
         BigDecimal available = businessCapitalService.getBalance();
         if (available.compareTo(request.loanAmount()) < 0) {
             throw new ResponseStatusException(
-                BAD_REQUEST,
-                "Insufficient funds to disburse this loan. Available: " + available + ". Required: " + request.loanAmount() + ". Please ask the admin to add funds before applying."
+                    BAD_REQUEST,
+                    "Insufficient funds to disburse this loan. Available: " + available + ". Required: " + request.loanAmount() + ". Please ask the admin to add funds before applying."
             );
         }
 
@@ -150,13 +152,13 @@ public class LoanService {
         if (settings == null) {
             throw new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured; contact the administrator.");
         }
-        BigDecimal limitPct = settings.getBorrowerLimitPercentage() != null ? settings.getBorrowerLimitPercentage() : BigDecimal.valueOf(100);
+        BigDecimal limitPct = settings.getBorrowerLimitPercentageSalaryBased() != null ? settings.getBorrowerLimitPercentageSalaryBased() : BigDecimal.valueOf(100);
         BigDecimal monthlyIncome = borrower.getMonthlyIncome() != null ? borrower.getMonthlyIncome() : BigDecimal.ZERO;
         BigDecimal maxAllowed = monthlyIncome.multiply(limitPct).divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
         if (request.loanAmount().compareTo(maxAllowed) > 0) {
             throw new ResponseStatusException(
-                BAD_REQUEST,
-                "Loan amount exceeds the limit. Maximum allowed is " + limitPct + "% of monthly income (R" + maxAllowed + "). Your monthly income: R" + monthlyIncome + "."
+                    BAD_REQUEST,
+                    "Loan amount exceeds the limit. Maximum allowed is " + limitPct + "% of monthly income (R" + maxAllowed + "). Your monthly income: R" + monthlyIncome + "."
             );
         }
         BigDecimal rate = settings.getDefaultInterestRate();
@@ -164,15 +166,15 @@ public class LoanService {
         int periodDays = settings.getInterestPeriodDays() != null ? settings.getInterestPeriodDays() : 30;
         int gracePeriodDays = settings.getGracePeriodDays() != null ? settings.getGracePeriodDays() : 0;
         int defaultTerm = settings.getDefaultLoanTermDays() != null && settings.getDefaultLoanTermDays() > 0
-            ? settings.getDefaultLoanTermDays()
-            : 365;
+                ? settings.getDefaultLoanTermDays()
+                : 365;
         int termDays = request.loanTermDays() != null && request.loanTermDays() > 0
-            ? request.loanTermDays()
-            : defaultTerm;
+                ? request.loanTermDays()
+                : defaultTerm;
         BigDecimal totalAmount = interestCalculationService.computeTotalAmount(
-            request.loanAmount(),
-            termDays,
-            settings
+                request.loanAmount(),
+                termDays,
+                settings
         );
 
         Loan loan = new Loan();
@@ -197,27 +199,40 @@ public class LoanService {
         notificationService.notifyBorrowerStatusChanged(borrower);
         return toResponse(loan);
     }
-     @Transactional(readOnly = true)
+
+    @Transactional(readOnly = true)
     public PageResponse<LoanResponse> listAll(String query, List<LoanStatus> statuses, int page, int size) {
         Page<Loan> loanPage;
         if (statuses != null && !statuses.isEmpty()) {
             loanPage = loanRepository.searchByStatusIn(
-                query == null ? "" : query.trim(),
-                statuses,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+                    query == null ? "" : query.trim(),
+                    statuses,
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
             );
         } else {
             loanPage = loanRepository.search(
-                query == null ? "" : query.trim(),
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+                    query == null ? "" : query.trim(),
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
             );
         }
+
+        // Batch load repayment data
+        List<UUID> loanIds = loanPage.getContent().stream().map(Loan::getId).toList();
+        Map<UUID, BigDecimal> amountPaidMap = buildAmountPaidMap(loanIds);
+        List<RepaymentSchedule> allSchedules = loanIds.isEmpty() ? List.of() : repaymentScheduleRepository.findByLoanIdsOrderByInstallmentNumber(loanIds);
+
+        // Group schedules by loan ID
+        Map<UUID, List<RepaymentSchedule>> schedulesByLoanId = allSchedules.stream()
+                .collect(Collectors.groupingBy(s -> s.getLoan().getId()));
+
         return new PageResponse<>(
-            loanPage.getContent().stream().map(this::toResponse).toList(),
-            loanPage.getNumber(),
-            loanPage.getSize(),
-            loanPage.getTotalElements(),
-            loanPage.getTotalPages()
+                loanPage.getContent().stream()
+                        .map(loan -> toResponse(loan, amountPaidMap.getOrDefault(loan.getId(), BigDecimal.ZERO), schedulesByLoanId.getOrDefault(loan.getId(), List.of())))
+                        .toList(),
+                loanPage.getNumber(),
+                loanPage.getSize(),
+                loanPage.getTotalElements(),
+                loanPage.getTotalPages()
         );
     }
 
@@ -226,20 +241,32 @@ public class LoanService {
         User currentUser = currentUserService.requireCurrentUser();
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
         UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
-            .map(Borrower::getId)
-            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower profile not found"));
+                .map(Borrower::getId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower profile not found"));
 
         Page<Loan> loanPage = loanRepository.searchMyLoans(
-            borrowerId,
-            query == null ? "" : query.trim(),
-            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+                borrowerId,
+                query == null ? "" : query.trim(),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
+
+        // Batch load repayment data
+        List<UUID> loanIds = loanPage.getContent().stream().map(Loan::getId).toList();
+        Map<UUID, BigDecimal> amountPaidMap = buildAmountPaidMap(loanIds);
+        List<RepaymentSchedule> allSchedules = loanIds.isEmpty() ? List.of() : repaymentScheduleRepository.findByLoanIdsOrderByInstallmentNumber(loanIds);
+
+        // Group schedules by loan ID
+        Map<UUID, List<RepaymentSchedule>> schedulesByLoanId = allSchedules.stream()
+                .collect(Collectors.groupingBy(s -> s.getLoan().getId()));
+
         return new PageResponse<>(
-            loanPage.getContent().stream().map(this::toResponse).toList(),
-            loanPage.getNumber(),
-            loanPage.getSize(),
-            loanPage.getTotalElements(),
-            loanPage.getTotalPages()
+                loanPage.getContent().stream()
+                        .map(loan -> toResponse(loan, amountPaidMap.getOrDefault(loan.getId(), BigDecimal.ZERO), schedulesByLoanId.getOrDefault(loan.getId(), List.of())))
+                        .toList(),
+                loanPage.getNumber(),
+                loanPage.getSize(),
+                loanPage.getTotalElements(),
+                loanPage.getTotalPages()
         );
     }
 
@@ -279,7 +306,6 @@ public class LoanService {
         return toResponse(loan);
     }
 
-    /** Update a PENDING loan (amount and/or term). Owner only. Recomputes total amount from current settings. */
     @Transactional
     public LoanResponse updateLoan(UUID loanId, LoanUpdateRequest request) {
         Loan loan = findLoan(loanId);
@@ -291,8 +317,8 @@ public class LoanService {
             throw new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured");
         }
         int termDays = request.loanTermDays() != null && request.loanTermDays() > 0
-            ? request.loanTermDays()
-            : loan.getLoanTermDays();
+                ? request.loanTermDays()
+                : loan.getLoanTermDays();
         BigDecimal totalAmount = interestCalculationService.computeTotalAmount(request.loanAmount(), termDays, settings);
         loan.setLoanAmount(request.loanAmount());
         loan.setLoanTermDays(termDays);
@@ -303,7 +329,6 @@ public class LoanService {
         return toResponse(loan);
     }
 
-    /** Cancel (delete) a PENDING loan. Owner only. */
     @Transactional
     public void cancelLoan(UUID loanId) {
         Loan loan = findLoan(loanId);
@@ -341,21 +366,20 @@ public class LoanService {
         Loan loan = findLoan(loanId);
         enforceBorrowerOwnershipIfNeeded(loan);
         return repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loanId).stream()
-            .map(schedule -> new ScheduleResponse(
-                schedule.getInstallmentNumber(),
-                schedule.getDueDate(),
-                schedule.getAmountDue(),
-                schedule.getStatus()
-            ))
-            .toList();
+                .map(schedule -> new ScheduleResponse(
+                        schedule.getInstallmentNumber(),
+                        schedule.getDueDate(),
+                        schedule.getAmountDue(),
+                        schedule.getStatus()
+                ))
+                .toList();
     }
 
     public Loan findLoan(UUID loanId) {
         return loanRepository.findById(loanId)
-            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
     }
 
-    /** Send overdue payment reminder to borrower (staff only). Loan must have at least one overdue or past-due schedule. */
     @Transactional
     public void sendOverdueReminder(UUID loanId) {
         Loan loan = findLoan(loanId);
@@ -369,14 +393,14 @@ public class LoanService {
         List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loanId);
         LocalDate today = LocalDate.now();
         boolean hasOverdue = schedules.stream().anyMatch(s ->
-            s.getStatus() == ScheduleStatus.OVERDUE
-                || (s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(today))
+                s.getStatus() == ScheduleStatus.OVERDUE
+                        || (s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(today))
         );
         if (!hasOverdue) {
             throw new ResponseStatusException(BAD_REQUEST, "This loan has no overdue or past-due installments");
         }
         Borrower borrower = borrowerService.findBorrower(loan.getBorrower().getId());
-        notificationService.notifyBorrowerLoanOverdue(loan,borrower);
+        notificationService.notifyBorrowerLoanOverdue(loan, borrower);
     }
 
     private void enforceBorrowerOwnershipIfNeeded(Loan loan) {
@@ -387,23 +411,19 @@ public class LoanService {
         borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
 
         UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
-            .map(Borrower::getId)
-            .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
+                .map(Borrower::getId)
+                .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
 
         if (!loan.getBorrower().getId().equals(borrowerId)) {
             throw new ResponseStatusException(FORBIDDEN, "Borrowers can only view their own loans");
         }
     }
 
-    /**
-     * Generates repayment schedule from loan total amount, term and interest period (from settings).
-     * Number of installments = ceil(loanTermDays / interestPeriodDays); due dates align with each period.
-     */
     private void generateSchedule(Loan loan) {
         int termDays = loan.getLoanTermDays() != null && loan.getLoanTermDays() > 0 ? loan.getLoanTermDays() : 365;
         int periodDays = loan.getInterestPeriodDays() != null && loan.getInterestPeriodDays() > 0
-            ? loan.getInterestPeriodDays()
-            : 30;
+                ? loan.getInterestPeriodDays()
+                : 30;
         int installments = Math.max(1, (termDays + periodDays - 1) / periodDays);
         BigDecimal total = loan.getTotalAmount();
         BigDecimal amountPerInstallment = total.divide(new BigDecimal(installments), 2, RoundingMode.HALF_UP);
@@ -415,8 +435,8 @@ public class LoanService {
             int daysFromIssue = Math.min(i * periodDays, termDays);
             schedule.setDueDate(issueDate.plusDays(daysFromIssue));
             schedule.setAmountDue(i == installments
-                ? total.subtract(amountPerInstallment.multiply(new BigDecimal(installments - 1)))
-                : amountPerInstallment);
+                    ? total.subtract(amountPerInstallment.multiply(new BigDecimal(installments - 1)))
+                    : amountPerInstallment);
             schedule.setStatus(ScheduleStatus.PENDING);
             repaymentScheduleRepository.save(schedule);
         }
@@ -434,6 +454,72 @@ public class LoanService {
         cashTransactionRepository.save(transaction);
     }
 
+    /**
+     * Build a map of loan ID to amount paid by batch querying all loans at once.
+     */
+    private Map<UUID, BigDecimal> buildAmountPaidMap(List<UUID> loanIds) {
+        if (loanIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Map<String, Object>> results = repaymentRepository.sumAmountPaidByLoanIds(loanIds);
+        return results.stream()
+                .collect(Collectors.toMap(
+                        m -> (UUID) m.get("loanId"),
+                        m -> (BigDecimal) m.get("totalPaid")
+                ));
+    }
+
+    /**
+     * Convert loan to response with pre-loaded repayment data (for list endpoints).
+     */
+    private LoanResponse toResponse(Loan loan, BigDecimal amountPaid, List<RepaymentSchedule> schedules) {
+        String borrowerUsername = null;
+        String borrowerFullName = null;
+        if (loan.getBorrower() != null) {
+            if (loan.getBorrower().getUser() != null) {
+                borrowerUsername = loan.getBorrower().getUser().getUsername();
+            }
+            String first = loan.getBorrower().getFirstName();
+            String last = loan.getBorrower().getLastName();
+            if (first != null || last != null) {
+                borrowerFullName = (first != null ? first : "").trim() + " " + (last != null ? last : "").trim();
+                borrowerFullName = borrowerFullName.trim();
+                if (borrowerFullName.isEmpty()) borrowerFullName = null;
+            }
+        }
+
+        LocalDate today = LocalDate.now();
+        boolean hasOverdue = schedules.stream()
+                .anyMatch(s -> s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(today));
+
+        BigDecimal total = loan.getTotalAmount() != null ? loan.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal pendingAmount = total.subtract(amountPaid).max(BigDecimal.ZERO);
+
+        return new LoanResponse(
+                loan.getId(),
+                loan.getBorrower().getId(),
+                borrowerUsername,
+                borrowerFullName,
+                loan.getLoanAmount(),
+                loan.getInterestRate(),
+                loan.getTotalAmount(),
+                pendingAmount,
+                loan.getLoanTermDays(),
+                loan.getIssueDate(),
+                loan.getDueDate(),
+                loan.getStatus(),
+                loan.getRiskScore(),
+                loan.getRiskBand(),
+                loan.getInterestType(),
+                loan.getInterestPeriodDays(),
+                loan.getGracePeriodDays() != null ? loan.getGracePeriodDays() : 0,
+                hasOverdue
+        );
+    }
+
+    /**
+     * Convert loan to response with individual queries (for single loan fetches).
+     */
     private LoanResponse toResponse(Loan loan) {
         String borrowerUsername = null;
         String borrowerFullName = null;
@@ -450,30 +536,30 @@ public class LoanService {
             }
         }
         boolean hasOverdue = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId()).stream()
-            .anyMatch(s -> s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(LocalDate.now()));
+                .anyMatch(s -> s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(LocalDate.now()));
         BigDecimal total = loan.getTotalAmount() != null ? loan.getTotalAmount() : BigDecimal.ZERO;
         BigDecimal amountPaid = repaymentRepository.sumAmountPaidByLoanId(loan.getId()) != null
-            ? repaymentRepository.sumAmountPaidByLoanId(loan.getId()) : BigDecimal.ZERO;
+                ? repaymentRepository.sumAmountPaidByLoanId(loan.getId()) : BigDecimal.ZERO;
         BigDecimal pendingAmount = total.subtract(amountPaid).max(BigDecimal.ZERO);
         return new LoanResponse(
-            loan.getId(),
-            loan.getBorrower().getId(),
-            borrowerUsername,
-            borrowerFullName,
-            loan.getLoanAmount(),
-            loan.getInterestRate(),
-            loan.getTotalAmount(),
-            pendingAmount,
-            loan.getLoanTermDays(),
-            loan.getIssueDate(),
-            loan.getDueDate(),
-            loan.getStatus(),
-            loan.getRiskScore(),
-            loan.getRiskBand(),
-            loan.getInterestType(),
-            loan.getInterestPeriodDays(),
-            loan.getGracePeriodDays() != null ? loan.getGracePeriodDays() : 0,
-            hasOverdue
+                loan.getId(),
+                loan.getBorrower().getId(),
+                borrowerUsername,
+                borrowerFullName,
+                loan.getLoanAmount(),
+                loan.getInterestRate(),
+                loan.getTotalAmount(),
+                pendingAmount,
+                loan.getLoanTermDays(),
+                loan.getIssueDate(),
+                loan.getDueDate(),
+                loan.getStatus(),
+                loan.getRiskScore(),
+                loan.getRiskBand(),
+                loan.getInterestType(),
+                loan.getInterestPeriodDays(),
+                loan.getGracePeriodDays() != null ? loan.getGracePeriodDays() : 0,
+                hasOverdue
         );
     }
 }

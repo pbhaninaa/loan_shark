@@ -1,128 +1,91 @@
 <template>
   <div class="viewport-scaler-outer">
     <div class="viewport-scaler-inner" :style="scalerStyle">
-  <v-app>
-    <template v-if="store.isAuthenticated">
-      <v-navigation-drawer v-model="drawer" color="secondary" theme="dark" rail-width="88">
-        <div class="d-flex flex-column fill-height">
-          <div class="px-4 pt-6 pb-4">
-            <div class="text-h5 font-weight-bold">LendHand</div>
-            <div class="text-caption text-medium-emphasis">Operations Portal</div>
-          </div>
+      <v-app>
+        <template v-if="store.isAuthenticated">
+          <v-navigation-drawer v-model="drawer" app color="secondary" theme="dark" rail-width="88" height="100vh"
+            class="fixed-drawer">
+            <div class="d-flex flex-column fill-height">
+              <div class="px-4 pt-6 pb-4">
+                <div class="text-h5 font-weight-bold">{{ companyName }}</div>
 
-          <v-list nav density="comfortable">
-            <v-list-item
-              v-for="item in navItems"
-              :key="item.to"
-              :title="item.title"
-              :prepend-icon="item.icon"
-              :to="item.to"
-              rounded="xl"
-            >
-              <template v-if="item.badgeKey && pendingCount(item.badgeKey) > 0" #append>
-                <v-tooltip :text="`${pendingCount(item.badgeKey)} pending`" location="left">
-                  <template #activator="{ props: tooltipProps }">
-                    <v-avatar
-                      v-bind="tooltipProps"
-                      :size="22"
-                      color="error"
-                      class="text-caption font-weight-bold"
-                    >
-                      {{ pendingCount(item.badgeKey) > 99 ? '99+' : pendingCount(item.badgeKey) }}
-                    </v-avatar>
+                <div class="text-company-name font-style-italic">Logged User : {{ displayName }}</div>
+              </div>
+
+              <v-list nav density="comfortable">
+                <v-list-item v-for="item in navItems" :key="item.to" :title="item.title" :prepend-icon="item.icon"
+                  :to="item.to" rounded="xl">
+                  <template v-if="item.badgeKey && pendingCount(item.badgeKey) > 0" #append>
+                    <v-tooltip :text="`${pendingCount(item.badgeKey)} pending`" location="left">
+                      <template #activator="{ props: tooltipProps }">
+                        <v-avatar v-bind="tooltipProps" :size="22" color="error" class="text-caption font-weight-bold">
+                          {{ pendingCount(item.badgeKey) > 99 ? '99+' : pendingCount(item.badgeKey) }}
+                        </v-avatar>
+                      </template>
+                    </v-tooltip>
                   </template>
-                </v-tooltip>
-              </template>
-            </v-list-item>
-          </v-list>
+                </v-list-item>
+              </v-list>
 
-          <v-spacer />
 
-          <div class="px-4 pb-6">
-            <v-card color="rgba(255,255,255,0.08)" rounded="xl" class="mb-4">
+              <div class="px-4 pb-6">
+
+                <v-btn color="secondery" variant="tonal" block prepend-icon="mdi-lock-reset" class="mb-2"
+                  @click="showChangePasswordDialog = true">
+                  Change password
+                </v-btn>
+                <v-btn color="error" block prepend-icon="mdi-logout" @click="logout">
+                  Logout
+                </v-btn>
+              </div>
+            </div>
+          </v-navigation-drawer>
+
+          <v-dialog v-model="showChangePasswordDialog" max-width="440" persistent>
+            <v-card>
+              <v-card-title class="d-flex align-center">
+                <v-icon start>mdi-lock-reset</v-icon>
+                Change password
+              </v-card-title>
+              <v-divider />
               <v-card-text>
-                <div class="text-subtitle-2">Signed in as</div>
-                <div class="text-h6">{{ displayName }}</div>
-                <div class="text-caption text-medium-emphasis mt-1">{{ roleLabel }}</div>
+                <v-form ref="changePasswordFormRef" @submit.prevent="submitChangePassword">
+                  <v-text-field v-model="changePasswordForm.currentPassword" label="Current password" type="password"
+                    prepend-inner-icon="mdi-lock-outline" autocomplete="current-password"
+                    :error-messages="changePasswordError" class="mb-2" />
+                  <v-text-field v-model="changePasswordForm.newPassword" label="New password" type="password"
+                    prepend-inner-icon="mdi-lock-outline" autocomplete="new-password" class="mb-2" />
+                  <v-text-field v-model="changePasswordForm.confirmPassword" label="Confirm new password"
+                    type="password" prepend-inner-icon="mdi-lock-outline" autocomplete="new-password"
+                    :error-messages="changePasswordForm.newPassword && changePasswordForm.confirmPassword !== changePasswordForm.newPassword ? ['Passwords do not match'] : []" />
+                </v-form>
               </v-card-text>
+              <v-divider />
+              <v-card-actions>
+
+                <v-btn variant="text" @click="closeChangePasswordDialog">Cancel</v-btn>
+                <v-btn color="primary" :loading="changePasswordLoading" @click="submitChangePassword">Update
+                  password</v-btn>
+              </v-card-actions>
             </v-card>
+          </v-dialog>
 
-            <v-btn color="primary" variant="tonal" block prepend-icon="mdi-lock-reset" class="mb-2" @click="showChangePasswordDialog = true">
-              Change password
-            </v-btn>
-            <v-btn color="error" block prepend-icon="mdi-logout" @click="logout">
-              Logout
-            </v-btn>
-          </div>
-        </div>
-      </v-navigation-drawer>
-
-      <v-dialog v-model="showChangePasswordDialog" max-width="440" persistent>
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon start>mdi-lock-reset</v-icon>
-            Change password
-          </v-card-title>
-          <v-divider />
-          <v-card-text>
-            <v-form ref="changePasswordFormRef" @submit.prevent="submitChangePassword">
-              <v-text-field
-                v-model="changePasswordForm.currentPassword"
-                label="Current password"
-                type="password"
-                prepend-inner-icon="mdi-lock-outline"
-                autocomplete="current-password"
-                :error-messages="changePasswordError"
-                class="mb-2"
-              />
-              <v-text-field
-                v-model="changePasswordForm.newPassword"
-                label="New password"
-                type="password"
-                prepend-inner-icon="mdi-lock-outline"
-                autocomplete="new-password"
-                class="mb-2"
-              />
-              <v-text-field
-                v-model="changePasswordForm.confirmPassword"
-                label="Confirm new password"
-                type="password"
-                prepend-inner-icon="mdi-lock-outline"
-                autocomplete="new-password"
-                :error-messages="changePasswordForm.newPassword && changePasswordForm.confirmPassword !== changePasswordForm.newPassword ? ['Passwords do not match'] : []"
-              />
-            </v-form>
-          </v-card-text>
-          <v-divider />
-          <v-card-actions>
+          <v-app-bar flat color="background" elevation="0">
+            <v-app-bar-nav-icon @click="drawer = !drawer" />
+            <v-toolbar-title class="font-weight-bold">{{ roleLabel }} Portal</v-toolbar-title>
             <v-spacer />
-            <v-btn variant="text" @click="closeChangePasswordDialog">Cancel</v-btn>
-            <v-btn color="primary" :loading="changePasswordLoading" @click="submitChangePassword">Update password</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+            <v-btn v-if="store.isAuthenticated" :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+              variant="text" size="small" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+              @click="toggleDarkMode" />
+          </v-app-bar>
+        </template>
 
-      <v-app-bar flat color="background" elevation="0">
-        <v-app-bar-nav-icon @click="drawer = !drawer" />
-        <v-toolbar-title class="font-weight-bold">Loan Management Portal</v-toolbar-title>
-        <v-spacer />
-        <v-btn
-          v-if="store.isAuthenticated"
-          :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
-          variant="text"
-          size="small"
-          :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-          @click="toggleDarkMode"
-        />
-      </v-app-bar>
-    </template>
-
-    <v-main>
-      <v-container fluid class="pa-4 pa-md-8">
-        <router-view />
-      </v-container>
-    </v-main>
-  </v-app>
+        <v-main>
+          <v-container fluid class="pa-4 pa-md-8">
+            <router-view />
+          </v-container>
+        </v-main>
+      </v-app>
     </div>
   </div>
 </template>
@@ -144,7 +107,7 @@ const drawer = ref(true);
 const router = useRouter();
 const store = useAppStore();
 const theme = useTheme();
-
+const companyName = ref("LendHand"); // fallback
 const isDark = computed(() => theme.global.name.value === "loanSharkDark");
 
 function toggleDarkMode() {
@@ -152,7 +115,7 @@ function toggleDarkMode() {
   theme.global.name.value = next;
   try {
     localStorage.setItem(DRAWER_KEY, next);
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function applySavedTheme() {
@@ -161,7 +124,7 @@ function applySavedTheme() {
     if (saved === "loanSharkDark" || saved === "loanSharkTheme") {
       theme.global.name.value = saved;
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function syncDarkClassToDocument() {
@@ -169,11 +132,22 @@ function syncDarkClassToDocument() {
 }
 
 watch(isDark, syncDarkClassToDocument, { immediate: true });
-
+async function getCompanyDetails() {
+  try {
+    const data = await store.fetchLenderContact();
+    if (data?.name) {
+      companyName.value = data.name;
+      console.log("Company loaded:", companyName.value);
+    }
+  } catch (e) {
+    console.error("Could not load company details:", e);
+  }
+};
 onMounted(() => {
   applySavedTheme();
   syncDarkClassToDocument();
   updateScale();
+  getCompanyDetails();
   window.addEventListener("resize", updateScale);
 });
 onUnmounted(() => {
@@ -255,28 +229,28 @@ const navItems = computed(() => {
     ...(store.isBorrower
       ? store.borrowerStatus && store.borrowerStatus !== "ACTIVE"
         ? [
-            {
-              title: "Verification Status",
-              to: "/my-portal/verification",
-              icon: "mdi-shield-account-outline"
-            }
-          ]
+          {
+            title: "Verification Status",
+            to: "/my-portal/verification",
+            icon: "mdi-shield-account-outline"
+          }
+        ]
         : [
-            { title: "My Profile", to: "/my-portal/profile", icon: "mdi-account-circle-outline" },
-            { title: "My Loans", to: "/my-portal/loans", icon: "mdi-cash-multiple" },
-            { title: "Repayment Schedule", to: "/my-portal/schedule", icon: "mdi-calendar-clock-outline" },
-            { title: "My payment history", to: "/my-portal/payment-history", icon: "mdi-history", badgeKey: "overdueSchedules" },
-            { title: "Notifications", to: "/my-portal/notifications", icon: "mdi-bell-outline", badgeKey: "unreadNotifications" },
-            { title: "My account", to: "/account", icon: "mdi-account-cog-outline" },
-            { title: "Help & Contact", to: "/my-portal/help", icon: "mdi-help-circle-outline" }
-          ]
-        : [
-          { title: "Dashboard", to: "/dashboard", icon: "mdi-view-dashboard-outline" },
-          { title: "Clients", to: "/borrowers", icon: "mdi-account-group-outline" },
-          { title: "Loans", to: "/loans", icon: "mdi-cash-multiple", badgeKey: "pendingLoans" },
-          { title: "Repayments", to: "/repayments", icon: "mdi-cash-check", badgeKey: "overdueSchedules" },
-          { title: "Notifications", to: "/notifications", icon: "mdi-bell-outline", badgeKey: "unreadNotifications" }
-        ])
+          { title: "My Profile", to: "/my-portal/profile", icon: "mdi-account-circle-outline" },
+          { title: "My Loans", to: "/my-portal/loans", icon: "mdi-cash-multiple" },
+          { title: "Repayment Schedule", to: "/my-portal/schedule", icon: "mdi-calendar-clock-outline" },
+          { title: "My payment history", to: "/my-portal/payment-history", icon: "mdi-history", badgeKey: "overdueSchedules" },
+          { title: "Notifications", to: "/my-portal/notifications", icon: "mdi-bell-outline", badgeKey: "unreadNotifications" },
+          { title: "My account", to: "/account", icon: "mdi-account-cog-outline" },
+          { title: "Help & Contact", to: "/my-portal/help", icon: "mdi-help-circle-outline" }
+        ]
+      : [
+        { title: "Dashboard", to: "/dashboard", icon: "mdi-view-dashboard-outline" },
+        { title: "Clients", to: "/borrowers", icon: "mdi-account-group-outline" },
+        { title: "Loans", to: "/loans", icon: "mdi-cash-multiple", badgeKey: "pendingLoans" },
+        { title: "Repayments", to: "/repayments", icon: "mdi-cash-check", badgeKey: "overdueSchedules" },
+        { title: "Notifications", to: "/notifications", icon: "mdi-bell-outline", badgeKey: "unreadNotifications" }
+      ])
   ];
 
   if (store.isOwner) {
@@ -306,15 +280,15 @@ const navItems = computed(() => {
       to: "/settings/business-capital",
       icon: "mdi-bank-outline"
     });
-     items.push({
-    title: "My account",
-    to: "/account",
-    icon: "mdi-account-cog-outline"
-  });
+    items.push({
+      title: "My account",
+      to: "/account",
+      icon: "mdi-account-cog-outline"
+    });
   }
 
   // My account last for all staff (owner and cashier)
- 
+
 
   return items;
 });
@@ -371,3 +345,21 @@ function logout() {
   router.push("/login");
 }
 </script>
+<style lang="css">
+.v-main {
+  overflow-y: auto;
+  height: 100vh;
+}
+
+.fixed-drawer .v-navigation-drawer__content v-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.fixed-drawer .v-list {
+  flex: 1;
+  overflow-y: auto;
+}
+</style>

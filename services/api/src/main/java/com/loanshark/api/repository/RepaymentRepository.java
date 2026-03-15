@@ -9,7 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.repository.query.Param;import java.util.Map;
 
 public interface RepaymentRepository extends JpaRepository<Repayment, UUID> {
 
@@ -60,4 +60,12 @@ public interface RepaymentRepository extends JpaRepository<Repayment, UUID> {
         order by r.paymentDate desc
         """)
     Page<Repayment> searchByBorrowerId(@Param("borrowerId") UUID borrowerId, @Param("query") String query, Pageable pageable);
+
+    @Query("""
+        SELECT new map(r.loan.id as loanId, COALESCE(SUM(r.amountPaid), 0) as totalPaid)
+        FROM Repayment r
+        WHERE r.loan.id IN :loanIds
+        GROUP BY r.loan.id
+        """)
+    List<Map<String, Object>> sumAmountPaidByLoanIds(@Param("loanIds") List<UUID> loanIds);
 }

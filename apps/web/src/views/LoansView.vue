@@ -25,7 +25,7 @@
         show-search
         search-placeholder="Search pending requests"
         no-data-message="No pending loan requests."
-        :items-per-page="8"
+        :items-per-page="3"
         @update:search-value="onPendingSearch"
       >
         <template #item.id="{ item }">#{{ item.id }}</template>
@@ -40,22 +40,25 @@
         <template #item.totalAmount="{ item }">{{ formatCurrency(item.totalAmount) }}</template>
         <template #item.actions="{ item }">
           <div class="d-flex ga-2 flex-wrap">
-            <AppActionButton
-              v-if="canActOnLoan(item)"
-              size="small"
-              color="success"
-              variant="flat"
-              text="Approve"
-              @click="approve(item.id)"
-            />
-            <AppActionButton
-              v-if="canActOnLoan(item)"
-              size="small"
-              color="error"
-              variant="flat"
-              text="Reject"
-              @click="reject(item.id)"
-            />
+           <AppActionButton
+  v-if="canActOnLoan(item)"
+  size="small"
+  color="success"
+  variant="flat"
+  text="Approve"
+  :loading="actionLoading.approve === item.id"
+  @click="approve(item.id)"
+/>
+
+<AppActionButton
+  v-if="canActOnLoan(item)"
+  size="small"
+  color="error"
+  variant="flat"
+  text="Reject"
+  :loading="actionLoading.reject === item.id"
+  @click="reject(item.id)"
+/>
             <AppActionButton
               v-if="store.isOwner"
               size="small"
@@ -65,15 +68,15 @@
               @click="openEditLoan(item)"
             />
             <AppActionButton
-              v-if="store.isOwner"
-              size="small"
-              color="error"
-              variant="tonal"
-              text="Cancel"
-              prepend-icon="mdi-close-circle-outline"
-              :loading="cancelLoading === item.id"
-              @click="cancelLoan(item)"
-            />
+  v-if="store.isOwner"
+  size="small"
+  color="error"
+  variant="tonal"
+  text="Cancel"
+  prepend-icon="mdi-close-circle-outline"
+  :loading="actionLoading.cancel === item.id"
+  @click="cancelLoan(item)"
+/>
           </div>
         </template>
         <template #footer>
@@ -122,7 +125,11 @@
         <AppTextField v-model.number="editForm.loanAmount" label="Loan amount" type="number" prepend-inner-icon="mdi-cash-plus" />
         <AppTextField v-model.number="editForm.loanTermDays" label="Loan term (days, optional)" type="number" prepend-inner-icon="mdi-calendar" hint="Leave blank to keep current term" persistent-hint />
         <div class="d-flex ga-2 mt-3">
-          <AppActionButton text="Update" type="submit" :loading="editLoading" />
+         <AppActionButton
+  text="Update"
+  type="submit"
+  :loading="actionLoading.update"
+/>
           <AppActionButton text="Cancel" color="secondary" variant="tonal" @click="showEditDialog = false" />
         </div>
       </v-form>
@@ -211,7 +218,12 @@ const loansSearch = ref("");
 const loansPageNum = ref(0);
 const loansLoading = ref(false);
 const remindLoading = ref(null);
-
+const actionLoading = reactive({
+  approve: null,   // loanId currently being approved
+  reject: null,    // loanId currently being rejected
+  cancel: null,    // loanId currently being cancelled
+  update: false    // update button in edit dialog
+});
 const pendingHeaders = computed(() => [
   { title: "ID", key: "id" },
   { title: "Client", key: "borrowerId" },
@@ -282,14 +294,39 @@ async function applyLoan() {
 }
 
 async function approve(loanId) {
-  await api.post("/loans/approve", { loanId, note: "Approved from portal" });
-  await refreshBothTables();
+  actionLoading.approve = loanId;
+  try {
+    await api.post("/loans/approve", { loanId, note: "Approved from portal" });
+    await refreshBothTables();
+  } finally {
+    actionLoading.approve = null;
+  }
 }
 
 async function reject(loanId) {
-  await api.post("/loans/reject", { loanId, note: "Rejected from portal" });
-  await refreshBothTables();
+  actionLoading.reject = loanId;
+  try {
+    await api.post("/loans/reject", { loanId, note: "Rejected from portal" });
+    await refreshBothTables();
+  } finally {
+    actionLoading.reject = null;
+  }
 }
+
+// async function confirmCancelLoan() {
+//   if (!cancelLoanId.value) return;
+//   actionLoading.cancel = cancelLoanId.value;
+//   try {
+//     await store.deleteLoan(cancelLoanId.value);
+//     showCancelConfirm.value = false;
+//     cancelLoanId.value = null;
+//     await refreshBothTables();
+//   } finally {
+//     actionLoading.cancel = null;
+//   }
+// }
+
+
 
 function openEditLoan(loan) {
   editingLoan.value = loan;
@@ -302,10 +339,11 @@ function openEditLoan(loan) {
 async function saveEditLoan() {
   if (!editingLoan.value) return;
   editError.value = "";
-  editLoading.value = true;
+  actionLoading.update = true;   // <-- loading
   try {
     const payload = { loanAmount: editForm.loanAmount };
-    if (editForm.loanTermDays != null && editForm.loanTermDays > 0) payload.loanTermDays = editForm.loanTermDays;
+    if (editForm.loanTermDays != null && editForm.loanTermDays > 0)
+      payload.loanTermDays = editForm.loanTermDays;
     await store.updateLoan(editingLoan.value.id, payload);
     showEditDialog.value = false;
     editingLoan.value = null;
@@ -313,7 +351,7 @@ async function saveEditLoan() {
   } catch (e) {
     editError.value = e.response?.data?.message || e.message || "Failed to update loan.";
   } finally {
-    editLoading.value = false;
+    actionLoading.update = false;
   }
 }
 
@@ -324,16 +362,14 @@ function cancelLoan(loan) {
 
 async function confirmCancelLoan() {
   if (!cancelLoanId.value) return;
-  confirmCancelLoading.value = true;
+  actionLoading.cancel = cancelLoanId.value;
   try {
     await store.deleteLoan(cancelLoanId.value);
     showCancelConfirm.value = false;
     cancelLoanId.value = null;
     await refreshBothTables();
-  } catch (e) {
-    editError.value = e.response?.data?.message || e.message || "Failed to cancel loan.";
   } finally {
-    confirmCancelLoading.value = false;
+    actionLoading.cancel = null;
   }
 }
 
@@ -341,7 +377,7 @@ async function loadPendingLoans(nextPage = pendingPage.value) {
   pendingPage.value = nextPage;
   pendingLoading.value = true;
   try {
-    await store.fetchPendingLoans({ q: pendingSearch.value, page: pendingPage.value, size: 8 });
+    await store.fetchPendingLoans({ q: pendingSearch.value, page: pendingPage.value, size: 5});
   } finally {
     pendingLoading.value = false;
   }
@@ -360,7 +396,7 @@ async function loadLoansTable(nextPage = loansPageNum.value) {
     await store.fetchLoans({
       q: loansSearch.value,
       page: loansPageNum.value,
-      size: 8,
+      size: 5,
       status: ["ACTIVE", "COMPLETED"]
     });
   } finally {
