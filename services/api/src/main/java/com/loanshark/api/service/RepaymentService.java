@@ -365,7 +365,7 @@ public class RepaymentService {
 
     private void applyPaymentToSchedule(Loan loan, BigDecimal paymentAmount) {
         List<RepaymentSchedule> schedules = repaymentScheduleRepository
-                .findByLoanIdOrderByInstallmentNumberAsc(loan.getId());
+                .findByLoanIdOrderPendingFirst(loan.getId());
 
         BigDecimal remainingPayment = paymentAmount;
 
@@ -392,7 +392,7 @@ public class RepaymentService {
     }
     private void updateLoanCompletion(Loan loan) {
         LoanStatus previousStatus = loan.getStatus();
-        boolean outstanding = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId()).stream()
+        boolean outstanding = repaymentScheduleRepository.findByLoanIdOrderPendingFirst(loan.getId()).stream()
                 .anyMatch(schedule -> schedule.getStatus() != ScheduleStatus.PAID);
         if (!outstanding) {
             loan.setStatus(LoanStatus.COMPLETED);
