@@ -23,8 +23,18 @@ public interface RepaymentScheduleRepository extends JpaRepository<RepaymentSche
         s.installmentNumber ASC
 """)
     List<RepaymentSchedule> findByLoanIdOrderByStatusPendingFirst(@org.springframework.data.repository.query.Param("loanId") UUID loanId);
-    List<RepaymentSchedule> findByLoanIdOrderByInstallmentNumberAsc(UUID loanId);
-
+    @Query("""
+        SELECT r
+        FROM RepaymentSchedule r
+        WHERE r.loan.id = :loanId
+        ORDER BY 
+        CASE 
+            WHEN r.status = 'PENDING' THEN 0
+            ELSE 1
+        END,
+        r.installmentNumber ASC
+    """)
+    List<RepaymentSchedule> findByLoanIdOrderPendingFirst(@Param("loanId") UUID loanId);
     long countByStatus(ScheduleStatus status);
 
     long countByLoanBorrowerIdAndStatus(UUID borrowerId, ScheduleStatus status);
