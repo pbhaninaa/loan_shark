@@ -9,7 +9,7 @@
               <div class="px-4 pt-6 pb-4">
                 <div class="text-h5 font-weight-bold">{{ companyName }}</div>
 
-                <div class="text-company-name font-style-italic">Logged User : {{ displayName }}</div>
+                <div class="text-company-name font-style-italic"> {{ displayName }}</div>
               </div>
 
               <v-list nav density="comfortable">
@@ -308,7 +308,7 @@ const scalerStyle = computed(() => ({
 }));
 
 const displayName = computed(() => {
-  const name = store.username;
+  const name = store.fullName||  store.username;
   if (name && String(name).trim()) return String(name).trim();
   const fromToken = usernameFromToken(store.token);
   if (fromToken) return fromToken;
