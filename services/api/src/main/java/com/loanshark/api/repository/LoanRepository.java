@@ -56,13 +56,16 @@ public interface LoanRepository extends JpaRepository<Loan, UUID> {
     @Query("""
     select l from Loan l
     where l.borrower.id = :borrowerId
-      and (
-          :query = '' or
-          str(l.id) like concat('%', :query, '%') or
-          lower(str(l.status)) like lower(concat('%', :query, '%')) or
-          lower(str(l.riskBand)) like lower(concat('%', :query, '%'))
-      )
-    order by l.status asc
+      and (:query = '' 
+           or str(l.id) like concat('%', :query, '%')
+           or lower(str(l.status)) like lower(concat('%', :query, '%'))
+           or lower(str(l.riskBand)) like lower(concat('%', :query, '%')))
+    order by
+      case l.status
+          when com.loanshark.api.entity.LoanStatus.PENDING then 0
+          else 1
+      end,
+      l.status asc
 """)
     Page<Loan> searchMyLoans(
             @Param("borrowerId") UUID borrowerId,
