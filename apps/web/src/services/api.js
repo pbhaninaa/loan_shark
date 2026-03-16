@@ -2,69 +2,78 @@ import axios from "axios";
 import { toast } from "vue-sonner";
 import { isTokenExpired } from "../utils/token";
 
-// Build-time: VITE_API_URL (set on Vercel). Runtime fallback: if not on localhost, use Railway so deployed app works.
-const RAILWAY_API_URL = "https://backend-production-8d8d.up.railway.app";
-const buildTimeApiUrl = import.meta.env.VITE_API_URL;
+// ------------------------------
+// Base URL
+// ------------------------------
+// Vercel environment variable (build-time)
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
-const isDeployed =
-  typeof window !== "undefined" &&
-  !/localhost|127\.0\.0\.1/.test(window.location?.hostname || "");
-
-const defaultApiUrl = isDeployed
-  ? RAILWAY_API_URL
-  : "http://localhost:8080";
-
-const baseURL = buildTimeApiUrl || defaultApiUrl;
-
+// ------------------------------
+// Axios instance
+// ------------------------------
 const api = axios.create({
   baseURL,
-  headers: { Accept: "application/json" }
+  headers: { Accept: "application/json" },
 });
 
-// Ensure deployed app never calls localhost accidentally
+// ------------------------------
+// REQUEST INTERCEPTOR (Auth + Localhost safety)
+// ------------------------------
 api.interceptors.request.use((config) => {
-  const onDeployedHost =
-    typeof window !== "undefined" &&
-    !/localhost|127\.0\.0\.1/.test(window.location?.hostname || "");
+  const token = localStorage.getItem("loanSharkToken");
+  const url = config.url || "";
+  const path = url.replace(config.baseURL || "", "").split("?")[0];
 
-  const pointingToLocal =
-    !config.baseURL || /localhost|127\.0\.0\.1/.test(config.baseURL || "");
+  const isPublic =
+    path.startsWith("/auth/login") ||
+    path.startsWith("/auth/register/owner") ||
+    path.startsWith("/auth/register/borrower") ||
+    path.startsWith("/auth/setup-status") ||
+    path.startsWith("/auth/forgot-password") ||
+    path.startsWith("/auth/reset-password") ||
+    ((config.method || "").toLowerCase() === "get" &&
+      path === "/settings/loan-interest");
 
-  if (onDeployedHost && pointingToLocal) {
-    config.baseURL = RAILWAY_API_URL;
+  // Auto logout if token expired
+  if (token && !isPublic && isTokenExpired(token)) {
+    window.dispatchEvent(
+      new CustomEvent("auth-logout", { detail: { reason: "expired" } })
+    );
+    window.location.hash = "#/login";
+    return Promise.reject(new Error("Session expired. Please log in again."));
+  }
+
+  // Add Authorization header
+  if (token && !isPublic) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
 
   return config;
 });
 
-
-// RESPONSE INTERCEPTOR
+// ------------------------------
+// RESPONSE INTERCEPTOR (Global toast + error handling)
+// ------------------------------
 api.interceptors.response.use(
   (response) => {
     if (response.config?.skipGlobalToast) return response;
 
     const method = response.config?.method?.toUpperCase();
     const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
-
     const message = response.data?.message;
 
-    if (isMutation && message && typeof toast !== "undefined") {
+    if (isMutation && message) {
       toast.success(message);
     }
 
     return response;
   },
-
   (error) => {
     const isUnreachable =
       !error.response &&
-      (
-        error.code === "ERR_NETWORK" ||
-        error.code === "ERR_CONNECTION_REFUSED" ||
-        error.message === "Network Error" ||
-        error.message?.toLowerCase?.().includes("network") ||
-        error.message?.toLowerCase?.().includes("failed to fetch")
-      );
+      ["ERR_NETWORK", "ERR_CONNECTION_REFUSED"].includes(error.code) ||
+      error.message?.toLowerCase().includes("network") ||
+      error.message?.toLowerCase().includes("failed to fetch");
 
     const isTimeout = error.code === "ECONNABORTED";
 
@@ -75,7 +84,7 @@ api.interceptors.response.use(
       error.message = "Server is down, please try again later.";
     }
 
-    if (!error.config?.skipGlobalToast && typeof toast !== "undefined") {
+    if (!error.config?.skipGlobalToast) {
       const message =
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -88,12 +97,10 @@ api.interceptors.response.use(
     // Auto logout on 401
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || "";
-
       if (!requestUrl.includes("/auth/login")) {
         window.dispatchEvent(
           new CustomEvent("auth-logout", { detail: { reason: "401" } })
         );
-
         window.location.hash = "#/login";
       }
     }
@@ -101,45 +108,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-
-// AUTH TOKEN INTERCEPTOR
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("loanSharkToken");
-
-  const url = config.url || "";
-  const path = url.replace(config.baseURL || "", "").split("?")[0];
-
-  const isPublic =
-    path.startsWith("/auth/login") ||
-    path.startsWith("/auth/register/owner") ||
-    path.startsWith("/auth/register/borrower") ||
-    path.startsWith("/auth/setup-status") ||
-    path.startsWith("/auth/forgot-password") ||
-    path.startsWith("/auth/reset-password") ||
-    (
-      (config.method || "").toLowerCase() === "get" &&
-      path === "/settings/loan-interest"
-    );
-
-  // If token expired -> logout before request
-  if (token && !isPublic && isTokenExpired(token)) {
-    window.dispatchEvent(
-      new CustomEvent("auth-logout", { detail: { reason: "expired" } })
-    );
-
-    window.location.hash = "#/login";
-
-    return Promise.reject(
-      new Error("Session expired. Please log in again.")
-    );
-  }
-
-  if (token && !isPublic) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
 
 export default api;
