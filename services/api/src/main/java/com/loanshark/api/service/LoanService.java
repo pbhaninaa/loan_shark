@@ -365,7 +365,7 @@ public class LoanService {
     public List<ScheduleResponse> listSchedule(UUID loanId) {
         Loan loan = findLoan(loanId);
         enforceBorrowerOwnershipIfNeeded(loan);
-        return repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loanId).stream()
+        return repaymentScheduleRepository.findByLoanIdOrderPendingFirst(loanId).stream()
                 .map(schedule -> new ScheduleResponse(
                         schedule.getInstallmentNumber(),
                         schedule.getDueDate(),
@@ -390,7 +390,7 @@ public class LoanService {
         if (loan.getStatus() != LoanStatus.ACTIVE) {
             throw new ResponseStatusException(BAD_REQUEST, "Only active loans can have payment reminders sent");
         }
-        List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loanId);
+        List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderPendingFirst(loanId);
         LocalDate today = LocalDate.now();
         boolean hasOverdue = schedules.stream().anyMatch(s ->
                 s.getStatus() == ScheduleStatus.OVERDUE
@@ -535,7 +535,7 @@ public class LoanService {
                 if (borrowerFullName.isEmpty()) borrowerFullName = null;
             }
         }
-        boolean hasOverdue = repaymentScheduleRepository.findByLoanIdOrderByInstallmentNumberAsc(loan.getId()).stream()
+        boolean hasOverdue = repaymentScheduleRepository.findByLoanIdOrderPendingFirst(loan.getId()).stream()
                 .anyMatch(s -> s.getStatus() != ScheduleStatus.PAID && s.getDueDate() != null && s.getDueDate().isBefore(LocalDate.now()));
         BigDecimal total = loan.getTotalAmount() != null ? loan.getTotalAmount() : BigDecimal.ZERO;
         BigDecimal amountPaid = repaymentRepository.sumAmountPaidByLoanId(loan.getId()) != null
