@@ -25,10 +25,10 @@
     <v-row class="mb-4">
       <v-col cols="10" sm="4" md="3">
         <v-card>
-          <v-card-title class="d-flex align-center text-secondary">
-            <v-icon start>mdi-wallet-plus</v-icon>
-            What you put in
-          </v-card-title>
+          <v-card-title class="d-flex align-center text-success">
+  <v-icon start>mdi-wallet-plus</v-icon>
+  Investments
+</v-card-title>
           <v-divider />
           <v-card-text>
             <div class="text-h4 font-weight-bold">
