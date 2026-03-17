@@ -70,8 +70,13 @@ const filterLoanId = ref(null);
 const loanFilterOptions = computed(() => [
   { title: "All my loans", value: null },
   ...store.loans.map((loan) => {
-    const label = loan.borrowerFullName || loan.borrowerUsername || `Loan #${loan.id}`;
-    return { title: `Loan #${loan.id} — ${label}`, value: loan.id };
+    const amount = formatCurrency(loan.loanAmount);
+     const issueDate = new Date(loan.issueDate).toLocaleDateString();
+
+    return {
+      title: `Loan => ${issueDate} - ${amount}`,
+      value: loan.id
+    };
   })
 ]);
 const search = ref("");
@@ -80,9 +85,9 @@ const loading = ref(false);
 
 const repaymentHeaders = [
   { title: "Payer (full name)", key: "borrowerFullName" },
-  { title: "Loan", key: "loanId" },
-  { title: "Amount", key: "amountPaid" },
   { title: "Date", key: "paymentDate" },
+  { title: "Amount", key: "amountPaid" },
+
   { title: "Method", key: "paymentMethod" },
   { title: "Reference", key: "referenceNumber" },
   { title: "Recorded by", key: "capturedByUsername" }

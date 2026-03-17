@@ -63,7 +63,7 @@
               View Proof
             </v-btn>
           </div>
-          <span v-else></span>
+          <span v-else>None</span>
         </template>
 
         <template #footer>
@@ -150,10 +150,15 @@ const selectedLoan = computed(() =>
 
 const filterLoanId = ref(null);
 const loanFilterOptions = computed(() => [
-  { title: "All loans", value: null },
+  { title: "All my loans", value: null },
   ...store.loans.map((loan) => {
-    const label = loan.borrowerFullName || loan.borrowerUsername || `Client #${loan.borrowerId}`;
-    return { title: `Loan #${loan.id} — ${label}`, value: loan.id };
+    const amount = formatCurrency(loan.loanAmount);
+    const issueDate = new Date(loan.issueDate).toLocaleDateString();
+
+    return {
+      title: `Loan ${amount} - ${issueDate}`,
+      value: loan.id
+    };
   })
 ]);
 
@@ -165,9 +170,9 @@ const loading = ref(false);
 
 const repaymentHeaders = [
   { title: "Payer (full name)", key: "borrowerFullName" },
-  { title: "Loan", key: "loanId" },
+   { title: "Date", key: "paymentDate" },
   { title: "Amount", key: "amountPaid" },
-  { title: "Date", key: "paymentDate" },
+
   { title: "Method", key: "paymentMethod" },
   { title: "Reference", key: "referenceNumber" },
   { title: "Recorded by", key: "capturedByUsername" },

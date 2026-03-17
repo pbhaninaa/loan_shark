@@ -180,6 +180,7 @@ const scheduleHeaders = [
 
 const loanOptions = computed(() =>
   store.loans
+ .filter((loan) => String(loan.status).toUpperCase() === "ACTIVE")
     .map((loan) => {
       const id = loan?.id != null ? String(loan.id) : "";
       return {
@@ -251,17 +252,11 @@ function scheduleColor(status) {
   return "warning";
 }
 
-function generatePaymentReference(loanId, installmentNumber, payerId) {
-  const ts = new Date();
-  const y = ts.getFullYear();
-  const m = String(ts.getMonth() + 1).padStart(2, "0");
-  const d = String(ts.getDate()).padStart(2, "0");
-  const h = String(ts.getHours()).padStart(2, "0");
-  const min = String(ts.getMinutes()).padStart(2, "0");
-  const s = String(ts.getSeconds()).padStart(2, "0");
-  const timestamp = `${y}${m}${d}${h}${min}${s}`;
-  const payer = payerId != null ? payerId : store.borrowerId ?? store.userId ?? "";
-  return `Loan-${loanId}-Inst-${installmentNumber}-Payer-${payer}-${timestamp}`;
+
+function generatePaymentReference(loanId, installmentNumber) {
+  const unique = Date.now().toString(36) + Math.random().toString(36).substring(2,5);
+
+  return `PAY-${unique}`.toUpperCase();
 }
 
 const totalPendingAmount = computed(() => {
@@ -277,8 +272,7 @@ const totalPendingAmount = computed(() => {
 function openPayDialog(item) {
   payingInstallment.value = item.installmentNumber;
   const loanId = selectedLoanId.value;
-  const payerId = store.borrowerId ?? store.userId;
-  const ref = generatePaymentReference(loanId, item.installmentNumber, payerId);
+  const ref = generatePaymentReference(loanId, item.installmentNumber);
   payForm.value = {
     installmentNumber: item.installmentNumber,
     amountPaid: Number(item.amountDue) || 0,
