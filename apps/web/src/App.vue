@@ -3,7 +3,7 @@
     <div class="viewport-scaler-inner" :style="scalerStyle">
       <v-app>
         <template v-if="store.isAuthenticated">
-          <v-navigation-drawer v-model="drawer" app color="secondary" theme="dark" rail-width="88" height="100vh"
+          <v-navigation-drawer v-model="drawer" app color="secondary" theme="dark" rail-width="88" height="100%"
             class="fixed-drawer">
             <div class="d-flex flex-column fill-height">
               <div class="px-4 pt-6 pb-4">
@@ -304,7 +304,7 @@ const scalerStyle = computed(() => ({
   transform: `scale(${scale.value})`,
   transformOrigin: "0 0",
   width: `${100 / scale.value}vw`,
-  minHeight: `${100 / scale.value}vh`
+minHeight: `${100 / scale.value}dvh`
 }));
 
 const displayName = computed(() => {
@@ -348,7 +348,7 @@ function logout() {
 <style lang="css">
 .v-main {
   overflow-y: auto;
-  height: 100vh;
+  height: auto;
 }
 
 .fixed-drawer .v-navigation-drawer__content v-container {

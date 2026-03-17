@@ -21,10 +21,10 @@ html.theme-dark .viewport-scaler-outer {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;       /* modern mobile support */
+  height: 100vh;        /* fallback for local / older browsers */
   overflow-x: hidden;
   overflow-y: auto;
-  background: #f5f7fb;
 }
 
 .viewport-scaler-inner {
