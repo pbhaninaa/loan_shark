@@ -229,6 +229,7 @@ async function applyLoan() {
 }
 
 function openSchedule(loanId) {
+
   router.push({ name: "borrower-schedule", query: { loanId } });
 }
 
