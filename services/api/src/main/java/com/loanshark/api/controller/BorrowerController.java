@@ -1,51 +1,52 @@
 package com.loanshark.api.controller;
 
 import com.loanshark.api.dto.AdminCreateBorrowerWithDocsForm;
-import com.loanshark.api.dto.ApiDtos.BorrowerDocumentRequest;
-import com.loanshark.api.dto.ApiDtos.BorrowerDocumentResponse;
-import com.loanshark.api.dto.ApiDtos.PageResponse;
-import com.loanshark.api.dto.ApiDtos.BorrowerRequest;
-import com.loanshark.api.dto.ApiDtos.BorrowerResponse;
-import com.loanshark.api.dto.ApiDtos.BorrowerStatusUpdateRequest;
+import com.loanshark.api.dto.ApiDtos.*;
+import com.loanshark.api.entity.BorrowerDocument;
+import com.loanshark.api.repository.BorrowerDocumentRepository;
 import com.loanshark.api.service.BorrowerService;
 import com.loanshark.api.service.BorrowerVerificationService;
+
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import jakarta.validation.Valid;
-import java.util.List;
-import java.util.UUID;
+import org.springframework.http.ResponseEntity;
+
+import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/borrowers")
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class BorrowerController {
 
     private final BorrowerService borrowerService;
     private final BorrowerVerificationService borrowerVerificationService;
+    private final BorrowerDocumentRepository borrowerDocumentRepository;
 
-    public BorrowerController(BorrowerService borrowerService, BorrowerVerificationService borrowerVerificationService) {
+    public BorrowerController(BorrowerService borrowerService,
+                              BorrowerVerificationService borrowerVerificationService,
+                              BorrowerDocumentRepository borrowerDocumentRepository) {
         this.borrowerService = borrowerService;
         this.borrowerVerificationService = borrowerVerificationService;
+        this.borrowerDocumentRepository = borrowerDocumentRepository;
     }
+
+    // ------------------- Borrower Endpoints -------------------
 
     @GetMapping
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER')")
-    public PageResponse<BorrowerResponse> list(
-        @RequestParam(defaultValue = "") String q,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size
-    ) {
+    public PageResponse<BorrowerResponse> list(@RequestParam(defaultValue = "") String q,
+                                               @RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "10") int size) {
         return borrowerService.listBorrowers(q, page, size);
     }
 
@@ -94,6 +95,8 @@ public class BorrowerController {
         borrowerService.deleteBorrower(id);
     }
 
+    // ------------------- Borrower Document Endpoints -------------------
+
     @GetMapping("/{id}/documents")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
     public List<BorrowerDocumentResponse> listDocuments(@PathVariable UUID id) {
@@ -105,5 +108,27 @@ public class BorrowerController {
     @ResponseStatus(HttpStatus.CREATED)
     public BorrowerDocumentResponse addDocument(@PathVariable UUID id, @Valid @RequestBody BorrowerDocumentRequest request) {
         return borrowerService.addDocument(id, request);
+    }
+
+    // ------------------- Serve Document Files -------------------
+
+    @GetMapping("/documents/{documentId}/file")
+    @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
+    public ResponseEntity<Resource> getDocumentFile(@PathVariable UUID documentId) throws Exception {
+        BorrowerDocument document = borrowerDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+
+        Path filePath = Paths.get(document.getFileUrl()).toAbsolutePath().normalize();
+        Resource resource = new UrlResource(filePath.toUri());
+
+        if (!resource.exists() || !resource.isReadable()) {
+            throw new RuntimeException("File not found or not readable");
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + document.getOriginalFileName() + "\"")
+                .body(resource);
     }
 }

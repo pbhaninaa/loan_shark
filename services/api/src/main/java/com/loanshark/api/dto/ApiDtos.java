@@ -189,36 +189,37 @@ public final class ApiDtos {
     ) {
     }
 
+    // Updated DTO
     public record VerificationResponse(
-        UUID id,
-        UUID borrowerId,
-        VerificationStatus status,
-        UUID idDocumentId,
-        String idDocumentName,
-        String idDocumentContentType,
-        UUID selfieDocumentId,
-        String selfieDocumentName,
-        String selfieDocumentContentType,
-        boolean saIdValid,
-        BigDecimal latitude,
-        BigDecimal longitude,
-        Instant locationCapturedAt,
-        String locationName,
-        String extractedFirstName,
-        String extractedLastName,
-        String extractedIdNumber,
-        BigDecimal ocrConfidence,
-        boolean detailsMatched,
-        BigDecimal faceMatchScore,
-        boolean faceMatched,
-        String reviewNotes,
-        String reviewedBy,
-        Instant reviewedAt,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
-    }
-
+            UUID id,
+            UUID borrowerId,
+            VerificationStatus status,
+            UUID idDocumentId,
+            String idDocumentName,
+            String idDocumentContentType,
+            String idDocumentUrl,       // HTTP URL
+            UUID selfieDocumentId,
+            String selfieDocumentName,
+            String selfieDocumentContentType,
+            String selfieDocumentUrl,   // HTTP URL
+            boolean saIdValid,
+            BigDecimal latitude,
+            BigDecimal longitude,
+            Instant locationCapturedAt,
+            String locationName,
+            String extractedFirstName,
+            String extractedLastName,
+            String extractedIdNumber,
+            BigDecimal ocrConfidence,
+            boolean detailsMatched,
+            BigDecimal faceMatchScore,
+            boolean faceMatched,
+            String reviewNotes,
+            String reviewedBy,
+            Instant reviewedAt,
+            Instant createdAt,
+            Instant updatedAt
+    ) {}
     public record VerificationReviewRequest(
         @NotBlank String notes
     ) {

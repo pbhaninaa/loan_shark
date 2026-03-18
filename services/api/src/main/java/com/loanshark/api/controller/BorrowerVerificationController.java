@@ -46,8 +46,7 @@ public class BorrowerVerificationController {
     @GetMapping("/by-borrower/{borrowerId}")
     @PreAuthorize("hasRole('OWNER')")
     public VerificationResponse getByBorrowerId(@PathVariable UUID borrowerId) {
-        return borrowerVerificationService.getByBorrowerId(borrowerId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No verification found for this borrower"));
+        return borrowerVerificationService.getByBorrowerId(borrowerId);
     }
 
     @PostMapping("/{verificationId}/approve")

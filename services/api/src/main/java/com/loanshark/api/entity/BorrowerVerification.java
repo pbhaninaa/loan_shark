@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.type.SqlTypes;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -32,13 +33,7 @@ public class BorrowerVerification {
     @Column(columnDefinition = "CHAR(36)")
     private UUID id;
 
-    @PrePersist
-    void onPrePersist() {
-        if (id == null) id = UUID.randomUUID();
-        Instant now = Instant.now();
-        if (createdAt == null) createdAt = now;
-        if (updatedAt == null) updatedAt = now;
-    }
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "borrower_id", nullable = false)
@@ -49,11 +44,13 @@ public class BorrowerVerification {
     private VerificationStatus status = VerificationStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_document_id", nullable = false)
+    @JoinColumn(name = "id_document_id")
+    @org.hibernate.annotations.NotFound(action = NotFoundAction.IGNORE)
     private BorrowerDocument idDocument;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "selfie_document_id", nullable = false)
+    @JoinColumn(name = "selfie_document_id")
+    @org.hibernate.annotations.NotFound(action = NotFoundAction.IGNORE)
     private BorrowerDocument selfieDocument;
 
     @Column(precision = 10, scale = 7)
@@ -111,5 +108,13 @@ public class BorrowerVerification {
     @PreUpdate
     void onUpdate() {
         updatedAt = Instant.now();
+    }
+
+    @PrePersist
+    void onPrePersist() {
+        if (id == null) id = UUID.randomUUID();
+        Instant now = Instant.now();
+        if (createdAt == null) createdAt = now;
+        if (updatedAt == null) updatedAt = now;
     }
 }

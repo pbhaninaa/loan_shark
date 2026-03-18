@@ -1,8 +1,6 @@
 package com.loanshark.api.dto;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,50 +10,61 @@ import org.springframework.web.multipart.MultipartFile;
 @Setter
 public class BorrowerKycRegistrationForm {
 
-    @NotBlank
+    @NotBlank(message = "Username is required")
+    @Size(min = 4, max = 50, message = "Username must be between 4 and 50 characters")
     private String username;
 
-    @NotBlank
+    @NotBlank(message = "Password is required")
+    @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    @NotBlank
+    @NotBlank(message = "First name is required")
+    @Size(max = 100)
     private String firstName;
 
-    @NotBlank
+    @NotBlank(message = "Last name is required")
+    @Size(max = 100)
     private String lastName;
 
-    @NotBlank
+    // SA ID must be 13 digits
+    @NotBlank(message = "ID number is required")
+    @Pattern(regexp = "\\d{13}", message = "ID number must be 13 digits")
     private String idNumber;
 
-    @NotBlank
+    // SA phone validation
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^(\\+27|0)[6-8][0-9]{8}$",
+            message = "Invalid South African phone number")
     private String phone;
 
+    @Email(message = "Invalid email format")
     private String email;
 
-    @NotBlank
+    @NotBlank(message = "Address is required")
     private String address;
 
-    @NotBlank
+    @NotBlank(message = "Employment status is required")
     private String employmentStatus;
 
-    @NotNull
-    @DecimalMin("0.00")
+    @NotNull(message = "Monthly income is required")
+    @DecimalMin(value = "0.00", message = "Income must be greater than or equal to 0")
     private BigDecimal monthlyIncome;
 
     private String employerName;
 
-    @NotNull
+    @NotNull(message = "Latitude is required")
     private BigDecimal latitude;
 
-    @NotNull
+    @NotNull(message = "Longitude is required")
     private BigDecimal longitude;
 
-    @NotBlank
+    @NotBlank(message = "Location name is required")
     private String locationName;
 
-    @NotNull
+    // Documents
+    @NotNull(message = "ID document is required")
     private MultipartFile idDocument;
 
-    @NotNull
+    @NotNull(message = "Selfie image is required")
     private MultipartFile selfieImage;
 }

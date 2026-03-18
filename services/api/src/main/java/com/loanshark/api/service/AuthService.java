@@ -191,7 +191,7 @@ public class AuthService {
             prt.setToken(token);
             prt.setExpiresAt(Instant.now().plusSeconds(tokenValidHours * 3600L));
             passwordResetTokenRepository.save(prt);
-            resetLink = passwordResetBaseUrl + "/#/reset-password?token=" + token;
+            resetLink = passwordResetBaseUrl + "/reset-password?token=" + token;
 
             String email = null;
             if (user.getRole() == UserRole.BORROWER) {
