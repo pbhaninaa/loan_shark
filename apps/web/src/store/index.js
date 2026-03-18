@@ -105,6 +105,20 @@ export const useAppStore = defineStore("app", {
       }
       this.setupLoaded = true;
     },
+   async loadDocument(url) {
+  const token = this.token || localStorage.getItem("loanSharkToken");
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) throw new Error(res.statusText);
+
+  const blob = await res.blob();
+
+  // ✅ Only return value — don't touch UI state
+  return URL.createObjectURL(blob);
+},
     async login(credentials) {
       const { data } = await api.post("/auth/login", credentials);
       this.setSession(data);

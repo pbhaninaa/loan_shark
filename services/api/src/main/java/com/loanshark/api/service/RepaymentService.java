@@ -9,6 +9,7 @@ import com.loanshark.api.repository.BorrowerRepository;
 import com.loanshark.api.repository.RepaymentRepository;
 import com.loanshark.api.repository.RepaymentScheduleRepository;
 
+import com.loanshark.api.util.ValidationUtil;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -130,7 +131,7 @@ public class RepaymentService {
                         "Proof of payment PDF is required for MOBILE TRANSFER payments");
             }
 
-            BigDecimal pdfAmount = extractAmountFromPdfAndValidateDate(request.proof());
+            BigDecimal pdfAmount = ValidationUtil.extractAmountFromPdfAndValidateDate(request.proof());
 
             if (pdfAmount == null || pdfAmount.compareTo(request.amountPaid()) != 0) {
                 throw new ResponseStatusException(BAD_REQUEST,
@@ -187,84 +188,7 @@ public class RepaymentService {
                 repayment.getProof()
         );
     }
-    // ----------------------------
-    // EXTRACT AMOUNT FROM PDF (PDFBox 3.0.6 COMPATIBLE)
-    // ----------------------------
-    private BigDecimal extractAmountFromPdfAndValidateDate(String base64Pdf) {
-        try {
-            // Decode Base64 PDF
-            String base64Content = base64Pdf.contains(",") ? base64Pdf.split(",")[1] : base64Pdf;
-            byte[] pdfBytes = Base64.getDecoder().decode(base64Content);
 
-            try (PDDocument document = Loader.loadPDF(new RandomAccessReadBuffer(pdfBytes))) {
-                PDFTextStripper stripper = new PDFTextStripper();
-                String text = stripper.getText(document);
-
-                // Clean whitespace
-                String cleanedText = text.replaceAll("\\s+", "");
-
-                // -----------------------
-                // 1. Extract the largest numeric amount
-                // -----------------------
-                Pattern amountPattern = Pattern.compile(
-                        "R?\\s*(\\d{1,3}(?:[ ,]\\d{3})*(?:\\.\\d{2})|\\d+\\.\\d{2})"
-                );
-                Matcher amountMatcher = amountPattern.matcher(cleanedText);
-                BigDecimal largestAmount = null;
-
-                while (amountMatcher.find()) {
-                    String value = amountMatcher.group(1).replaceAll("[ ,]", "");
-                    if (value.chars().filter(ch -> ch == '.').count() > 1) continue;
-
-                    try {
-                        BigDecimal amount = new BigDecimal(value);
-                        if (largestAmount == null || amount.compareTo(largestAmount) > 0) {
-                            largestAmount = amount;
-                        }
-                    } catch (NumberFormatException ignored) {}
-                }
-
-                if (largestAmount == null) {
-                    throw new ResponseStatusException(BAD_REQUEST, "No valid amount found in PDF proof");
-                }
-
-                // -----------------------
-                // 2. Extract and validate date
-                // -----------------------
-                Pattern datePattern = Pattern.compile(
-                        "\\b(\\d{2}/\\d{2}/\\d{4})\\b"  // matches dd/MM/yyyy
-                );
-                Matcher dateMatcher = datePattern.matcher(text);
-
-                boolean validDate = false;
-                java.time.LocalDate today = java.time.LocalDate.now();
-
-                while (dateMatcher.find()) {
-                    String dateStr = dateMatcher.group(1);
-                    try {
-                        java.time.LocalDate pdfDate = java.time.LocalDate.parse(dateStr, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-                        if (pdfDate.equals(today)) {
-                            validDate = true;
-                            break;
-                        }
-                    } catch (Exception ignored) {}
-                }
-
-                if (!validDate) {
-                    throw new ResponseStatusException(BAD_REQUEST, "PDF proof date does not match today");
-                }
-
-                return largestAmount;
-
-            }
-
-        } catch (Exception e) {
-            throw new ResponseStatusException(
-                    BAD_REQUEST,
-                    "Failed to read PDF proof: " + e.getMessage()
-            );
-        }
-    }
     // ----------------------------
     // LISTING METHODS
     // ----------------------------
@@ -272,7 +196,7 @@ public class RepaymentService {
     public PageResponse<RepaymentResponse> listByLoan(UUID loanId, String query, int page, int size) {
         Loan loan = loanService.findLoan(loanId);
         User currentUser = currentUserService.requireCurrentUser();
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
+        borrowerVerificationService.requireActiveBorrowerAccess(currentUser.getId());
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
                     .map(Borrower::getId)
@@ -307,7 +231,7 @@ public class RepaymentService {
     @Transactional(readOnly = true)
     public PageResponse<RepaymentResponse> listAll(String query, int page, int size) {
         User currentUser = currentUserService.requireCurrentUser();
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
+        borrowerVerificationService.requireActiveBorrowerAccess(currentUser.getId());
         Page<Repayment> repaymentPage;
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())

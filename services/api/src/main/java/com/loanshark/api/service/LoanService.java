@@ -130,7 +130,7 @@ public class LoanService {
         }
 
         User currentUser = currentUserService.requireCurrentUser();
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
+        borrowerVerificationService.requireActiveBorrowerAccess(currentUser.getId());
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
                     .map(Borrower::getId)
@@ -239,7 +239,7 @@ public class LoanService {
     @Transactional(readOnly = true)
     public PageResponse<LoanResponse> listMyLoans(String query, int page, int size) {
         User currentUser = currentUserService.requireCurrentUser();
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
+        borrowerVerificationService.requireActiveBorrowerAccess(currentUser.getId());
         UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
                 .map(Borrower::getId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower profile not found"));
@@ -408,7 +408,7 @@ public class LoanService {
         if (currentUser.getRole() != UserRole.BORROWER) {
             return;
         }
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
+        borrowerVerificationService.requireActiveBorrowerAccess(currentUser.getId());
 
         UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
                 .map(Borrower::getId)
