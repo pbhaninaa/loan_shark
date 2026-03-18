@@ -4,8 +4,8 @@ WORKDIR /app
 
 # Copy pom and download dependencies (cached unless pom changes)
 COPY pom.xml .
-#RUN mvn dependency:go-offline -B
-RUN mvn clean package -DskipTests
+RUN mvn dependency:go-offline -B
+# RUN mvn clean package -DskipTests
 # Copy source and build
 COPY src src
 RUN mvn package -B -DskipTests
