@@ -37,11 +37,7 @@
             <artifactId>tess4j</artifactId>
             <version>5.14.0</version>
         </dependency>
-        <dependency>
-            <groupId>com.loanshark</groupId>
-            <artifactId>api</artifactId>
-            <version>1.0.0</version>
-        </dependency>
+        
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
