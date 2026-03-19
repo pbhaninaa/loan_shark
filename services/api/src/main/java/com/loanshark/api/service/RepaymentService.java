@@ -17,6 +17,7 @@ import org.apache.pdfbox.text.PDFTextStripper;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -103,29 +104,9 @@ public class RepaymentService {
      */
     @Transactional
     public RepaymentResponse record(RepaymentRequest request) {
-        Loan loan = loanService.findLoan(request.loanId());
-        if (loan.getStatus() != LoanStatus.ACTIVE) {
-            throw new ResponseStatusException(BAD_REQUEST, "Only active loans can receive repayments");
-        }
 
-        User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() == UserRole.BORROWER) {
-            UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
-                    .map(com.loanshark.api.entity.Borrower::getId)
-                    .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
-            if (!loan.getBorrower().getId().equals(borrowerId)) {
-                throw new ResponseStatusException(FORBIDDEN, "You can only record repayments for your own loans");
-            }
-        }
-        Repayment repayment = new Repayment();
-        repayment.setLoan(loan);
-        repayment.setAmountPaid(request.amountPaid());
-        repayment.setPaymentMethod(request.paymentMethod());
-        repayment.setReferenceNumber(request.referenceNumber());
-        repayment.setCapturedBy(currentUser);
-        repayment = repaymentRepository.save(repayment);
+        // ✅ 1. VALIDATE OUTSIDE HEAVY DB WORK
         if ("MOBILE_TRANSFER".equalsIgnoreCase(String.valueOf(request.paymentMethod()))) {
-
             if (request.proof() == null || request.proof().isBlank()) {
                 throw new ResponseStatusException(BAD_REQUEST,
                         "Proof of payment PDF is required for MOBILE TRANSFER payments");
@@ -138,15 +119,46 @@ public class RepaymentService {
                         "Payment amount does not match the amount in PDF proof.");
             }
         }
-        // Apply repayment across schedule
-        applyPaymentToSchedule(loan, request.amountPaid());
 
-// Then recalc loan totals
-//        loanService.recalculateScheduleAfterPayment(loan);
+        // ✅ 2. LOCK BUSINESS CAPITAL FIRST (CRITICAL FIX)
+        businessCapitalService.addRepayment(request.amountPaid());
+
+        // ✅ 3. THEN LOAD LOAN
+        Loan loan = loanService.findLoan(request.loanId());
+
+        if (loan.getStatus() != LoanStatus.ACTIVE) {
+            throw new ResponseStatusException(BAD_REQUEST, "Only active loans can receive repayments");
+        }
+
+        // ✅ 4. SECURITY CHECK
+        User currentUser = currentUserService.requireCurrentUser();
+        if (currentUser.getRole() == UserRole.BORROWER) {
+            UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
+                    .map(Borrower::getId)
+                    .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
+
+            if (!loan.getBorrower().getId().equals(borrowerId)) {
+                throw new ResponseStatusException(FORBIDDEN, "You can only record repayments for your own loans");
+            }
+        }
+
+        // ✅ 5. SAVE REPAYMENT
+        Repayment repayment = new Repayment();
+        repayment.setLoan(loan);
+        repayment.setAmountPaid(request.amountPaid());
+        repayment.setPaymentMethod(request.paymentMethod());
+        repayment.setReferenceNumber(request.referenceNumber());
+        repayment.setCapturedBy(currentUser);
+
+        repayment = repaymentRepository.save(repayment);
+
+        // ✅ 6. APPLY PAYMENT (OPTIMIZED)
+        applyPaymentToScheduleOptimized(loan, request.amountPaid());
+
+        // ✅ 7. UPDATE LOAN STATUS
         updateLoanCompletion(loan);
 
-
-
+        // ✅ 8. SAVE CASH TRANSACTION
         CashTransaction cashTransaction = new CashTransaction();
         cashTransaction.setLoan(loan);
         cashTransaction.setAmount(request.amountPaid());
@@ -154,27 +166,30 @@ public class RepaymentService {
         cashTransaction.setReferenceNumber(request.referenceNumber());
         cashTransaction.setCapturedBy(currentUser);
         cashTransaction.setAuthorizedBy(currentUser);
+
         cashTransactionRepository.save(cashTransaction);
 
-        businessCapitalService.addRepayment(request.amountPaid());
+        // ✅ 9. AUDIT (OK inside TX)
+        auditLogService.record(
+                currentUser.getId(),
+                "RECORD_REPAYMENT",
+                "Repayment",
+                repayment.getId().toString(),
+                request.referenceNumber()
+        );
 
-        auditLogService.record(currentUser.getId(), "RECORD_REPAYMENT", "Repayment", repayment.getId().toString(), request.referenceNumber());
-
+        // ⚠️ 10. NOTIFICATION (SHOULD BE ASYNC)
+        notifyBorrowerAsync(loan, request.amountPaid());
         String borrowerUsername = loan.getBorrower() != null && loan.getBorrower().getUser() != null
-                ? loan.getBorrower().getUser().getUsername() : null;
+                ? loan.getBorrower().getUser().getUsername()
+                : null;
+
         String borrowerFullName = loan.getBorrower() != null
                 ? (loan.getBorrower().getFirstName() != null ? loan.getBorrower().getFirstName() : "").trim()
                 + " " + (loan.getBorrower().getLastName() != null ? loan.getBorrower().getLastName() : "").trim()
                 : null;
-        if (borrowerFullName != null) borrowerFullName = borrowerFullName.trim();
-        if (borrowerUsername != null) {
-            notificationService.notifyUser(
-                    loan.getBorrower().getUser().getId(),
-                    "REPAYMENT",
-                    "Your payment of " + request.amountPaid() + " was recorded. Your debt has been reduced."
-            );
-        }
 
+        if (borrowerFullName != null) borrowerFullName = borrowerFullName.trim();
         return new RepaymentResponse(
                 repayment.getId(),
                 loan.getId(),
@@ -188,7 +203,44 @@ public class RepaymentService {
                 repayment.getProof()
         );
     }
+    private void applyPaymentToScheduleOptimized(Loan loan, BigDecimal paymentAmount) {
 
+        List<RepaymentSchedule> schedules =
+                repaymentScheduleRepository.findByLoanIdOrderPendingFirst(loan.getId());
+
+        BigDecimal remainingPayment = paymentAmount;
+
+        for (RepaymentSchedule schedule : schedules) {
+            if (schedule.getStatus() == ScheduleStatus.PAID) continue;
+
+            BigDecimal due = schedule.getAmountDue();
+
+            if (remainingPayment.compareTo(due) >= 0) {
+                schedule.setAmountDue(BigDecimal.ZERO);
+                schedule.setStatus(ScheduleStatus.PAID);
+                remainingPayment = remainingPayment.subtract(due);
+            } else {
+                schedule.setAmountDue(due.subtract(remainingPayment));
+                schedule.setStatus(ScheduleStatus.PENDING);
+                remainingPayment = BigDecimal.ZERO;
+            }
+
+            if (remainingPayment.compareTo(BigDecimal.ZERO) <= 0) break;
+        }
+
+        // ✅ ONE DB CALL INSTEAD OF MANY
+        repaymentScheduleRepository.saveAll(schedules);
+    }
+    @Async
+    public void notifyBorrowerAsync(Loan loan, BigDecimal amount) {
+        if (loan.getBorrower() != null && loan.getBorrower().getUser() != null) {
+            notificationService.notifyUser(
+                    loan.getBorrower().getUser().getId(),
+                    "REPAYMENT",
+                    "Your payment of " + amount + " was recorded. Your debt has been reduced."
+            );
+        }
+    }
     // ----------------------------
     // LISTING METHODS
     // ----------------------------
