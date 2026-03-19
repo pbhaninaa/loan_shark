@@ -196,7 +196,6 @@ public class RepaymentService {
     public PageResponse<RepaymentResponse> listByLoan(UUID loanId, String query, int page, int size) {
         Loan loan = loanService.findLoan(loanId);
         User currentUser = currentUserService.requireCurrentUser();
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser.getId());
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
                     .map(Borrower::getId)
@@ -231,7 +230,6 @@ public class RepaymentService {
     @Transactional(readOnly = true)
     public PageResponse<RepaymentResponse> listAll(String query, int page, int size) {
         User currentUser = currentUserService.requireCurrentUser();
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser.getId());
         Page<Repayment> repaymentPage;
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())

@@ -6,7 +6,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -70,6 +72,20 @@ public interface LoanRepository extends JpaRepository<Loan, UUID> {
     Page<Loan> searchMyLoans(
             @Param("borrowerId") UUID borrowerId,
             @Param("query") String query,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"borrower", "borrower.user"})
+    @Query("""
+    SELECT l FROM Loan l
+    WHERE l.borrower.id = :borrowerId
+      AND (:query IS NULL OR :query = ''
+           OR lower(l.borrower.firstName) LIKE lower(concat('%', :query, '%'))
+           OR lower(l.borrower.lastName) LIKE lower(concat('%', :query, '%')))
+""")
+    Page<Loan> searchWithBorrowerAndUser(
+            @Param("query") String query,
+            @Param("borrowerId") UUID borrowerId,
             Pageable pageable
     );
 }
