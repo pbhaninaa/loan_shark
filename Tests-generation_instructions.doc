@@ -1,0 +1,85 @@
+"Generate a complete testing suite for the LendHand Loan Management System. Include unit tests, integration tests, and end-to-end (E2E) tests for all key modules and user workflows. Use the following guidelines:
+
+General Guidelines
+
+Language/Frameworks: Java 17, Spring Boot backend, JUnit 5 for unit & integration tests, Mockito for mocking, and Selenium or Cypress for E2E front-end tests.
+
+Testing Levels:
+
+Unit Tests: Test individual methods, services, and utilities in isolation. Include boundary cases, exceptions, and edge scenarios.
+
+Integration Tests: Test service layers with database interactions and API endpoints. Use in-memory DB (H2) for testing.
+
+E2E Tests: Test full user workflows in web portal and Android app (if possible, simulate mobile actions). Cover main workflows for Owner, Cashier, and Borrower.
+
+Modules & Features to Cover
+
+Borrower Module
+
+Registration & profile creation
+
+KYC document upload & validation
+
+Blacklist checking
+
+Loan Application Module
+
+Application submission & validation
+
+Automated risk assessment
+
+Document attachment
+
+Loan Approval & Disbursement Module
+
+Owner approval/rejection workflows
+
+Repayment schedule generation
+
+Disbursement recording
+
+Repayment Module
+
+Payment recording (full, partial, late payments)
+
+Balance recalculation
+
+Notification sending
+
+Reporting & Analytics Module
+
+Dashboard metrics calculation
+
+Performance & aging reports
+
+Risk assessment summary
+
+Security & Authentication
+
+JWT authentication
+
+Role-based access control
+
+Sensitive data encryption validation
+
+Testing Requirements
+
+Generate mock data where necessary
+
+Include positive and negative test cases
+
+Use assertions to validate expected behavior
+
+Include comments describing each test
+
+Structure tests in a maintainable folder structure (unit, integration, E2E)
+
+Output Format
+
+For Java backend: JUnit 5 classes with methods for each test case
+
+For frontend: Selenium/Cypress scripts for main workflows
+
+Include a README for running all tests with Maven/Gradle commands
+
+Ensure that the generated tests can be run independently and collectively to verify system correctness."
