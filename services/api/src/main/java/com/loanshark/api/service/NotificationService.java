@@ -24,19 +24,21 @@ public class NotificationService {
     private final EmailNotificationService emailNotificationService;
     private final SimpMessagingTemplate messagingTemplate;
     private final BusinessContactService businessContactService;
+    private final SupportEmailService supportEmailService;
 
     public NotificationService(
             NotificationRepository notificationRepository,
             CurrentUserService currentUserService,
             EmailNotificationService emailNotificationService,
             SimpMessagingTemplate messagingTemplate,
-            BusinessContactService businessContactService
+            BusinessContactService businessContactService, SupportEmailService supportEmailService
     ) {
         this.notificationRepository = notificationRepository;
         this.currentUserService = currentUserService;
         this.emailNotificationService = emailNotificationService;
         this.messagingTemplate = messagingTemplate;
         this.businessContactService = businessContactService;
+        this.supportEmailService = supportEmailService;
     }
 
     // ------------------- Messaging -------------------
@@ -134,8 +136,8 @@ public class NotificationService {
 
         // Email notification
         String emailBody = "Hello " + borrower.getFirstName() + ",\n\n" +
-                "This is a friendly reminder that your loan installment for Loan ID **" + loan.getId() + "** " +
-                "amounting to **" + schedule.getAmountDue() + "** is due on **" + schedule.getDueDate() + "**.\n\n" +
+                "This is a friendly reminder that your loan installment for Loan ID " + loan.getId() + " " +
+                "amounting to " + schedule.getAmountDue() + " is due on " + schedule.getDueDate() + ".\n\n" +
                 "Please ensure the payment is made by the due date to avoid any late fees.\n\n" +
                 "If you have already paid or have questions regarding your payment, feel free to contact us.\n\n" +
                 getCompanySignature();
@@ -213,7 +215,7 @@ public class NotificationService {
 
         // Construct the email body
         String emailBody = "Hello " + borrower.getFirstName() + ",\n\n" +
-                "We want to inform you that your loan with ID **" + loan.getId() + "** " +
+                "We want to inform you that your loan with ID " + loan.getId() + " " +
                 "is overdue as of " + loan.getDueDate() + ".\n" +
                 "Please make the necessary payment as soon as possible to avoid additional charges.\n\n" +
                 "If you have already made the payment or have any questions, please contact us.\n\n" +
