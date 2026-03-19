@@ -172,7 +172,7 @@ public class NotificationService {
         notifyUser(borrower.getUser().getId(), "PROFILE_STATUS", message);
 
         String emailBody = "Hello,\n\n" +
-                "We want to inform you that the status of your Client profile has changed to: **" + statusName + "**.\n\n" +
+                "We want to inform you that the status of your Client profile has changed to: " + statusName + ".\n\n" +
                 "If you have any questions about this change, please get in touch with us." +
                 getCompanySignature();
 
