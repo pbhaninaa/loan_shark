@@ -114,21 +114,19 @@ public class BorrowerController {
 
     @GetMapping("/documents/{documentId}/file")
     @PreAuthorize("hasAnyRole('OWNER', 'CASHIER', 'BORROWER')")
-    public ResponseEntity<Resource> getDocumentFile(@PathVariable UUID documentId) throws Exception {
+    public ResponseEntity<byte[]> getDocumentFile(@PathVariable UUID documentId) {
+
         BorrowerDocument document = borrowerDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
 
-        Path filePath = Paths.get(document.getFileUrl()).toAbsolutePath().normalize();
-        Resource resource = new UrlResource(filePath.toUri());
-
-        if (!resource.exists() || !resource.isReadable()) {
-            throw new RuntimeException("File not found or not readable");
+        if (document.getFileData() == null) {
+            throw new RuntimeException("File data is missing");
         }
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(document.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "inline; filename=\"" + document.getOriginalFileName() + "\"")
-                .body(resource);
+                .body(document.getFileData());
     }
 }
