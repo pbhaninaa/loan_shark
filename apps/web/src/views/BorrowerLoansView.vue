@@ -165,7 +165,7 @@ const loanHeaders = [
   { title: "Total", value: "totalAmount" },
   { title: "Due", value: "dueDate" },
   {title:"Pending Amount",value:"pendingAmount"},
-  { title: "Actions", value: "actions" } 
+  { title: "Actions", value: "actions",   sortable: false } 
 ];
 
 const applyForm = reactive({

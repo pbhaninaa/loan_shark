@@ -167,7 +167,7 @@ const verificationHeaders = [
   { title: "OCR", key: "ocrConfidence" },
   { title: "Face", key: "faceMatchScore" },
   { title: "Notes", key: "reviewNotes" },
-  { title: "Actions", key: "actions" },
+  { title: "Actions", key: "actions",   sortable: false },
 ];
 
 onMounted(async () => {

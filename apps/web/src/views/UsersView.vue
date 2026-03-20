@@ -131,7 +131,7 @@ const userHeaders = [
   { title: "Role", key: "role" },
   { title: "Status", key: "status" },
   { title: "Created", key: "createdAt" },
-  { title: "Actions", key: "actions" }
+  { title: "Actions", key: "actions",   sortable: false }
 ];
 
 const roleOptions = ["OWNER", "CASHIER"];
