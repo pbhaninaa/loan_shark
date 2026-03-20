@@ -275,10 +275,48 @@ export const useAppStore = defineStore("app", {
       this.verification = data;
       return data;
     },
-    async  instantPay() {
-      const payMeLink = "https://pay.capitecbank.co.za/payme/RJLRY3";
-    window.location.href = payMeLink;
-    },
+   async  instantPay() {
+  const deepLink = "capitec://payme/RJLRY3"; // deep link for Capitec app
+  const fallback = "https://pay.capitecbank.co.za/payme/RJLRY3"; // web fallback
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (!isMobile) {
+    return {
+      message: "Please use a mobile device with the Capitec app installed.",
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  return new Promise((resolve) => {
+    const now = Date.now();
+
+    // Attempt to open the app using iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = deepLink;
+    document.body.appendChild(iframe);
+
+    // Timeout to check if app opened
+    setTimeout(() => {
+      const delta = Date.now() - now;
+      document.body.removeChild(iframe);
+
+      if (delta < 1500) {
+        // App probably not installed
+        resolve({
+          message: "You don’t have the Capitec app installed. Please install it to pay via the app.",
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        // App probably opened successfully
+        resolve({
+          message: "Capitec app opened successfully.",
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }, 1000);
+  });
+},
     async fetchLoanSchedule(loanId) {
       const id = loanId != null && String(loanId).trim() !== "" && String(loanId) !== "NaN" ? String(loanId).trim() : null;
       if (!id) {
