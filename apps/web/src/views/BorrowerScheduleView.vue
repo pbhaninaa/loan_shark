@@ -5,9 +5,18 @@
       description="Choose one of your loans to review the exact installment plan and status."
     />
 
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
-      {{ error }}
-    </v-alert>
+ <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
+  {{ error }}
+</v-alert>
+
+<v-alert
+  v-if="message"
+  type="info"
+  variant="tonal"
+  class="mb-4"
+>
+  {{ message }}
+</v-alert>
 
     <AppTableCard title="Loan Selection" :count-label="selectedLoanLabel" chip-color="secondary">
       <AppSelectField
@@ -220,7 +229,17 @@ function normalizeLoanId(val) {
   return s;
 }
 async function instantPay() {
-   await store.instantPay();
+  try {
+    // Call the store method which returns { message, timestamp, ... }
+    const result = await store.instantPay();
+
+    // Display the message in the UI
+    message.value = result?.message || "Payment action completed.";
+    console.log("Instant Pay result:", result);
+  } catch (error) {
+    message.value = "Failed to initiate Instant Pay. Please try again.";
+    console.error("Instant Pay error:", error);
+  }
 }
 function onLoanSelected(val) {
   const id = normalizeLoanId(val);

@@ -49,21 +49,32 @@
           </v-col>
 
           <!-- Right Column: QR Code -->
-          <v-col cols="12" md="6" class="d-flex justify-center align-center">
-            <v-card class="mb-4 qr-card elevation-2">
+          <v-col cols="12" md="6" class="d-flex flex-column align-center">
+            <v-card class="mb-4 qr-card elevation-2 primary">
               <v-card-title class="white--text">
-                QR Code Payment( for Capitec Users )
+                QR Code Payment (for Capitec Users)
               </v-card-title>
-              <v-card-text  class="d-flex justify-center align-center">
- <qrcode-vue
-  v-if="qrValue"
-  :value="qrValue"
-  :size="200"
-  level="H"
-  @click="instantPay"
-/>
-</v-card-text>
+              <v-card-text class="d-flex justify-center align-center">
+                <qrcode-vue
+                  v-if="qrValue"
+                  :value="qrValue"
+                  :size="200"
+                  level="H"
+                  @click="instantPay"
+                  style="cursor: pointer;"
+                />
+              </v-card-text>
             </v-card>
+
+            <!-- Message from instantPay -->
+            <v-alert
+              v-if="message"
+              type="info"
+              variant="tonal"
+              class="mt-2"
+            >
+              {{ message }}
+            </v-alert>
           </v-col>
         </v-row>
       </v-card-text>
@@ -89,6 +100,7 @@ const paymentDetails = ref({
   paymentReference: ""
 });
 const loading = ref(true);
+const message = ref(""); // <-- message to display after instantPay
 
 // Navigate back
 const goBack = () => router.back();
@@ -118,16 +130,21 @@ const loadPaymentDetails = async () => {
 const qrValue = computed(() => {
   const pd = paymentDetails.value;
   if (!pd.bankName || !pd.accountNumber) return "";
-  // Example: BankName|AccountNumber|Reference
   return `https://pay.capitecbank.co.za/payme/RJLRY3`;
 });
+
+// Handle instant pay click
 async function instantPay() {
   try {
-    await store.instantPay();
+    const result = await store.instantPay();
+    message.value = result?.message || "Payment action completed.";
+    console.log("Instant Pay result:", result);
   } catch (error) {
-    console.error("Payment failed", error);
+    message.value = "Failed to initiate Instant Pay. Please try again.";
+    console.error("Instant Pay error:", error);
   }
 }
+
 // Format keys for display
 const formatKey = (key) =>
   key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
