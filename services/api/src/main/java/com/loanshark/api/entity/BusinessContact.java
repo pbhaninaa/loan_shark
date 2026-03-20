@@ -1,11 +1,15 @@
 package com.loanshark.api.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "business_contact")
+@Data
 public class BusinessContact {
 
     @Id
@@ -21,7 +25,8 @@ public class BusinessContact {
 
     @Column(nullable = false)
     private String email;
-
+    @Column(nullable = false)
+    private String accountNumber;
     @Column(nullable = false, columnDefinition = "TEXT")
     private String address;
 
@@ -30,72 +35,29 @@ public class BusinessContact {
 
     @Column(nullable = false)
     private Instant updatedAt;
+    @Column(nullable = false)
+    private String bankName;
 
+    @Column(nullable = false)
+    private String accountHolderName;
+
+    @Column(nullable = false)
+    private String accountType;
+
+    @Column(nullable = false)
+    private String branchCode;
+
+    @Column(nullable = false)
+    private String paymentReference;
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
         updatedAt = Instant.now();
     }
-
     @PreUpdate
     protected void onUpdate() {
         updatedAt = Instant.now();
     }
 
-    // Getters and Setters
-    public UUID getId() {
-        return id;
-    }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getBusinessName() {
-        return businessName;
-    }
-
-    public void setBusinessName(String businessName) {
-        this.businessName = businessName;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

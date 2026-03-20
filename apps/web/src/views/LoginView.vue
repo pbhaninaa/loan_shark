@@ -135,6 +135,41 @@
             prepend-inner-icon="mdi-map-marker-outline"
             required
           />
+          <AppTextField
+  v-model="ownerForm.accountNumber"
+  label="Account Number"
+  prepend-inner-icon="mdi-bank-outline"
+  required
+/>
+
+<AppTextField
+  v-model="ownerForm.bankName"
+  label="Bank Name"
+  prepend-inner-icon="mdi-bank"
+  required
+/>
+
+<AppTextField
+  v-model="ownerForm.accountHolder"
+  label="Account Holder Name"
+  prepend-inner-icon="mdi-account-tie-outline"
+  required
+/>
+
+<AppTextField
+  v-model="ownerForm.branchCode"
+  label="Branch Code"
+  prepend-inner-icon="mdi-source-branch"
+  required
+/>
+
+<AppTextField
+  v-model="ownerForm.paymentReference"
+  label="Payment Reference (e.g. Client ID)"
+  prepend-inner-icon="mdi-format-list-text"
+  hint="What clients should use as reference when paying"
+  required
+/>
           <AppActionButton type="submit" color="primary" size="large" block :loading="loading" text="Create Owner Account" />
         </v-form>
 
@@ -381,7 +416,12 @@ const ownerForm = reactive({
   businessName: "",
   businessPhone: "",
   businessEmail: "",
-  businessAddress: ""
+  businessAddress: "",
+   accountNumber: "",
+  bankName: "",
+  accountHolder: "",
+  branchCode: "",
+  paymentReference: ""
 });
 
 const initialBorrowerForm = () => ({
@@ -560,7 +600,12 @@ async function createOwner() {
         businessName: ownerForm.businessName,
         phone: ownerForm.businessPhone,
         email: ownerForm.businessEmail,
-        address: ownerForm.businessAddress
+        address: ownerForm.businessAddress,
+         accountNumber: ownerForm.accountNumber,
+  bankName: ownerForm.bankName,
+  accountHolder: ownerForm.accountHolder,
+  branchCode: ownerForm.branchCode,
+  paymentReference: ownerForm.paymentReference
       });
     } catch (contactError) {
       console.error("Failed to save business contact:", contactError);

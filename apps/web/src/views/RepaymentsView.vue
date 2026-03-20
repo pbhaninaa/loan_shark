@@ -150,7 +150,7 @@ const selectedLoan = computed(() =>
 
 const filterLoanId = ref(null);
 const loanFilterOptions = computed(() => [
-  { title: "All my loans", value: null },
+  { title: "All loans", value: null },
   ...store.loans.map((loan) => {
     const amount = formatCurrency(loan.loanAmount);
     const issueDate = new Date(loan.issueDate).toLocaleDateString();

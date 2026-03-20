@@ -93,7 +93,7 @@ public class NotificationService {
     private String getCompanySignature() {
         ApiDtos.LenderContactResponse contact = businessContactService.get();
         StringBuilder signature = new StringBuilder("\n\n--\nBest regards,\nThe Loan Shark Team");
-        if (!contact.name().isBlank()) signature.append("\n").append(contact.name());
+        if (!contact.businessName().isBlank()) signature.append("\n").append(contact.businessName());
         if (!contact.phone().isBlank()) signature.append("\nPhone: ").append(contact.phone());
         if (!contact.email().isBlank()) signature.append("\nEmail: ").append(contact.email());
         if (!contact.address().isBlank()) signature.append("\nAddress: ").append(contact.address());

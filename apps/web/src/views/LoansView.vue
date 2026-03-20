@@ -225,7 +225,8 @@ const actionLoading = reactive({
   update: false    // update button in edit dialog
 });
 const pendingHeaders = computed(() => [
-  { title: "ID", key: "id" },
+  // { title: "ID", key: "id" },
+  
   { title: "Client", key: "borrowerId" },
   { title: "Status", key: "status" },
   { title: "Risk", key: "riskBand" },
@@ -235,7 +236,7 @@ const pendingHeaders = computed(() => [
 ]);
 
 const loansTableHeaders = computed(() => [
-  { title: "ID", key: "id" },
+  // { title: "ID", key: "id" },
   { title: "Client", key: "borrowerId" },
   { title: "Status", key: "status" },
   { title: "Loan Amount", key: "loanAmount" },
