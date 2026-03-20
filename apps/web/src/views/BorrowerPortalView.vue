@@ -171,7 +171,7 @@ const portalLoanHeaders = [
   { title: "Amount", key: "loanAmount" },
   { title: "Total", key: "totalAmount" },
   { title: "Due", key: "dueDate" },
-  { title: "Actions", key: "actions" }
+  { title: "Actions", key: "actions",   sortable: false }
 ];
 const portalScheduleHeaders = [
   { title: "Installment", key: "installmentNumber" },

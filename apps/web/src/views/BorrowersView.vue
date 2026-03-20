@@ -308,7 +308,7 @@ const borrowerHeaders = [
   { title: "Status", key: "status" },
   { title: "Risk", key: "riskScore" },
   { title: "Income", key: "monthlyIncome" },
-  { title: "Actions", key: "actions" }
+  { title: "Actions", key: "actions",   sortable: false }
 ];
 
 const employmentTypeOptions = [

@@ -32,7 +32,7 @@
 
     <AppTableCard title="Installment Schedule" :count-label="`${schedule.length} installments`" chip-color="info">
       <p class="text-body-2 text-medium-emphasis mb-3">
-        Suggested installments and due dates. You are not bound to these amounts—pay any amount you can, in full or in parts, until the loan is paid off.
+        Suggested installments and due dates. You are not bound to these amounts pay any amount you can, in full or in parts, until the loan is paid off.
       </p>
       <AppDataTable
         title=""
@@ -49,7 +49,7 @@
         </template>
    
        <template #item.actions="{ item }">
-  <div class="d-flex ga-2 justify-end">
+  <div class="d-flex ga-2 justify-center">
 
     <!-- Pay Button -->
     <AppActionButton
@@ -201,8 +201,9 @@ const scheduleHeaders = [
   { title: "Installment", key: "installmentNumber" },
   { title: "Due Date", key: "dueDate" },
   { title: "Amount", key: "amountDue" },
-  { title: "Status", key: "status" },
-  { title: "Actions", key: "actions" }
+  { title: "Status", key: "status",   sortable: false },
+  { title: "Actions", key: "actions",
+  align:"center",   sortable: false}
 ];
 
 const loanOptions = computed(() =>
