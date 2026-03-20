@@ -52,7 +52,7 @@
           <v-col cols="12" md="6" class="d-flex justify-center align-center">
             <v-card class="mb-4 qr-card elevation-2">
               <v-card-title class="white--text">
-                QR Code Payment
+                QR Code Payment( for Capitec Users )
               </v-card-title>
               <v-card-text class="d-flex justify-center align-center">
                 <qrcode-vue
@@ -118,7 +118,7 @@ const qrValue = computed(() => {
   const pd = paymentDetails.value;
   if (!pd.bankName || !pd.accountNumber) return "";
   // Example: BankName|AccountNumber|Reference
-  return `${pd.bankName}|${pd.accountNumber}|${pd.paymentReference}`;
+  return `https://pay.capitecbank.co.za/payme/RJLRY3`;
 });
 
 // Format keys for display
