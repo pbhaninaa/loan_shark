@@ -170,6 +170,13 @@
   hint="What clients should use as reference when paying"
   required
 />
+<AppTextField
+  v-model="ownerForm.paymentLink"
+  label="Payment Link (e.g. Pay me from Capitec App)"
+  prepend-inner-icon="mdi-link-list-text"
+  hint="What clients should use as link when paying"
+  required
+/>
           <AppActionButton type="submit" color="primary" size="large" block :loading="loading" text="Create Owner Account" />
         </v-form>
 
@@ -421,7 +428,8 @@ const ownerForm = reactive({
   bankName: "",
   accountHolder: "",
   branchCode: "",
-  paymentReference: ""
+  paymentReference: "",
+  paymentLink:""
 });
 
 const initialBorrowerForm = () => ({
@@ -605,7 +613,8 @@ async function createOwner() {
   bankName: ownerForm.bankName,
   accountHolder: ownerForm.accountHolder,
   branchCode: ownerForm.branchCode,
-  paymentReference: ownerForm.paymentReference
+  paymentReference: ownerForm.paymentReference,
+    paymentLink:ownerForm.paymentLink
       });
     } catch (contactError) {
       console.error("Failed to save business contact:", contactError);
