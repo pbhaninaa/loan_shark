@@ -17,7 +17,7 @@ import org.hibernate.type.SqlTypes;
 public class BorrowerDocument {
 
     @Id
-    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
     @Column(columnDefinition = "CHAR(36)")
     private UUID id;
 
@@ -47,6 +47,21 @@ public class BorrowerDocument {
     @Column(name = "uploaded_at", nullable = false)
     private Instant uploadedAt;
 
+    @Lob
+    @Column(name = "file_data", columnDefinition = "MEDIUMBLOB")
+    private byte[] fileData;
+    @Override
+    public String toString() {
+        return "BorrowerDocument{" +
+                "id=" + id +
+                ", documentType=" + documentType +
+                ", fileUrl='" + fileUrl + '\'' +
+                ", originalFileName='" + originalFileName + '\'' +
+                ", contentType='" + contentType + '\'' +
+                ", fileSizeBytes=" + fileSizeBytes +
+                ", uploadedAt=" + uploadedAt +
+                '}';
+    }
     @PrePersist
     void onPrePersist() {
         if (id == null) id = UUID.randomUUID();

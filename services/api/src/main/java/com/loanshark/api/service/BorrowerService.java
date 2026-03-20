@@ -181,16 +181,17 @@ public class BorrowerService {
         Borrower borrower = findBorrower(borrowerId);
         enforceBorrowerOwnershipIfNeeded(borrower);
         return borrowerDocumentRepository.findByBorrowerId(borrowerId).stream()
-            .map(doc -> new BorrowerDocumentResponse(
-                doc.getId(),
-                doc.getDocumentType(),
-                doc.getFileUrl(),
-                doc.getOriginalFileName(),
-                doc.getContentType(),
-                doc.getFileSizeBytes(),
-                doc.getUploadedAt()
-            ))
-            .toList();
+                .peek(doc -> System.out.println("DOC DEBUG: " + doc))
+                .map(doc -> new BorrowerDocumentResponse(
+                        doc.getId(),
+                        doc.getDocumentType(),
+                        doc.getFileUrl(),
+                        doc.getOriginalFileName(),
+                        doc.getContentType(),
+                        doc.getFileSizeBytes(),
+                        doc.getUploadedAt()
+                ))
+                .toList();
     }
 
     @Transactional

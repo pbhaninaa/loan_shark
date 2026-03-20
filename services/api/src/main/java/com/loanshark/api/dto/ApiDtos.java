@@ -102,18 +102,38 @@ public final class ApiDtos {
     ) {}
 
     public record BusinessContactUpdateRequest(
-        @NotBlank(message = "Business name is required")
-        String businessName,
 
-        @NotBlank(message = "Phone is required")
-        String phone,
+            @NotBlank(message = "Business name is required")
+            String businessName,
 
-        @NotBlank(message = "Email is required")
-        @Email(message = "Email must be valid")
-        String email,
+            @NotBlank(message = "Phone is required")
+            String phone,
 
-        @NotBlank(message = "Address is required")
-        String address
+            @NotBlank(message = "Email is required")
+            @Email(message = "Email must be valid")
+            String email,
+
+            @NotBlank(message = "Address is required")
+            String address,
+
+            @NotBlank(message = "Account number is required")
+            String accountNumber,
+
+            @NotBlank(message = "Bank name is required")
+            String bankName,
+
+            @NotBlank(message = "Account holder name is required")
+            String accountHolderName,
+
+            @NotBlank(message = "Account type is required")
+            String accountType,
+
+            @NotBlank(message = "Branch code is required")
+            String branchCode,
+
+            @NotBlank(message = "Payment reference instruction is required")
+            String paymentReference
+
     ) {}
 
     public record UpdateEmailRequest(String email) {}
@@ -189,36 +209,37 @@ public final class ApiDtos {
     ) {
     }
 
+    // Updated DTO
     public record VerificationResponse(
-        UUID id,
-        UUID borrowerId,
-        VerificationStatus status,
-        UUID idDocumentId,
-        String idDocumentName,
-        String idDocumentContentType,
-        UUID selfieDocumentId,
-        String selfieDocumentName,
-        String selfieDocumentContentType,
-        boolean saIdValid,
-        BigDecimal latitude,
-        BigDecimal longitude,
-        Instant locationCapturedAt,
-        String locationName,
-        String extractedFirstName,
-        String extractedLastName,
-        String extractedIdNumber,
-        BigDecimal ocrConfidence,
-        boolean detailsMatched,
-        BigDecimal faceMatchScore,
-        boolean faceMatched,
-        String reviewNotes,
-        String reviewedBy,
-        Instant reviewedAt,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
-    }
-
+            UUID id,
+            UUID borrowerId,
+            VerificationStatus status,
+            UUID idDocumentId,
+            String idDocumentName,
+            String idDocumentContentType,
+            String idDocumentUrl,       // HTTP URL
+            UUID selfieDocumentId,
+            String selfieDocumentName,
+            String selfieDocumentContentType,
+            String selfieDocumentUrl,   // HTTP URL
+            boolean saIdValid,
+            BigDecimal latitude,
+            BigDecimal longitude,
+            Instant locationCapturedAt,
+            String locationName,
+            String extractedFirstName,
+            String extractedLastName,
+            String extractedIdNumber,
+            BigDecimal ocrConfidence,
+            boolean detailsMatched,
+            BigDecimal faceMatchScore,
+            boolean faceMatched,
+            String reviewNotes,
+            String reviewedBy,
+            Instant reviewedAt,
+            Instant createdAt,
+            Instant updatedAt
+    ) {}
     public record VerificationReviewRequest(
         @NotBlank String notes
     ) {
@@ -447,10 +468,15 @@ public final class ApiDtos {
 
     /** Lender contact details for client help / enquiries. */
     public record LenderContactResponse(
-        String name,
-        String phone,
-        String email,
-        String address
-    ) {
-    }
+            String businessName,
+            String phone,
+            String email,
+            String address,
+            String accountNumber,
+            String bankName,
+            String accountHolderName,
+            String accountType,
+            String branchCode,
+            String paymentReference
+    ) {}
 }

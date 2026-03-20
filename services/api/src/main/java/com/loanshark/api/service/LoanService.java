@@ -44,7 +44,7 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-
+import com.loanshark.api.entity.UuidConstants;
 @Service
 public class LoanService {
 
@@ -130,7 +130,6 @@ public class LoanService {
         }
 
         User currentUser = currentUserService.requireCurrentUser();
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
         if (currentUser.getRole() == UserRole.BORROWER) {
             UUID currentBorrowerId = borrowerRepository.findByUserId(currentUser.getId())
                     .map(Borrower::getId)
@@ -200,94 +199,77 @@ public class LoanService {
         return toResponse(loan);
     }
 
+    // ------------------ LIST LOANS ------------------
     @Transactional(readOnly = true)
     public PageResponse<LoanResponse> listAll(String query, List<LoanStatus> statuses, int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Loan> loanPage;
+
         if (statuses != null && !statuses.isEmpty()) {
-            loanPage = loanRepository.searchByStatusIn(
-                    query == null ? "" : query.trim(),
-                    statuses,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-            );
+            loanPage = loanRepository.searchByStatusIn(query == null ? "" : query.trim(), statuses, pageRequest);
         } else {
-            loanPage = loanRepository.search(
-                    query == null ? "" : query.trim(),
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-            );
+            loanPage = loanRepository.search(query == null ? "" : query.trim(), pageRequest);
         }
 
-        // Batch load repayment data
-        List<UUID> loanIds = loanPage.getContent().stream().map(Loan::getId).toList();
-        Map<UUID, BigDecimal> amountPaidMap = buildAmountPaidMap(loanIds);
-        List<RepaymentSchedule> allSchedules = loanIds.isEmpty() ? List.of() : repaymentScheduleRepository.findByLoanIdsOrderByInstallmentNumber(loanIds);
-
-        // Group schedules by loan ID
-        Map<UUID, List<RepaymentSchedule>> schedulesByLoanId = allSchedules.stream()
-                .collect(Collectors.groupingBy(s -> s.getLoan().getId()));
-
-        return new PageResponse<>(
-                loanPage.getContent().stream()
-                        .map(loan -> toResponse(loan, amountPaidMap.getOrDefault(loan.getId(), BigDecimal.ZERO), schedulesByLoanId.getOrDefault(loan.getId(), List.of())))
-                        .toList(),
-                loanPage.getNumber(),
-                loanPage.getSize(),
-                loanPage.getTotalElements(),
-                loanPage.getTotalPages()
-        );
+        return mapLoanPageWithRepayments(loanPage);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<LoanResponse> listMyLoans(String query, int page, int size) {
         User currentUser = currentUserService.requireCurrentUser();
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
+
         UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
                 .map(Borrower::getId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower profile not found"));
 
-        Page<Loan> loanPage = loanRepository.searchMyLoans(
-                borrowerId,
-                query == null ? "" : query.trim(),
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+        Page<Loan> loanPage = loanRepository.searchWithBorrowerAndUser(query == null ? "" : query.trim(), borrowerId,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
 
-        // Batch load repayment data
+        return mapLoanPageWithRepayments(loanPage);
+    }
+
+    private PageResponse<LoanResponse> mapLoanPageWithRepayments(Page<Loan> loanPage) {
         List<UUID> loanIds = loanPage.getContent().stream().map(Loan::getId).toList();
-        Map<UUID, BigDecimal> amountPaidMap = buildAmountPaidMap(loanIds);
-        List<RepaymentSchedule> allSchedules = loanIds.isEmpty() ? List.of() : repaymentScheduleRepository.findByLoanIdsOrderByInstallmentNumber(loanIds);
+        Map<UUID, BigDecimal> amountPaidMap = loanIds.isEmpty() ? Map.of() : buildAmountPaidMap(loanIds);
+        List<RepaymentSchedule> allSchedules = loanIds.isEmpty() ? List.of()
+                : repaymentScheduleRepository.findByLoanIdsOrderByInstallmentNumber(loanIds);
 
-        // Group schedules by loan ID
         Map<UUID, List<RepaymentSchedule>> schedulesByLoanId = allSchedules.stream()
                 .collect(Collectors.groupingBy(s -> s.getLoan().getId()));
 
-        return new PageResponse<>(
-                loanPage.getContent().stream()
-                        .map(loan -> toResponse(loan, amountPaidMap.getOrDefault(loan.getId(), BigDecimal.ZERO), schedulesByLoanId.getOrDefault(loan.getId(), List.of())))
-                        .toList(),
-                loanPage.getNumber(),
-                loanPage.getSize(),
-                loanPage.getTotalElements(),
-                loanPage.getTotalPages()
-        );
+        List<LoanResponse> loanResponses = loanPage.getContent().stream()
+                .map(loan -> toResponse(loan, amountPaidMap.getOrDefault(loan.getId(), BigDecimal.ZERO),
+                        schedulesByLoanId.getOrDefault(loan.getId(), List.of())))
+                .toList();
+
+        return new PageResponse<>(loanResponses, loanPage.getNumber(), loanPage.getSize(),
+                loanPage.getTotalElements(), loanPage.getTotalPages());
     }
 
+    // ------------------ GET SINGLE LOAN ------------------
     @Transactional(readOnly = true)
     public LoanResponse getLoan(UUID loanId) {
         Loan loan = findLoan(loanId);
         enforceBorrowerOwnershipIfNeeded(loan);
-        return toResponse(loan);
+
+        BigDecimal amountPaid = repaymentRepository.sumAmountPaidByLoanId(loan.getId());
+        List<RepaymentSchedule> schedules = repaymentScheduleRepository.findByLoanIdOrderPendingFirst(loan.getId());
+
+        return toResponse(loan, amountPaid != null ? amountPaid : BigDecimal.ZERO, schedules);
     }
 
+    // ------------------ APPROVE / REJECT / UPDATE / CANCEL ------------------
     @Transactional
     public LoanResponse approve(LoanDecisionRequest request) {
         Loan loan = findLoan(request.loanId());
         User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() == UserRole.OWNER) {
-            // owner can approve any loan
-        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0) {
-            // cashier can approve loans under the limit
-        } else {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can approve loans over " + cashierApprovalLimit + "; cashiers may approve loans under that amount.");
+
+        if (currentUser.getRole() != UserRole.OWNER
+                && !(currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0)) {
+            throw new ResponseStatusException(FORBIDDEN,
+                    "Only owner can approve loans over " + cashierApprovalLimit + "; cashiers may approve loans under that amount.");
         }
+
         if (loan.getStatus() != LoanStatus.PENDING) {
             throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be approved");
         }
@@ -301,9 +283,36 @@ public class LoanService {
         generateSchedule(loan);
         businessCapitalService.deductForDisbursement(loan.getLoanAmount());
         createCashDisbursement(loan);
-        auditLogService.record(currentUser.getId(), "APPROVE_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
+
+        auditLogService.record(currentUser.getId(), "APPROVE_LOAN", "Loan", loan.getId().toString(),
+                request.note() == null ? "" : request.note());
+
         notificationService.notifyLoanApproved(loan);
-        return toResponse(loan);
+
+        return getLoan(loan.getId());
+    }
+
+    @Transactional
+    public LoanResponse reject(LoanDecisionRequest request) {
+        Loan loan = findLoan(request.loanId());
+        User currentUser = currentUserService.requireCurrentUser();
+
+        if (currentUser.getRole() != UserRole.OWNER
+                && !(currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0)) {
+            throw new ResponseStatusException(FORBIDDEN,
+                    "Only owner can reject loans over " + cashierApprovalLimit + "; cashiers may reject loans under that amount.");
+        }
+
+        loan.setStatus(LoanStatus.REJECTED);
+        loan.setApprovedBy(currentUser);
+        loanRepository.save(loan);
+
+        auditLogService.record(currentUser.getId(), "REJECT_LOAN", "Loan", loan.getId().toString(),
+                request.note() == null ? "" : request.note());
+
+        notificationService.notifyBorrowerStatusChanged(loan.getBorrower());
+
+        return getLoan(loan.getId());
     }
 
     @Transactional
@@ -312,21 +321,25 @@ public class LoanService {
         if (loan.getStatus() != LoanStatus.PENDING) {
             throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be updated");
         }
-        LoanInterestSettings settings = loanInterestSettingsRepository.findById(com.loanshark.api.entity.UuidConstants.LOAN_INTEREST_SETTINGS_ID).orElse(null);
-        if (settings == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured");
-        }
+
+        LoanInterestSettings settings = loanInterestSettingsRepository.findById(UuidConstants.LOAN_INTEREST_SETTINGS_ID)
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Loan interest settings are not configured"));
+
         int termDays = request.loanTermDays() != null && request.loanTermDays() > 0
-                ? request.loanTermDays()
-                : loan.getLoanTermDays();
+                ? request.loanTermDays() : loan.getLoanTermDays();
+
         BigDecimal totalAmount = interestCalculationService.computeTotalAmount(request.loanAmount(), termDays, settings);
+
         loan.setLoanAmount(request.loanAmount());
         loan.setLoanTermDays(termDays);
         loan.setTotalAmount(totalAmount);
         loanRepository.save(loan);
+
         User currentUser = currentUserService.requireCurrentUser();
-        auditLogService.record(currentUser.getId(), "UPDATE_LOAN", "Loan", loan.getId().toString(), "amount=" + request.loanAmount() + ", term=" + termDays);
-        return toResponse(loan);
+        auditLogService.record(currentUser.getId(), "UPDATE_LOAN", "Loan", loan.getId().toString(),
+                "amount=" + request.loanAmount() + ", term=" + termDays);
+
+        return getLoan(loan.getId());
     }
 
     @Transactional
@@ -335,31 +348,14 @@ public class LoanService {
         if (loan.getStatus() != LoanStatus.PENDING) {
             throw new ResponseStatusException(BAD_REQUEST, "Only pending loans can be cancelled");
         }
+
         riskService.deleteAssessmentsByLoanId(loanId);
         loanRepository.delete(loan);
+
         User currentUser = currentUserService.requireCurrentUser();
         auditLogService.record(currentUser.getId(), "CANCEL_LOAN", "Loan", loanId.toString(), "Pending loan cancelled");
     }
 
-    @Transactional
-    public LoanResponse reject(LoanDecisionRequest request) {
-        Loan loan = findLoan(request.loanId());
-        User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() == UserRole.OWNER) {
-            // owner can reject any loan
-        } else if (currentUser.getRole() == UserRole.CASHIER && loan.getLoanAmount().compareTo(cashierApprovalLimit) < 0) {
-            // cashier can reject loans under the limit
-        } else {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can reject loans over " + cashierApprovalLimit + "; cashiers may reject loans under that amount.");
-        }
-        loan.setStatus(LoanStatus.REJECTED);
-        loan.setApprovedBy(currentUser);
-        loanRepository.save(loan);
-        auditLogService.record(currentUser.getId(), "REJECT_LOAN", "Loan", loan.getId().toString(), request.note() == null ? "" : request.note());
-        Borrower borrower = borrowerService.findBorrower(loan.getBorrower().getId());
-        notificationService.notifyBorrowerStatusChanged(borrower);
-        return toResponse(loan);
-    }
 
     @Transactional(readOnly = true)
     public List<ScheduleResponse> listSchedule(UUID loanId) {
@@ -408,7 +404,6 @@ public class LoanService {
         if (currentUser.getRole() != UserRole.BORROWER) {
             return;
         }
-        borrowerVerificationService.requireActiveBorrowerAccess(currentUser);
 
         UUID borrowerId = borrowerRepository.findByUserId(currentUser.getId())
                 .map(Borrower::getId)

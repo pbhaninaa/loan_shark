@@ -4,44 +4,30 @@ import com.loanshark.api.dto.AdminCreateBorrowerWithDocsForm;
 import com.loanshark.api.dto.ApiDtos.AuthResponse;
 import com.loanshark.api.dto.ApiDtos.BorrowerResponse;
 import com.loanshark.api.dto.ApiDtos.VerificationResponse;
-import com.loanshark.api.entity.Borrower;
-import com.loanshark.api.entity.BorrowerDocument;
-import com.loanshark.api.entity.BorrowerStatus;
-import com.loanshark.api.entity.BorrowerVerification;
-import com.loanshark.api.entity.DocumentType;
-import com.loanshark.api.entity.User;
-import com.loanshark.api.entity.UserRole;
-import com.loanshark.api.entity.VerificationStatus;
+import com.loanshark.api.dto.BorrowerKycRegistrationForm;
+import com.loanshark.api.entity.*;
 import com.loanshark.api.repository.BorrowerDocumentRepository;
 import com.loanshark.api.repository.BorrowerRepository;
 import com.loanshark.api.repository.BorrowerVerificationRepository;
 import com.loanshark.api.security.JwtService;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.color.ColorSpace;
-import java.awt.image.BufferedImage;
-import java.awt.image.ColorConvertOp;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.nio.file.AccessDeniedException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.text.Normalizer;
-import java.time.Instant;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.rendering.PDFRenderer;
-import org.apache.pdfbox.text.PDFTextStripper;
+import com.loanshark.api.util.ValidationUtil;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.FORBIDDEN;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
+
+import static org.springframework.http.HttpStatus.*;
 
 @Service
 public class BorrowerVerificationService {
@@ -56,6 +42,7 @@ public class BorrowerVerificationService {
     private final CurrentUserService currentUserService;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
+    private final Environment environment;
 
     public BorrowerVerificationService(
             BorrowerRepository borrowerRepository,
@@ -67,7 +54,7 @@ public class BorrowerVerificationService {
             JwtService jwtService,
             CurrentUserService currentUserService,
             AuditLogService auditLogService,
-            NotificationService notificationService) {
+            NotificationService notificationService, Environment environment) {
         this.borrowerRepository = borrowerRepository;
         this.borrowerDocumentRepository = borrowerDocumentRepository;
         this.borrowerVerificationRepository = borrowerVerificationRepository;
@@ -78,20 +65,52 @@ public class BorrowerVerificationService {
         this.currentUserService = currentUserService;
         this.auditLogService = auditLogService;
         this.notificationService = notificationService;
+        this.environment = environment;
     }
 
+    // ==========================
+    // REGISTER BORROWER (KYC)
+    // ==========================
     @Transactional
-    public AuthResponse registerBorrower(com.loanshark.api.dto.BorrowerKycRegistrationForm form) {
+    public AuthResponse registerBorrower(BorrowerKycRegistrationForm form) {
+
         authService.ensureUsernameAvailable(form.getUsername());
+
+        if (ValidationUtil.isAboveMinimumAge(form.getIdNumber(), 18)) {
+            throw new ResponseStatusException(BAD_REQUEST, "Applicant must be at least 18 years old");
+        }
+        if (form.getMonthlyIncome().compareTo(new BigDecimal("1000")) < 0) {
+            throw new ResponseStatusException(BAD_REQUEST, "Income too low");
+        }
         if (borrowerRepository.findByIdNumber(form.getIdNumber()).isPresent()) {
-            throw new ResponseStatusException(BAD_REQUEST, "ID number already exists");
+            throw new ResponseStatusException(BAD_REQUEST, "ID already exists");
         }
         if (borrowerRepository.findByPhone(form.getPhone()).isPresent()) {
             throw new ResponseStatusException(BAD_REQUEST, "Phone already exists");
         }
 
+        if(ValidationUtil.isValidSouthAfricanIdPdf(form.getIdDocument())){
+            throw new ResponseStatusException(BAD_REQUEST, "Invalid SA ID document");
+        }
+
+        // ID PDF validation
+//        MultipartFile idFile = form.getIdDocument();
+//        if (idFile.isEmpty()) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID document required");
+//        }
+//        try {
+//            String base64Pdf = Base64.getEncoder().encodeToString(idFile.getBytes());
+//            if (!ValidationUtil.isValidSouthAfricanIdPdf(base64Pdf)) {
+//                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid SA ID document");
+//            }
+//        } catch (IOException e) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Error reading ID document");
+//        }
+
+        // Create user
         User user = authService.createUser(form.getUsername(), form.getPassword(), UserRole.BORROWER);
 
+        // Create borrower
         Borrower borrower = new Borrower();
         borrower.setUser(user);
         borrower.setFirstName(form.getFirstName());
@@ -106,15 +125,19 @@ public class BorrowerVerificationService {
         borrower.setStatus(BorrowerStatus.PENDING_VERIFICATION);
         borrower = borrowerRepository.save(borrower);
 
-        BorrowerDocument idDocument = createDocument(
-                borrower,
-                DocumentType.ID_COPY,
-                documentStorageService.storePdf(form.getIdDocument()));
-        BorrowerDocument selfieDocument = createDocument(
-                borrower,
-                DocumentType.SELFIE,
-                documentStorageService.storeImage(form.getSelfieImage()));
+        // Save documents
+        BorrowerDocument idDocument;
+        BorrowerDocument selfieDocument;
+        try {
+            idDocument = createDocument(borrower, DocumentType.ID_COPY,
+                    documentStorageService.storePdf(form.getIdDocument()), form.getIdDocument().getBytes());
+            selfieDocument = createDocument(borrower, DocumentType.SELFIE,
+                    documentStorageService.storeImage(form.getSelfieImage()), form.getSelfieImage().getBytes());
+        } catch (IOException e) {
+            throw new ResponseStatusException(BAD_REQUEST, "File processing failed");
+        }
 
+        // Verification
         VerificationComputation result = computeVerification(form, idDocument, selfieDocument);
 
         BorrowerVerification verification = new BorrowerVerification();
@@ -122,15 +145,8 @@ public class BorrowerVerificationService {
         verification.setStatus(result.status());
         verification.setIdDocument(idDocument);
         verification.setSelfieDocument(selfieDocument);
-        verification.setLatitude(form.getLatitude());
-        verification.setLongitude(form.getLongitude());
-        verification.setLocationCapturedAt(Instant.now());
-        verification.setLocationName(form.getLocationName());
         verification.setSaIdValid(result.saIdValid());
         verification.setOcrConfidence(result.ocrConfidence());
-        verification.setExtractedFirstName(result.extractedFirstName());
-        verification.setExtractedLastName(result.extractedLastName());
-        verification.setExtractedIdNumber(result.extractedIdNumber());
         verification.setDetailsMatched(result.detailsMatched());
         verification.setFaceMatchScore(result.faceMatchScore());
         verification.setFaceMatched(result.faceMatched());
@@ -140,19 +156,38 @@ public class BorrowerVerificationService {
         borrower.setStatus(mapBorrowerStatus(result.status()));
         borrowerRepository.save(borrower);
 
-        auditLogService.record(user.getId(), "REGISTER_BORROWER_KYC", "Borrower", borrower.getId().toString(), result.notes());
-        notificationService.notifyBorrowerProfileCreated(borrower, false);
-        notificationService.notifyUser(user.getId(), "KYC", result.notes());
-
-        return new AuthResponse(jwtService.generateToken(user), user.getId(), user.getUsername(), user.getRole(), borrower.getId());
+        // Return auth response
+        return new AuthResponse(
+                jwtService.generateToken(user),
+                user.getId(),
+                user.getUsername(),
+                user.getRole(),
+                borrower.getId()
+        );
     }
+    public Borrower requireActiveBorrowerAccess(UUID borrowerId) {
+        User currentUser = currentUserService.requireCurrentUser();
 
-    /**
-     * Admin/staff creates a client with ID PDF and photo uploaded from PC. No live
-     * selfie/location.
-     * Creates borrower with PENDING_VERIFICATION and a verification in
-     * MANUAL_REVIEW for owner to approve.
-     */
+        if (currentUser.getRole() != UserRole.BORROWER) {
+            throw new ResponseStatusException(FORBIDDEN, "Only borrowers can access this resource");
+        }
+
+        Borrower borrower = borrowerRepository.findById(borrowerId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Borrower not found"));
+
+        if (!borrower.getUser().getId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(FORBIDDEN, "Access denied to this borrower");
+        }
+
+        if (borrower.getStatus() != BorrowerStatus.ACTIVE) {
+            throw new ResponseStatusException(FORBIDDEN, "Borrower is not active");
+        }
+
+        return borrower;
+    }
+    // ==========================
+    // ADMIN CREATES BORROWER WITH DOCUMENTS
+    // ==========================
     @Transactional
     public BorrowerResponse createBorrowerWithDocuments(AdminCreateBorrowerWithDocsForm form) {
         authService.ensureUsernameAvailable(form.getUsername());
@@ -163,7 +198,7 @@ public class BorrowerVerificationService {
             throw new ResponseStatusException(BAD_REQUEST, "Phone already exists");
         }
         if (!saIdValidationService.isValid(form.getIdNumber())) {
-            throw new ResponseStatusException(BAD_REQUEST, "Invalid South African ID number");
+            throw new ResponseStatusException(BAD_REQUEST, "Invalid SA ID number");
         }
 
         User user = authService.createUser(form.getUsername(), form.getPassword(), UserRole.BORROWER);
@@ -177,21 +212,22 @@ public class BorrowerVerificationService {
         borrower.setEmail(form.getEmail());
         borrower.setAddress(form.getAddress());
         borrower.setEmploymentStatus(form.getEmploymentStatus());
-        borrower.setMonthlyIncome(
-                form.getMonthlyIncome() != null ? form.getMonthlyIncome() : java.math.BigDecimal.ZERO);
+        borrower.setMonthlyIncome(form.getMonthlyIncome() != null ? form.getMonthlyIncome() : BigDecimal.ZERO);
         borrower.setEmployerName(form.getEmployerName());
         borrower.setStatus(BorrowerStatus.PENDING_VERIFICATION);
         borrower.setRiskScore(0);
         borrower = borrowerRepository.save(borrower);
 
-        BorrowerDocument idDocument = createDocument(
-                borrower,
-                DocumentType.ID_COPY,
-                documentStorageService.storePdf(form.getIdDocument()));
-        BorrowerDocument selfieDocument = createDocument(
-                borrower,
-                DocumentType.SELFIE,
-                documentStorageService.storeImage(form.getSelfieImage()));
+        BorrowerDocument idDocument;
+        BorrowerDocument selfieDocument;
+        try {
+            idDocument = createDocument(borrower, DocumentType.ID_COPY,
+                    documentStorageService.storePdf(form.getIdDocument()), form.getIdDocument().getBytes());
+            selfieDocument = createDocument(borrower, DocumentType.SELFIE,
+                    documentStorageService.storeImage(form.getSelfieImage()), form.getSelfieImage().getBytes());
+        } catch (IOException e) {
+            throw new ResponseStatusException(BAD_REQUEST, "File processing failed");
+        }
 
         BorrowerVerification verification = new BorrowerVerification();
         verification.setBorrower(borrower);
@@ -201,15 +237,15 @@ public class BorrowerVerificationService {
         verification.setSaIdValid(true);
         verification.setDetailsMatched(false);
         verification.setFaceMatched(false);
-        verification.setReviewNotes("Admin-created with uploaded documents. Please verify ID and photo manually.");
+        verification.setReviewNotes("Admin-created with uploaded documents. Manual verification required.");
         borrowerVerificationRepository.save(verification);
 
         User currentUser = currentUserService.requireCurrentUser();
-        auditLogService.record(currentUser.getId(), "CREATE_BORROWER_WITH_DOCS", "Borrower", borrower.getId().toString(),
-                "Pending owner verification");
+        auditLogService.record(currentUser.getId(), "CREATE_BORROWER_WITH_DOCS", "Borrower",
+                borrower.getId().toString(), "Pending owner verification");
         notificationService.notifyBorrowerProfileCreated(borrower, true);
         notificationService.notifyUser(user.getId(), "KYC",
-                "Profile created by admin. Your verification is pending owner review.");
+                "Profile created by admin. Verification pending review.");
 
         return new BorrowerResponse(
                 borrower.getId(),
@@ -223,24 +259,36 @@ public class BorrowerVerificationService {
                 borrower.getMonthlyIncome(),
                 borrower.getEmployerName(),
                 borrower.getStatus(),
-                borrower.getRiskScore());
+                borrower.getRiskScore()
+        );
     }
 
+    // ==========================
+    // VERIFICATION ACCESS METHODS
+    // ==========================
     @Transactional(readOnly = true)
     public VerificationResponse myVerification() {
         User currentUser = currentUserService.requireCurrentUser();
         BorrowerVerification verification = borrowerVerificationRepository
                 .findTopByBorrowerUserIdOrderByCreatedAtDesc(currentUser.getId())
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Verification record not found"));
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Verification not found"));
         return toResponse(verification);
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<VerificationResponse> pendingReviews() {
+    public List<VerificationResponse> pendingReviews() {
         return borrowerVerificationRepository.findByStatusOrderByCreatedAtDesc(VerificationStatus.MANUAL_REVIEW)
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public VerificationResponse getByBorrowerId(UUID borrowerId) {
+        BorrowerVerification verification = borrowerVerificationRepository
+                .findTopByBorrowerIdOrderByCreatedAtDesc(borrowerId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "No verification found for this borrower"));
+        return toResponse(verification);
     }
 
     @Transactional
@@ -250,13 +298,17 @@ public class BorrowerVerificationService {
         verification.setReviewNotes(notes);
         verification.setReviewedBy(currentUserService.requireCurrentUser());
         verification.setReviewedAt(Instant.now());
+
         Borrower borrower = verification.getBorrower();
         borrower.setStatus(BorrowerStatus.ACTIVE);
         borrowerRepository.save(borrower);
-        notificationService.notifyUser(borrower.getUser().getId(), "KYC", "Your verification has been approved.");
-        auditLogService.record(verification.getReviewedBy().getId(), "APPROVE_VERIFICATION", "BorrowerVerification",
-                verification.getId().toString(), notes);
-        return toResponse(borrowerVerificationRepository.save(verification));
+
+        borrowerVerificationRepository.save(verification);
+        notificationService.notifyUser(borrower.getUser().getId(), "KYC", "Verification approved.");
+        auditLogService.record(verification.getReviewedBy().getId(), "APPROVE_VERIFICATION",
+                "BorrowerVerification", verification.getId().toString(), notes);
+
+        return toResponse(verification);
     }
 
     @Transactional
@@ -266,26 +318,23 @@ public class BorrowerVerificationService {
         verification.setReviewNotes(notes);
         verification.setReviewedBy(currentUserService.requireCurrentUser());
         verification.setReviewedAt(Instant.now());
+
         Borrower borrower = verification.getBorrower();
         borrower.setStatus(BorrowerStatus.VERIFICATION_REJECTED);
         borrowerRepository.save(borrower);
+
+        borrowerVerificationRepository.save(verification);
         notificationService.notifyUser(borrower.getUser().getId(), "KYC",
-                "Your verification has been rejected. " + notes);
-        auditLogService.record(verification.getReviewedBy().getId(), "REJECT_VERIFICATION", "BorrowerVerification",
-                verification.getId().toString(), notes);
-        return toResponse(borrowerVerificationRepository.save(verification));
+                "Verification rejected. " + notes);
+        auditLogService.record(verification.getReviewedBy().getId(), "REJECT_VERIFICATION",
+                "BorrowerVerification", verification.getId().toString(), notes);
+
+        return toResponse(verification);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<VerificationResponse> getByBorrowerId(UUID borrowerId) {
-        User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() != UserRole.OWNER) {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can view borrower verification");
-        }
-        return borrowerVerificationRepository.findTopByBorrowerIdOrderByCreatedAtDesc(borrowerId)
-                .map(this::toResponse);
-    }
-
+    // ==========================
+    // DOCUMENT METHODS
+    // ==========================
     @Transactional(readOnly = true)
     public VerificationDocumentPayload idDocumentContent(UUID verificationId) {
         BorrowerVerification verification = requireOwnerReview(verificationId);
@@ -298,28 +347,8 @@ public class BorrowerVerificationService {
         return readDocument(verification.getSelfieDocument());
     }
 
-    public void requireActiveBorrowerAccess(User currentUser) {
-        if (currentUser.getRole() != UserRole.BORROWER) {
-            return;
-        }
-        Borrower borrower = borrowerRepository.findByUserId(currentUser.getId())
-                .orElseThrow(() -> new ResponseStatusException(FORBIDDEN, "Borrower profile not found"));
-        if (borrower.getStatus() != BorrowerStatus.ACTIVE) {
-            throw new ResponseStatusException(FORBIDDEN, "Borrower verification is not complete");
-        }
-    }
-
-    private BorrowerVerification requireOwnerReview(UUID verificationId) {
-        User currentUser = currentUserService.requireCurrentUser();
-        if (currentUser.getRole() != UserRole.OWNER) {
-            throw new ResponseStatusException(FORBIDDEN, "Only owner can review verifications");
-        }
-        return borrowerVerificationRepository.findById(verificationId)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Verification record not found"));
-    }
-
     private BorrowerDocument createDocument(Borrower borrower, DocumentType documentType,
-            DocumentStorageService.StoredFile storedFile) {
+                                            DocumentStorageService.StoredFile storedFile, byte[] fileBytes) {
         BorrowerDocument document = new BorrowerDocument();
         document.setBorrower(borrower);
         document.setDocumentType(documentType);
@@ -328,156 +357,75 @@ public class BorrowerVerificationService {
         document.setContentType(storedFile.contentType());
         document.setFileSizeBytes(storedFile.size());
         document.setSha256Checksum(storedFile.sha256());
+        document.setFileData(fileBytes);
         return borrowerDocumentRepository.save(document);
     }
 
-    private VerificationComputation computeVerification(
-            com.loanshark.api.dto.BorrowerKycRegistrationForm form,
-            BorrowerDocument idDocument,
-            BorrowerDocument selfieDocument) {
+    private VerificationComputation computeVerification(BorrowerKycRegistrationForm form,
+                                                        BorrowerDocument idDocument,
+                                                        BorrowerDocument selfieDocument) {
+
         boolean saIdValid = saIdValidationService.isValid(form.getIdNumber());
-        String extractedText = extractPdfText(Path.of(idDocument.getFileUrl()));
-        BigDecimal ocrConfidence = extractedText.isBlank() ? new BigDecimal("0.00") : new BigDecimal("70.00");
 
-        String normalizedText = normalize(extractedText);
-        boolean firstNameMatch = normalizedText.contains(normalize(form.getFirstName()));
-        boolean lastNameMatch = normalizedText.contains(normalize(form.getLastName()));
-        boolean idNumberMatch = normalizedText.contains(normalize(form.getIdNumber()));
-        boolean detailsMatched = firstNameMatch && lastNameMatch && idNumberMatch;
+        String extractedText = ValidationUtil.extractPdfText(Path.of(idDocument.getFileUrl()));
+        BigDecimal ocrConfidence = extractedText.isBlank() ? BigDecimal.ZERO : new BigDecimal("70.00");
 
-        BigDecimal faceScore = compareSelfieWithId(Path.of(idDocument.getFileUrl()),
+        String normalizedText = ValidationUtil.normalize(extractedText);
+        boolean firstNameMatch = normalizedText.contains(ValidationUtil.normalize(form.getFirstName()));
+        boolean lastNameMatch = normalizedText.contains(ValidationUtil.normalize(form.getLastName()));
+        boolean idMatch = normalizedText.contains(ValidationUtil.normalize(form.getIdNumber()));
+
+        boolean detailsMatched = firstNameMatch && lastNameMatch && idMatch;
+
+        BigDecimal faceScore = ValidationUtil.compareSelfieWithId(Path.of(idDocument.getFileUrl()),
                 Path.of(selfieDocument.getFileUrl()));
         boolean faceMatched = faceScore.compareTo(new BigDecimal("78.00")) >= 0;
 
         VerificationStatus status;
         String notes;
         if (!saIdValid) {
-            status = VerificationStatus.MANUAL_REVIEW;
-            notes = "Profile created, but owner review is required because the SA ID number failed validation.";
+            status = VerificationStatus.REJECTED;
+            notes = "Invalid SA ID number";
         } else if (detailsMatched && faceMatched) {
-            status = VerificationStatus.MANUAL_REVIEW;
-            notes = "Profile created and automatic checks passed. Owner review is still required before system access is granted.";
-        } else if (!detailsMatched && !faceMatched) {
-            status = VerificationStatus.MANUAL_REVIEW;
-            notes = "Profile created, but owner review is required because the provided details do not match the ID copy and the selfie does not match the ID photo.";
-        } else if (!detailsMatched) {
-            status = VerificationStatus.MANUAL_REVIEW;
-            notes = "Profile created, but owner review is required because the provided details do not match the information extracted from the ID copy.";
-        } else if (!faceMatched) {
-            status = VerificationStatus.MANUAL_REVIEW;
-            notes = "Profile created, but owner review is required because the selfie does not match the photo on the ID copy.";
+            status = VerificationStatus.APPROVED;
+            notes = "Auto-approved: all checks passed";
         } else {
             status = VerificationStatus.MANUAL_REVIEW;
-            notes = "Profile created, but owner review is required because the identity checks did not fully pass.";
+            notes = "Manual review required";
         }
 
-        return new VerificationComputation(
-                status,
-                saIdValid,
-                ocrConfidence,
-                extractField(extractedText, form.getFirstName()),
-                extractField(extractedText, form.getLastName()),
-                idNumberMatch ? form.getIdNumber() : null,
-                detailsMatched,
-                faceScore,
-                faceMatched,
-                notes);
+        return new VerificationComputation(status, saIdValid, ocrConfidence,
+                form.getFirstName(), form.getLastName(),
+                idMatch ? form.getIdNumber() : null,
+                detailsMatched, faceScore, faceMatched, notes);
     }
 
-    private String extractPdfText(Path pdfPath) {
-        try (PDDocument document = Loader.loadPDF(Files.readAllBytes(pdfPath))) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            return stripper.getText(document);
-        } catch (IOException exception) {
-            return "";
-        }
-    }
-
-    private BigDecimal compareSelfieWithId(Path pdfPath, Path selfiePath) {
-        try (PDDocument document = Loader.loadPDF(Files.readAllBytes(pdfPath))) {
-            PDFRenderer renderer = new PDFRenderer(document);
-            BufferedImage idImage = renderer.renderImageWithDPI(0, 140);
-            BufferedImage selfieImage = javax.imageio.ImageIO.read(selfiePath.toFile());
-            if (selfieImage == null) {
-                return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-            }
-
-            long firstHash = averageHash(cropCenter(idImage));
-            long secondHash = averageHash(cropCenter(selfieImage));
-            int distance = Long.bitCount(firstHash ^ secondHash);
-            double similarity = ((64.0 - distance) / 64.0) * 100.0;
-            return BigDecimal.valueOf(Math.max(0.0, similarity)).setScale(2, RoundingMode.HALF_UP);
-        } catch (IOException exception) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-    }
-
-    private BufferedImage cropCenter(BufferedImage source) {
-        int size = Math.min(source.getWidth(), source.getHeight());
-        int x = Math.max(0, (source.getWidth() - size) / 2);
-        int y = Math.max(0, (source.getHeight() - size) / 2);
-        BufferedImage cropped = source.getSubimage(x, y, size, size);
-        Image scaled = cropped.getScaledInstance(32, 32, Image.SCALE_SMOOTH);
-        BufferedImage gray = new BufferedImage(32, 32, BufferedImage.TYPE_BYTE_GRAY);
-        Graphics2D graphics = gray.createGraphics();
-        graphics.drawImage(scaled, 0, 0, null);
-        graphics.dispose();
-        return new ColorConvertOp(ColorSpace.getInstance(ColorSpace.CS_GRAY), null).filter(gray, null);
-    }
-
-    private long averageHash(BufferedImage image) {
-        long total = 0;
-        int[] pixels = new int[32 * 32];
-        image.getRaster().getPixels(0, 0, 32, 32, pixels);
-        for (int pixel : pixels) {
-            total += pixel;
-        }
-        long average = total / pixels.length;
-        long hash = 0L;
-        for (int i = 0; i < 64; i++) {
-            if (pixels[i] >= average) {
-                hash |= (1L << i);
-            }
-        }
-        return hash;
-    }
-
-    private String extractField(String text, String providedValue) {
-        return normalize(text).contains(normalize(providedValue)) ? providedValue : null;
-    }
-
-    private String normalize(String value) {
-        if (value == null) {
-            return "";
-        }
-        return Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .replaceAll("[^A-Za-z0-9 ]", " ")
-                .replaceAll("\\s+", " ")
-                .trim()
-                .toUpperCase(Locale.ROOT);
-    }
-
-    private BorrowerStatus mapBorrowerStatus(VerificationStatus status) {
-        return switch (status) {
-            case APPROVED -> BorrowerStatus.ACTIVE;
-            case MANUAL_REVIEW -> BorrowerStatus.MANUAL_REVIEW;
-            case REJECTED -> BorrowerStatus.VERIFICATION_REJECTED;
-            case PENDING -> BorrowerStatus.PENDING_VERIFICATION;
-        };
-    }
-
+    // Updated toResponse method
     private VerificationResponse toResponse(BorrowerVerification verification) {
+        List<BorrowerDocument> documents = borrowerDocumentRepository.findByBorrowerId(verification.getBorrower().getId());
+
+        BorrowerDocument idDocument = documents.stream()
+                .filter(doc -> doc.getDocumentType() == DocumentType.ID_COPY)
+                .findFirst().orElse(null);
+
+        BorrowerDocument selfieDocument = documents.stream()
+                .filter(doc -> doc.getDocumentType() == DocumentType.SELFIE)
+                .findFirst().orElse(null);
+
+        String baseUrl = environment.getProperty("app.base-url", "http://localhost:8080");
+
         return new VerificationResponse(
                 verification.getId(),
                 verification.getBorrower().getId(),
                 verification.getStatus(),
-                verification.getIdDocument().getId(),
-                verification.getIdDocument().getOriginalFileName(),
-                verification.getIdDocument().getContentType(),
-                verification.getSelfieDocument().getId(),
-                verification.getSelfieDocument().getOriginalFileName(),
-                verification.getSelfieDocument().getContentType(),
+                idDocument != null ? idDocument.getId() : null,
+                idDocument != null ? idDocument.getOriginalFileName() : null,
+                idDocument != null ? idDocument.getContentType() : null,
+                idDocument != null ? baseUrl + "/borrowers/documents/" + idDocument.getId() + "/file" : null,
+                selfieDocument != null ? selfieDocument.getId() : null,
+                selfieDocument != null ? selfieDocument.getOriginalFileName() : null,
+                selfieDocument != null ? selfieDocument.getContentType() : null,
+                selfieDocument != null ? baseUrl + "/borrowers/documents/" + selfieDocument.getId() + "/file" : null,
                 verification.isSaIdValid(),
                 verification.getLatitude(),
                 verification.getLongitude(),
@@ -491,25 +439,49 @@ public class BorrowerVerificationService {
                 verification.getFaceMatchScore(),
                 verification.isFaceMatched(),
                 verification.getReviewNotes(),
-                verification.getReviewedBy() == null ? null : verification.getReviewedBy().getUsername(),
+                verification.getReviewedBy() != null ? verification.getReviewedBy().getUsername() : null,
                 verification.getReviewedAt(),
                 verification.getCreatedAt(),
-                verification.getUpdatedAt());
+                verification.getUpdatedAt()
+        );
     }
-
     private VerificationDocumentPayload readDocument(BorrowerDocument document) {
         try {
+            byte[] content = document.getFileData() != null ? document.getFileData() :
+                    Files.readAllBytes(Path.of(document.getFileUrl()));
             return new VerificationDocumentPayload(
                     document.getOriginalFileName(),
                     document.getContentType(),
-                    Files.readAllBytes(Path.of(document.getFileUrl())));
-        } catch (AccessDeniedException exception) {
-            throw new ResponseStatusException(FORBIDDEN, "You are not allowed to read this document");
-        } catch (IOException exception) {
-            throw new ResponseStatusException(NOT_FOUND, "Verification document could not be read");
+                    content
+            );
+        } catch (AccessDeniedException e) {
+            throw new ResponseStatusException(FORBIDDEN, "Access denied");
+        } catch (IOException e) {
+            throw new ResponseStatusException(NOT_FOUND, "Document not found");
         }
     }
 
+    private BorrowerVerification requireOwnerReview(UUID verificationId) {
+        User currentUser = currentUserService.requireCurrentUser();
+        if (currentUser.getRole() != UserRole.OWNER) {
+            throw new ResponseStatusException(FORBIDDEN, "Only owner can review verifications");
+        }
+        return borrowerVerificationRepository.findById(verificationId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Verification record not found"));
+    }
+
+    private BorrowerStatus mapBorrowerStatus(VerificationStatus status) {
+        return switch (status) {
+            case APPROVED -> BorrowerStatus.ACTIVE;
+            case MANUAL_REVIEW -> BorrowerStatus.MANUAL_REVIEW;
+            case REJECTED -> BorrowerStatus.VERIFICATION_REJECTED;
+            case PENDING -> BorrowerStatus.PENDING_VERIFICATION;
+        };
+    }
+
+    // ==========================
+    // RECORDS
+    // ==========================
     private record VerificationComputation(
             VerificationStatus status,
             boolean saIdValid,
@@ -520,12 +492,13 @@ public class BorrowerVerificationService {
             boolean detailsMatched,
             BigDecimal faceMatchScore,
             boolean faceMatched,
-            String notes) {
-    }
+            String notes
+    ) {}
 
     public record VerificationDocumentPayload(
             String fileName,
             String contentType,
-            byte[] content) {
-    }
+            byte[] content
+    ) {}
+
 }

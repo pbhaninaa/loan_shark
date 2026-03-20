@@ -20,14 +20,30 @@ public class BusinessContactService {
             .orElse(null);
 
         if (contact == null) {
-            return new ApiDtos.LenderContactResponse("", "", "", "");
+            return new ApiDtos.LenderContactResponse(
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "");
         }
 
         return new ApiDtos.LenderContactResponse(
-            contact.getBusinessName(),
-            contact.getPhone(),
-            contact.getEmail(),
-            contact.getAddress()
+                contact.getBusinessName(),
+                contact.getPhone(),
+                contact.getEmail(),
+                contact.getAddress(),
+                contact.getAccountNumber(),
+                contact.getBankName(),
+                contact.getAccountHolderName(),
+                contact.getAccountType(),
+                contact.getBranchCode(),
+                contact.getPaymentReference()
         );
     }
 
@@ -40,14 +56,26 @@ public class BusinessContactService {
         contact.setPhone(request.phone());
         contact.setEmail(request.email());
         contact.setAddress(request.address());
-
+        contact.setAccountNumber(request.accountNumber());
+        contact.setBankName(request.bankName());
+        contact.setAccountHolderName(request.accountHolderName());
+        contact.setAccountType(request.accountType());
+        contact.setBranchCode(request.branchCode());
+        contact.setPaymentReference(request.paymentReference());
         contact = businessContactRepository.save(contact);
 
         return new ApiDtos.LenderContactResponse(
-            contact.getBusinessName(),
-            contact.getPhone(),
-            contact.getEmail(),
-            contact.getAddress()
+                contact.getBusinessName(),
+                contact.getPhone(),
+                contact.getEmail(),
+                contact.getAddress(),
+                contact.getAccountNumber()     ,
+                contact.getBankName(),
+                contact.getAccountHolderName(),
+                contact.getAccountType(),
+                contact.getBranchCode(),
+                contact.getPaymentReference()
+
         );
     }
 }

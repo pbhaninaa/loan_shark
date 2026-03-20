@@ -26,7 +26,7 @@
             v-model="filterLoanId"
             label="Filter by loan"
             clearable
-            placeholder="All my loans"
+            placeholder="All loans"
             :items="loanFilterOptions"
             item-title="title"
             item-value="value"
@@ -68,7 +68,7 @@ const repayments = computed(() => store.repayments);
 const repaymentsPage = computed(() => store.repaymentsPage);
 const filterLoanId = ref(null);
 const loanFilterOptions = computed(() => [
-  { title: "All my loans", value: null },
+  { title: "All loans", value: null },
   ...store.loans.map((loan) => {
     const amount = formatCurrency(loan.loanAmount);
      const issueDate = new Date(loan.issueDate).toLocaleDateString();

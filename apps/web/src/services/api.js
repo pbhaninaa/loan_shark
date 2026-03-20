@@ -6,7 +6,11 @@ import { isTokenExpired } from "../utils/token";
 // Base URL
 // ------------------------------
 // Vercel environment variable (build-time)
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const baseURL = import.meta.env.VITE_API_URL;
+console.log("BASE URL:", baseURL);
+if (!baseURL) {
+  throw new Error("VITE_API_URL is not set");
+}
 
 // ------------------------------
 // Axios instance

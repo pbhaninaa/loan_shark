@@ -31,7 +31,7 @@ import java.time.Instant;
 import java.util.UUID;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.FORBIDDEN;
-
+import org.springframework.core.env.Environment;
 @Service
 public class AuthService {
 
@@ -43,12 +43,10 @@ public class AuthService {
     private final JwtService jwtService;
     private final CurrentUserService currentUserService;
     private final EmailNotificationService emailNotificationService;
+    private final int tokenValidHours;
+    private final String passwordResetBaseUrl;
 
-    @Value("${app.password-reset.base-url:http://localhost:5174}")
-    private String passwordResetBaseUrl;
-
-    @Value("${app.password-reset.token-valid-hours:24}")
-    private int tokenValidHours;
+    private final Environment environment; // Spring environment
 
     public AuthService(
             AuthenticationManager authenticationManager,
@@ -58,7 +56,10 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             CurrentUserService currentUserService,
-            EmailNotificationService emailNotificationService) {
+            EmailNotificationService emailNotificationService,
+            Environment environment, // Spring Environment
+            @Value("${app.password-reset.token-valid-hours:24}") int tokenValidHours) {
+
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.borrowerRepository = borrowerRepository;
@@ -67,6 +68,10 @@ public class AuthService {
         this.jwtService = jwtService;
         this.currentUserService = currentUserService;
         this.emailNotificationService = emailNotificationService;
+        this.environment = environment;
+        this.tokenValidHours = tokenValidHours;
+
+        this.passwordResetBaseUrl = environment.getProperty("frontend.base-url", "http://localhost:5173");
     }
 
     public SetupStatusResponse setupStatus() {
@@ -191,7 +196,7 @@ public class AuthService {
             prt.setToken(token);
             prt.setExpiresAt(Instant.now().plusSeconds(tokenValidHours * 3600L));
             passwordResetTokenRepository.save(prt);
-            resetLink = passwordResetBaseUrl + "/#/reset-password?token=" + token;
+            resetLink = passwordResetBaseUrl + "/reset-password?token=" + token;
 
             String email = null;
             if (user.getRole() == UserRole.BORROWER) {

@@ -55,7 +55,7 @@
     <v-card v-if="store.isOwner" class="mt-4">
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-domain</v-icon>
-        Business Contact Details
+        Business Details
       </v-card-title>
       <v-divider />
       <v-card-text>
@@ -68,20 +68,21 @@
               <AppTextField
                 v-model="businessContactForm.businessName"
                 label="Business name"
+                required
                 prepend-inner-icon="mdi-domain"
               />
             </v-col>
             <v-col cols="12" md="6">
               <AppTextField
                 v-model="businessContactForm.phone"
-                label="Phone"
+                label="Phone" required
                 prepend-inner-icon="mdi-phone-outline"
               />
             </v-col>
             <v-col cols="12" md="6">
               <AppTextField
                 v-model="businessContactForm.email"
-                label="Email"
+                label="Email" required
                 type="email"
                 prepend-inner-icon="mdi-email-outline"
               />
@@ -89,9 +90,61 @@
             <v-col cols="12" md="6">
               <AppTextField
                 v-model="businessContactForm.address"
-                label="Address"
+                label="Address" required
                 prepend-inner-icon="mdi-map-marker-outline"
               />
+            </v-col>
+           
+             <v-col cols="12" md="6">
+    <AppTextField
+      v-model="businessContactForm.bankName"
+      label="Bank Name" required
+      prepend-inner-icon="mdi-bank-outline"
+    />
+  </v-col>
+
+  <v-col cols="12" md="6">
+    <AppTextField
+      v-model="businessContactForm.accountHolderName"
+      label="Account Holder Name" required
+      prepend-inner-icon="mdi-account-outline"
+    />
+  </v-col>
+
+  <v-col cols="12" md="6">
+    <AppTextField
+      v-model="businessContactForm.accountNumber"
+      label="Account Number" required
+      prepend-inner-icon="mdi-bank-outline"
+    />
+  </v-col>
+
+  <v-col cols="12" md="6">
+    <AppTextField
+      v-model="businessContactForm.accountType"
+      label="Account Type (Savings/Cheque)" required
+      prepend-inner-icon="mdi-credit-card-outline"
+    />
+  </v-col>
+
+  <v-col cols="12" md="6">
+    <AppTextField
+      v-model="businessContactForm.branchCode"
+      label="Branch Code" required
+      prepend-inner-icon="mdi-source-branch"
+    />
+  </v-col>
+
+  <v-col cols="12" md=""6>
+    <AppTextField
+      v-model="businessContactForm.paymentReference"
+      label="Payment Reference Instruction"
+      prepend-inner-icon="mdi-information-outline" required
+      hint="E.g. Use your ID number or Loan ID as reference"
+    />
+  </v-col>
+            <v-col cols="12" md="6">
+             
             </v-col>
           </v-row>
           <div class="mt-3">
@@ -163,7 +216,13 @@ const businessContactForm = reactive({
   businessName: "",
   phone: "",
   email: "",
-  address: ""
+  address: "",
+  bankName: "",
+  accountHolderName: "",
+  accountNumber: "",
+  accountType: "",
+  branchCode: "",
+  paymentReference: "Use your ID number or Loan ID as reference"
 });
 
 // Load user data
@@ -187,10 +246,16 @@ onMounted(async () => {
     if (store.isOwner) {
       try {
         const contact = await store.fetchLenderContact();
-        businessContactForm.businessName = contact.name || "";
+        businessContactForm.businessName = contact.businessName || "";
         businessContactForm.phone = contact.phone || "";
         businessContactForm.email = contact.email || "";
         businessContactForm.address = contact.address || "";
+        businessContactForm.accountNumber = contact.accountNumber||"";
+        businessContactForm.bankName = contact.bankName || "";
+businessContactForm.accountHolderName = contact.accountHolderName || "";
+businessContactForm.accountType = contact.accountType || "";
+businessContactForm.branchCode = contact.branchCode || "";
+businessContactForm.paymentReference = contact.paymentReference || "";
       } catch (contactError) {
         console.error("Failed to load business contact:", contactError);
       }
@@ -224,7 +289,7 @@ async function saveBusinessContact() {
   error.value = "";
   try {
     await store.updateBusinessContact(businessContactForm);
-    successMessage.value = "Business contact details saved successfully.";
+    successMessage.value = "Business details saved successfully.";
   } catch (e) {
     error.value = e.response?.data?.message || e.message || "Failed to save business contact";
   } finally {

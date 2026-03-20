@@ -4,6 +4,9 @@
     :label="label"
     :prepend-inner-icon="prependInnerIcon"
     v-bind="$attrs"
+    :rules="rules"           
+    :error="error"           
+    :error-messages="errorMessages" 
     @update:model-value="$emit('update:modelValue', $event)"
   />
 </template>
@@ -25,6 +28,18 @@ defineProps({
   prependInnerIcon: {
     type: String,
     default: undefined
+  },
+  rules: {
+    type: Array,
+    default: () => []
+  },
+  error: {
+    type: Boolean,
+    default: false
+  },
+  errorMessages: {
+    type: [String, Array],
+    default: () => []
   }
 });
 
