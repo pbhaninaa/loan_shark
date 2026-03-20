@@ -173,7 +173,7 @@
 <AppTextField
   v-model="ownerForm.paymentLink"
   label="Payment Link (e.g. Pay me from Capitec App)"
-  prepend-inner-icon="mdi-link-list-text"
+  prepend-inner-icon="mdi-link"
   hint="What clients should use as link when paying"
   required
 />
