@@ -38,21 +38,40 @@
         <template #item.status="{ item }">
           <v-chip size="small" :color="scheduleColor(item.status)" variant="tonal">{{ item.status }}</v-chip>
         </template>
-        <template #item.actions="{ item }">
-          <div class="text-right">
-            <AppActionButton
-              v-if="item.status !== 'PAID' && Number(item.amountDue) > 0"
-              size="small"
-              color="primary"
-              variant="tonal"
-              text="Pay"
-              prepend-icon="mdi-cash-check"
-              :loading="payLoading && payingInstallment === item.installmentNumber"
-              @click="openPayDialog(item)"
-            />
-            <span v-else class="text-medium-emphasis text-caption">—</span>
-          </div>
-        </template>
+   
+       <template #item.actions="{ item }">
+  <div class="d-flex ga-2 justify-end">
+
+    <!-- Pay Button -->
+    <AppActionButton
+      v-if="item.status !== 'PAID' && Number(item.amountDue) > 0"
+      size="small"
+      color="primary"
+      variant="tonal"
+      text="Pay"
+      prepend-icon="mdi-cash-check"
+      :loading="payLoading && payingInstallment === item.installmentNumber"
+      @click="openPayDialog(item)"
+    />
+
+    <v-tooltip text="Pay instantly using Capitec PayMe">
+      <template #activator="{ props }">
+        <AppActionButton
+          v-bind="props"
+          v-if="item.status !== 'PAID'"
+          size="small"
+          color="success"
+          variant="flat"
+          text="Instant Pay"
+          prepend-icon="mdi-lightning-bolt"
+          @click="instantPay(item)"
+        />
+      </template>
+    </v-tooltip>
+
+    <!-- <span v-else class="text-medium-emphasis text-caption">—</span> -->
+  </div>
+</template>
         <template #footer>
           <AppPaginationFooter
             v-model="page"
@@ -161,7 +180,7 @@ const payError = ref("");
 const message = ref("");
 const payingInstallment = ref(null);
 const proofFile = ref(null);
-
+const payMeLink = "https://pay.capitecbank.co.za/payme/RJLRY3";
 const payForm = ref({
   installmentNumber: null,
   amountPaid: 0,
@@ -201,7 +220,9 @@ function normalizeLoanId(val) {
   if (s === "" || s === "NaN" || s === "undefined") return null;
   return s;
 }
-
+function instantPay(item) {
+    window.location.href = payMeLink;
+}
 function onLoanSelected(val) {
   const id = normalizeLoanId(val);
   selectedLoanId.value = id;
