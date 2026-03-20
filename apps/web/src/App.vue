@@ -242,6 +242,7 @@ const navItems = computed(() => {
           { title: "My payment history", to: "/my-portal/payment-history", icon: "mdi-history", badgeKey: "overdueSchedules" },
           { title: "Notifications", to: "/my-portal/notifications", icon: "mdi-bell-outline", badgeKey: "unreadNotifications" },
           { title: "My account", to: "/account", icon: "mdi-account-cog-outline" },
+        { title: "Business Acount", to: "/my-portal/payment-details", icon:"mdi-cash-check" },
           { title: "Help & Contact", to: "/my-portal/help", icon: "mdi-help-circle-outline" }
         ]
       : [
