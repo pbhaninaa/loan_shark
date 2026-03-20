@@ -20,6 +20,7 @@ import BorrowerVerificationStatusView from "../views/BorrowerVerificationStatusV
 import AccountView from "../views/AccountView.vue";
 import ResetPasswordView from "../views/ResetPasswordView.vue";
 import { useAppStore } from "../store";
+import PaymentDetails from "../components/ui/PaymentDetails.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -36,6 +37,7 @@ const router = createRouter({
     { path: "/my-portal/schedule", name: "borrower-schedule", component: BorrowerScheduleView, meta: { auth: true, borrowerOnly: true } },
     { path: "/my-portal/payment-history", name: "borrower-payment-history", component: BorrowerPaymentHistoryView, meta: { auth: true, borrowerOnly: true } },
     { path: "/my-portal/notifications", name: "borrower-notifications", component: BorrowerNotificationsView, meta: { auth: true, borrowerOnly: true } },
+    { path: "/my-portal/payment-details", name: "payment-details", component: PaymentDetails, meta: { auth: true, borrowerOnly: true } },
     { path: "/my-portal/help", name: "borrower-help", component: BorrowerHelpView, meta: { auth: true, borrowerOnly: true } },
     { path: "/borrowers", name: "borrowers", component: BorrowersView, meta: { auth: true } },
     { path: "/loans", name: "loans", component: LoansView, meta: { auth: true } },

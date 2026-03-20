@@ -232,7 +232,7 @@ const pendingHeaders = computed(() => [
   { title: "Risk", key: "riskBand" },
   { title: "Amount", key: "loanAmount" },
   { title: "Total", key: "totalAmount" },
-  { title: "Actions", key: "actions" }
+  { title: "Actions", key: "actions",   sortable: false }
 ]);
 
 const loansTableHeaders = computed(() => [

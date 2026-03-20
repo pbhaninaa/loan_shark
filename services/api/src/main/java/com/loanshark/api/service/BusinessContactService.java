@@ -30,7 +30,9 @@ public class BusinessContactService {
                     "",
                     "",
                     "",
-                    "");
+                    "",
+                    ""
+            );
         }
 
         return new ApiDtos.LenderContactResponse(
@@ -43,7 +45,8 @@ public class BusinessContactService {
                 contact.getAccountHolderName(),
                 contact.getAccountType(),
                 contact.getBranchCode(),
-                contact.getPaymentReference()
+                contact.getPaymentReference(),
+                contact.getPaymentLink()
         );
     }
 
@@ -63,6 +66,7 @@ public class BusinessContactService {
         contact.setBranchCode(request.branchCode());
         contact.setPaymentReference(request.paymentReference());
         contact = businessContactRepository.save(contact);
+        contact.setPaymentLink(request.paymentLink());
 
         return new ApiDtos.LenderContactResponse(
                 contact.getBusinessName(),
@@ -74,7 +78,8 @@ public class BusinessContactService {
                 contact.getAccountHolderName(),
                 contact.getAccountType(),
                 contact.getBranchCode(),
-                contact.getPaymentReference()
+                contact.getPaymentReference(),
+                contact.getPaymentLink()
 
         );
     }

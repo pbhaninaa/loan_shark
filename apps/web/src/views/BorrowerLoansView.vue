@@ -22,6 +22,7 @@
         <v-icon color="primary">mdi-information-outline</v-icon>
         Loan Terms & Conditions
       </v-card-title>
+      <v-divider/>
       <v-card-text>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
           <strong>Important:</strong> Interest and terms are set by the business. Review these settings carefully before applying for a loan.
@@ -164,7 +165,7 @@ const loanHeaders = [
   { title: "Total", value: "totalAmount" },
   { title: "Due", value: "dueDate" },
   {title:"Pending Amount",value:"pendingAmount"},
-  { title: "Actions", value: "actions" } 
+  { title: "Actions", value: "actions",   sortable: false } 
 ];
 
 const applyForm = reactive({

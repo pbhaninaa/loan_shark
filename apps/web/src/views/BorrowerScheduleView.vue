@@ -5,9 +5,18 @@
       description="Choose one of your loans to review the exact installment plan and status."
     />
 
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
-      {{ error }}
-    </v-alert>
+ <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
+  {{ error }}
+</v-alert>
+
+<v-alert
+  v-if="message"
+  type="info"
+  variant="tonal"
+  class="mb-4"
+>
+  {{ message }}
+</v-alert>
 
     <AppTableCard title="Loan Selection" :count-label="selectedLoanLabel" chip-color="secondary">
       <AppSelectField
@@ -23,7 +32,7 @@
 
     <AppTableCard title="Installment Schedule" :count-label="`${schedule.length} installments`" chip-color="info">
       <p class="text-body-2 text-medium-emphasis mb-3">
-        Suggested installments and due dates. You are not bound to these amounts—pay any amount you can, in full or in parts, until the loan is paid off.
+        Suggested installments and due dates. You are not bound to these amounts pay any amount you can, in full or in parts, until the loan is paid off.
       </p>
       <AppDataTable
         title=""
@@ -38,21 +47,40 @@
         <template #item.status="{ item }">
           <v-chip size="small" :color="scheduleColor(item.status)" variant="tonal">{{ item.status }}</v-chip>
         </template>
-        <template #item.actions="{ item }">
-          <div class="text-right">
-            <AppActionButton
-              v-if="item.status !== 'PAID' && Number(item.amountDue) > 0"
-              size="small"
-              color="primary"
-              variant="tonal"
-              text="Pay"
-              prepend-icon="mdi-cash-check"
-              :loading="payLoading && payingInstallment === item.installmentNumber"
-              @click="openPayDialog(item)"
-            />
-            <span v-else class="text-medium-emphasis text-caption">—</span>
-          </div>
-        </template>
+   
+       <template #item.actions="{ item }">
+  <div class="d-flex ga-2 justify-center">
+
+    <!-- Pay Button -->
+    <AppActionButton
+      v-if="item.status !== 'PAID' && Number(item.amountDue) > 0"
+      size="small"
+      color="primary"
+      variant="tonal"
+      text="Pay"
+      prepend-icon="mdi-cash-check"
+      :loading="payLoading && payingInstallment === item.installmentNumber"
+      @click="openPayDialog(item)"
+    />
+
+    <v-tooltip text="Pay instantly using Capitec PayMe">
+      <template #activator="{ props }">
+        <AppActionButton
+          v-bind="props"
+          v-if="item.status !== 'PAID'"
+          size="small"
+          color="success"
+          variant="flat"
+          text="Instant Pay"
+          prepend-icon="mdi-lightning-bolt"
+          @click="instantPay()"
+        />
+      </template>
+    </v-tooltip>
+
+    <!-- <span v-else class="text-medium-emphasis text-caption">—</span> -->
+  </div>
+</template>
         <template #footer>
           <AppPaginationFooter
             v-model="page"
@@ -161,7 +189,6 @@ const payError = ref("");
 const message = ref("");
 const payingInstallment = ref(null);
 const proofFile = ref(null);
-
 const payForm = ref({
   installmentNumber: null,
   amountPaid: 0,
@@ -174,8 +201,9 @@ const scheduleHeaders = [
   { title: "Installment", key: "installmentNumber" },
   { title: "Due Date", key: "dueDate" },
   { title: "Amount", key: "amountDue" },
-  { title: "Status", key: "status" },
-  { title: "Actions", key: "actions" }
+  { title: "Status", key: "status",   sortable: false },
+  { title: "Actions", key: "actions",
+  align:"center",   sortable: false}
 ];
 
 const loanOptions = computed(() =>
@@ -201,7 +229,19 @@ function normalizeLoanId(val) {
   if (s === "" || s === "NaN" || s === "undefined") return null;
   return s;
 }
+async function instantPay() {
+  try {
+    // Call the store method which returns { message, timestamp, ... }
+    const result = await store.instantPay();
 
+    // Display the message in the UI
+    message.value = result?.message || "Payment action completed.";
+    console.log("Instant Pay result:", result);
+  } catch (error) {
+    message.value = "Failed to initiate Instant Pay. Please try again.";
+    console.error("Instant Pay error:", error);
+  }
+}
 function onLoanSelected(val) {
   const id = normalizeLoanId(val);
   selectedLoanId.value = id;

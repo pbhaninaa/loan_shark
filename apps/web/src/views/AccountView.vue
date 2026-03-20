@@ -1,9 +1,7 @@
 <template>
   <div class="page-shell">
-    <AppPageHeader
-      title="My account"
-      description="Your login details and email. You must add your email before you can use the system; it is also used to send password reset links."
-    />
+    <AppPageHeader title="My account"
+      description="Your login details and email. You must add your email before you can use the system; it is also used to send password reset links." />
 
     <!-- Email warning -->
     <v-alert v-if="me && !me.email?.trim()" type="warning" variant="tonal" class="mb-4" prominent>
@@ -33,13 +31,8 @@
           <v-list-item title="Role" :subtitle="me.role" />
         </v-list>
         <v-form @submit.prevent="saveEmail" class="mt-4">
-          <AppTextField
-            v-model="emailInput"
-            label="Email"
-            type="email"
-            prepend-inner-icon="mdi-email-outline"
-            hint="Required for password reset. Add or update your email to receive reset links."
-          />
+          <AppTextField v-model="emailInput" label="Email" type="email" prepend-inner-icon="mdi-email-outline"
+            hint="Required for password reset. Add or update your email to receive reset links." />
           <div class="mt-3">
             <AppActionButton text="Save email" type="submit" :loading="saving" />
           </div>
@@ -60,95 +53,70 @@
       <v-divider />
       <v-card-text>
         <p class="text-body-2 text-medium-emphasis mb-4">
-          These details are displayed to borrowers on the Help page so they can contact you with questions about their loans.
+          These details are displayed to borrowers on the Help page so they can contact you with questions about their
+          loans.
         </p>
         <v-form @submit.prevent="saveBusinessContact">
           <v-row>
             <v-col cols="12" md="6">
-              <AppTextField
-                v-model="businessContactForm.businessName"
-                label="Business name"
-                required
-                prepend-inner-icon="mdi-domain"
-              />
+              <AppTextField v-model="businessContactForm.businessName" label="Business name" required
+                prepend-inner-icon="mdi-domain" />
             </v-col>
             <v-col cols="12" md="6">
-              <AppTextField
-                v-model="businessContactForm.phone"
-                label="Phone" required
-                prepend-inner-icon="mdi-phone-outline"
-              />
+              <AppTextField v-model="businessContactForm.phone" label="Phone" required
+                prepend-inner-icon="mdi-phone-outline" />
             </v-col>
             <v-col cols="12" md="6">
-              <AppTextField
-                v-model="businessContactForm.email"
-                label="Email" required
-                type="email"
-                prepend-inner-icon="mdi-email-outline"
-              />
+              <AppTextField v-model="businessContactForm.email" label="Email" required type="email"
+                prepend-inner-icon="mdi-email-outline" />
             </v-col>
             <v-col cols="12" md="6">
-              <AppTextField
-                v-model="businessContactForm.address"
-                label="Address" required
-                prepend-inner-icon="mdi-map-marker-outline"
-              />
+              <AppTextField v-model="businessContactForm.address" label="Address" required
+                prepend-inner-icon="mdi-map-marker-outline" />
             </v-col>
-           
-             <v-col cols="12" md="6">
-    <AppTextField
-      v-model="businessContactForm.bankName"
-      label="Bank Name" required
-      prepend-inner-icon="mdi-bank-outline"
-    />
-  </v-col>
 
-  <v-col cols="12" md="6">
-    <AppTextField
-      v-model="businessContactForm.accountHolderName"
-      label="Account Holder Name" required
-      prepend-inner-icon="mdi-account-outline"
-    />
-  </v-col>
-
-  <v-col cols="12" md="6">
-    <AppTextField
-      v-model="businessContactForm.accountNumber"
-      label="Account Number" required
-      prepend-inner-icon="mdi-bank-outline"
-    />
-  </v-col>
-
-  <v-col cols="12" md="6">
-    <AppTextField
-      v-model="businessContactForm.accountType"
-      label="Account Type (Savings/Cheque)" required
-      prepend-inner-icon="mdi-credit-card-outline"
-    />
-  </v-col>
-
-  <v-col cols="12" md="6">
-    <AppTextField
-      v-model="businessContactForm.branchCode"
-      label="Branch Code" required
-      prepend-inner-icon="mdi-source-branch"
-    />
-  </v-col>
-
-  <v-col cols="12" md=""6>
-    <AppTextField
-      v-model="businessContactForm.paymentReference"
-      label="Payment Reference Instruction"
-      prepend-inner-icon="mdi-information-outline" required
-      hint="E.g. Use your ID number or Loan ID as reference"
-    />
-  </v-col>
             <v-col cols="12" md="6">
-             
+              <AppTextField v-model="businessContactForm.bankName" label="Bank Name" required
+                prepend-inner-icon="mdi-bank-outline" />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <AppTextField v-model="businessContactForm.accountHolderName" label="Account Holder Name" required
+                prepend-inner-icon="mdi-account-outline" />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <AppTextField v-model="businessContactForm.accountNumber" label="Account Number" required
+                prepend-inner-icon="mdi-bank-outline" />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <AppTextField v-model="businessContactForm.accountType" label="Account Type (Savings/Cheque)" required
+                prepend-inner-icon="mdi-credit-card-outline" />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <AppTextField v-model="businessContactForm.branchCode" label="Branch Code" required
+                prepend-inner-icon="mdi-source-branch" />
+            </v-col>
+
+            <v-col cols="12" md="6" >
+              <AppTextField v-model="businessContactForm.paymentReference" label="Payment Reference Instruction"
+                prepend-inner-icon="mdi-information-outline" required
+                hint="E.g. Use your ID number or Loan ID as reference" />
+            </v-col>
+               <v-col cols="12">
+              <AppTextField v-model="businessContactForm.paymentLink" label="Payment Link"
+                prepend-inner-icon="mdi-link" required
+                hint="E.g. Use link for payment" />
+            </v-col>
+            <v-col cols="12" md="6">
+
             </v-col>
           </v-row>
           <div class="mt-3">
-            <AppActionButton text="Save business contact" type="submit" :loading="savingContact" prepend-icon="mdi-content-save" />
+            <AppActionButton text="Save business contact" type="submit" :loading="savingContact"
+              prepend-icon="mdi-content-save" />
           </div>
         </v-form>
       </v-card-text>
@@ -163,22 +131,20 @@
       <v-divider />
       <v-card-text>
         <p class="text-body-2 text-medium-emphasis mb-3">
-          Remove all history (loans, repayments, blacklist, notifications, audit log, etc.). Users, clients and their profiles are kept. Business capital is set to zero.
+          Remove all history (loans, repayments, blacklist, notifications, audit log, etc.). Users, clients and their
+          profiles are kept. Business capital is set to zero.
         </p>
         <v-dialog v-model="showResetConfirm" max-width="440" persistent>
           <template #activator="{ props }">
-            <AppActionButton
-              color="error"
-              variant="tonal"
-              text="Reset history"
-              prepend-icon="mdi-database-remove-outline"
-              v-bind="props"
-            />
+            <AppActionButton color="error" variant="tonal" text="Reset history"
+              prepend-icon="mdi-database-remove-outline" v-bind="props" />
           </template>
           <v-card>
             <v-card-title>Confirm reset</v-card-title>
             <v-card-text>
-              This will permanently delete all loans, repayments, blacklist entries, notifications, and reset business capital. Users and clients (and their profiles) will remain. Continue?
+              This will permanently delete all loans, repayments, blacklist entries, notifications, and reset business
+              capital.
+              Users and clients (and their profiles) will remain. Continue?
             </v-card-text>
             <v-card-actions>
               <v-spacer />
@@ -222,7 +188,9 @@ const businessContactForm = reactive({
   accountNumber: "",
   accountType: "",
   branchCode: "",
-  paymentReference: "Use your ID number or Loan ID as reference"
+  paymentReference: "Use your ID number or Loan ID as reference",
+  paymentLink: ""
+  
 });
 
 // Load user data
@@ -250,12 +218,13 @@ onMounted(async () => {
         businessContactForm.phone = contact.phone || "";
         businessContactForm.email = contact.email || "";
         businessContactForm.address = contact.address || "";
-        businessContactForm.accountNumber = contact.accountNumber||"";
+        businessContactForm.accountNumber = contact.accountNumber || "";
         businessContactForm.bankName = contact.bankName || "";
-businessContactForm.accountHolderName = contact.accountHolderName || "";
-businessContactForm.accountType = contact.accountType || "";
-businessContactForm.branchCode = contact.branchCode || "";
-businessContactForm.paymentReference = contact.paymentReference || "";
+        businessContactForm.accountHolderName = contact.accountHolderName || "";
+        businessContactForm.accountType = contact.accountType || "";
+        businessContactForm.branchCode = contact.branchCode || "";
+        businessContactForm.paymentReference = contact.paymentReference || "";
+        businessContactForm.paymentLink = contact.paymentLink || "";
       } catch (contactError) {
         console.error("Failed to load business contact:", contactError);
       }

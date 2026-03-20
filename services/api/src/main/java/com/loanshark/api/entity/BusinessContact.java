@@ -49,6 +49,10 @@ public class BusinessContact {
 
     @Column(nullable = false)
     private String paymentReference;
+
+    @Column(nullable = false)
+    private String paymentLink;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
