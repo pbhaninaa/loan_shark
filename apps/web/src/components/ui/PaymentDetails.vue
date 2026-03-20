@@ -54,14 +54,15 @@
               <v-card-title class="white--text">
                 QR Code Payment( for Capitec Users )
               </v-card-title>
-              <v-card-text class="d-flex justify-center align-center">
-                <qrcode-vue
-                  v-if="qrValue"
-                  :value="qrValue"
-                  :size="200"
-                  level="H"
-                />
-              </v-card-text>
+              <v-card-text  class="d-flex justify-center align-center">
+ <qrcode-vue
+  v-if="qrValue"
+  :value="qrValue"
+  :size="200"
+  level="H"
+  @click="instantPay"
+/>
+</v-card-text>
             </v-card>
           </v-col>
         </v-row>
@@ -120,7 +121,13 @@ const qrValue = computed(() => {
   // Example: BankName|AccountNumber|Reference
   return `https://pay.capitecbank.co.za/payme/RJLRY3`;
 });
-
+async function instantPay() {
+  try {
+    await store.instantPay();
+  } catch (error) {
+    console.error("Payment failed", error);
+  }
+}
 // Format keys for display
 const formatKey = (key) =>
   key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
