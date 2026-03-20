@@ -1,60 +1,72 @@
 <template>
   <div class="page-shell">
     <!-- Page Header -->
-    <AppPageHeader title="Payment Details"
-      description="Bank information for your loan payments. ⚡ Please copy carefully." />
+    <AppPageHeader
+      title="Payment Details"
+      description="Bank information for your loan payments. ⚡ Please copy carefully."
+    />
 
     <!-- Loading Skeleton -->
-    <v-skeleton-loader v-if="loading" type="card" class="mb-4" height="250px"></v-skeleton-loader>
+    <v-skeleton-loader
+      v-if="loading"
+      type="card"
+      class="mb-4"
+      height="250px"
+    ></v-skeleton-loader>
 
     <!-- Payment Details Card -->
-    <v-card v-else elevation="2" class="mb-4">
+    <v-card v-else class="mb-4" elevation="2">
       <v-card-title class="d-flex align-center ga-2">
         <v-icon color="primary">mdi-bank</v-icon>
         Bank Account Information
       </v-card-title>
-<v-divider/>
+
+      <v-divider />
+
+      <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+        <strong>Important:</strong> Please verify the details when making payments, as we are not responsible for any mistakes.
+      </v-alert>
+
       <v-card-text>
         <v-row dense>
           <!-- Left Column: Bank Details -->
           <v-col cols="12" md="6">
             <v-row dense>
-             <v-col cols="12" v-for="(value, key) in paymentDetails" :key="key">
-  <div class="d-flex align-center ga-1">
-    <div :class="[
-          'text-h6 font-weight-bold',
-          key.includes('Ref') ? 'blinks' : ''
-        ]">
-      {{ value }}
-    </div>
-  </div>
-  <div class="text-caption text-medium-emphasis">{{ formatKey(key) }}</div>
-</v-col>
+              <v-col cols="12" v-for="(value, key) in paymentDetails" :key="key">
+                <div class="d-flex align-center ga-1">
+                  <div
+                    :class="[
+                      'text-h6 font-weight-bold',
+                      key.includes('Ref') ? 'blinks' : ''
+                    ]"
+                  >
+                    {{ value }}
+                  </div>
+                </div>
+                <div class="text-caption text-medium-emphasis">{{ formatKey(key) }}</div>
+              </v-col>
             </v-row>
           </v-col>
 
           <!-- Right Column: QR Code -->
           <v-col cols="12" md="6" class="d-flex justify-center align-center">
-         <v-card class="mb-4 qr-card elevation-2">
-  <v-card-title class="white--text">
-    QR Code Payment
-  </v-card-title>
-  <v-card-text class="d-flex justify-center align-center">
-    <qrcode-vue
-      v-if="qrValue"
-      :value="qrValue"
-      :size="200"
-      level="H"
-    />
-  </v-card-text>
-</v-card>
-
+            <v-card class="mb-4 qr-card elevation-2">
+              <v-card-title class="white--text">
+                QR Code Payment
+              </v-card-title>
+              <v-card-text class="d-flex justify-center align-center">
+                <qrcode-vue
+                  v-if="qrValue"
+                  :value="qrValue"
+                  :size="200"
+                  level="H"
+                />
+              </v-card-text>
+            </v-card>
           </v-col>
         </v-row>
       </v-card-text>
     </v-card>
-
-
   </div>
 </template>
 
@@ -101,8 +113,6 @@ const loadPaymentDetails = async () => {
   }
 };
 
-
-
 // Generate QR code string
 const qrValue = computed(() => {
   const pd = paymentDetails.value;
@@ -119,12 +129,10 @@ onMounted(loadPaymentDetails);
 </script>
 
 <style scoped>
-
-
 .qr-card {
-  background-color: rgb(63, 81, 87); /* Use your primary color */
+  background-color: rgb(63, 81, 87);
   border-radius: 12px;
-  padding: 16px; /* same padding all around */
+  padding: 16px;
   color: white;
 }
 
@@ -135,11 +143,12 @@ onMounted(loadPaymentDetails);
 }
 
 .qr-card .v-card-text {
-  padding: 16px; /* consistent padding around QR code */
+  padding: 16px;
 }
+
 .blinks {
   animation: blink 1s step-start infinite;
-  color: rgb(253, 249, 9); /* optional color */
+  color: rgb(253, 249, 9);
 }
 
 @keyframes blink {
