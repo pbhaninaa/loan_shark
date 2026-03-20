@@ -132,7 +132,10 @@ public final class ApiDtos {
             String branchCode,
 
             @NotBlank(message = "Payment reference instruction is required")
-            String paymentReference
+            String paymentReference,
+
+            @NotBlank(message = "Payment link is required")
+            String paymentLink
 
     ) {}
 
@@ -477,6 +480,8 @@ public final class ApiDtos {
             String accountHolderName,
             String accountType,
             String branchCode,
-            String paymentReference
-    ) {}
+            String paymentReference,
+            String paymentLink) {
+
+    }
 }

@@ -266,7 +266,7 @@ export const useAppStore = defineStore("app", {
     },
     async fetchMyBorrower() {
       const { data } = await api.get("/borrowers/me");
-      this.borrowerProfile = data;
+      this.bpaymentLinkorrowerProfile = data;
       this.setBorrowerStatus(data.status);
       return data;
     },
@@ -276,9 +276,7 @@ export const useAppStore = defineStore("app", {
       return data;
     },
    async  instantPay() {
-  const deepLink = "capitec://payme/RJLRY3"; // deep link for Capitec app
-  const fallback = "https://pay.capitecbank.co.za/payme/RJLRY3"; // web fallback
-
+    const businessDatails = await this.fetchLenderContact()
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   if (!isMobile) {
     return {
@@ -293,7 +291,7 @@ export const useAppStore = defineStore("app", {
     // Attempt to open the app using iframe
     const iframe = document.createElement("iframe");
     iframe.style.display = "none";
-    iframe.src = deepLink;
+    iframe.src = businessDatails.value.paymentLink;
     document.body.appendChild(iframe);
 
     // Timeout to check if app opened

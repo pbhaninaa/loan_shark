@@ -33,8 +33,8 @@
           <v-col cols="12" md="6">
             <v-row dense>
               <v-col cols="12" v-for="(value, key) in paymentDetails" :key="key">
-                <div class="d-flex align-center ga-1">
-                  <div
+                <div v-if="!key.toUpperCase().includes('LINK')" class="d-flex align-center ga-1">
+                  <div 
                     :class="[
                       'text-h6 font-weight-bold',
                       key.includes('Ref') ? 'blinks' : ''
@@ -43,13 +43,21 @@
                     {{ value }}
                   </div>
                 </div>
-                <div class="text-caption text-medium-emphasis">{{ formatKey(key) }}</div>
+                <div v-if="!key.toUpperCase().includes('LINK')"  class="text-caption text-medium-emphasis">{{ formatKey(key) }}</div>
               </v-col>
             </v-row>
           </v-col>
 
           <!-- Right Column: QR Code -->
           <v-col cols="12" md="6" class="d-flex flex-column align-center">
+             <v-alert
+              v-if="message"
+              type="info"
+              variant="tonal"
+              class="mt-2 mb-5"
+            >
+              {{ message }}
+            </v-alert>
             <v-card class="mb-4 qr-card elevation-2 primary">
               <v-card-title class="white--text">
                 QR Code Payment (for Capitec Users)
@@ -67,14 +75,7 @@
             </v-card>
 
             <!-- Message from instantPay -->
-            <v-alert
-              v-if="message"
-              type="info"
-              variant="tonal"
-              class="mt-2"
-            >
-              {{ message }}
-            </v-alert>
+           
           </v-col>
         </v-row>
       </v-card-text>
@@ -97,7 +98,8 @@ const paymentDetails = ref({
   accountHolderName: "",
   accountType: "",
   branchCode: "",
-  paymentReference: ""
+  paymentReference: "",
+  paymentLink:""
 });
 const loading = ref(true);
 const message = ref(""); // <-- message to display after instantPay
@@ -116,7 +118,8 @@ const loadPaymentDetails = async () => {
         accountHolderName: data.accountHolderName || "",
         accountType: data.accountType || "",
         branchCode: data.branchCode || "",
-        paymentReference: data.paymentReference || "User ID Number as a reference"
+        paymentReference: data.paymentReference || "User ID Number as a reference",
+        paymentLink:data.paymentLink || ""
       });
     }
   } catch (err) {
@@ -128,9 +131,7 @@ const loadPaymentDetails = async () => {
 
 // Generate QR code string
 const qrValue = computed(() => {
-  const pd = paymentDetails.value;
-  if (!pd.bankName || !pd.accountNumber) return "";
-  return `https://pay.capitecbank.co.za/payme/RJLRY3`;
+  return paymentDetails.value.paymentLink;
 });
 
 // Handle instant pay click
