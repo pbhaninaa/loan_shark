@@ -275,6 +275,10 @@ export const useAppStore = defineStore("app", {
       this.verification = data;
       return data;
     },
+    async  instantPay() {
+      const payMeLink = "https://pay.capitecbank.co.za/payme/RJLRY3";
+    window.location.href = payMeLink;
+    },
     async fetchLoanSchedule(loanId) {
       const id = loanId != null && String(loanId).trim() !== "" && String(loanId) !== "NaN" ? String(loanId).trim() : null;
       if (!id) {

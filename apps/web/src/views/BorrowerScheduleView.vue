@@ -64,7 +64,7 @@
           variant="flat"
           text="Instant Pay"
           prepend-icon="mdi-lightning-bolt"
-          @click="instantPay(item)"
+          @click="instantPay()"
         />
       </template>
     </v-tooltip>
@@ -180,7 +180,6 @@ const payError = ref("");
 const message = ref("");
 const payingInstallment = ref(null);
 const proofFile = ref(null);
-const payMeLink = "https://pay.capitecbank.co.za/payme/RJLRY3";
 const payForm = ref({
   installmentNumber: null,
   amountPaid: 0,
@@ -220,8 +219,8 @@ function normalizeLoanId(val) {
   if (s === "" || s === "NaN" || s === "undefined") return null;
   return s;
 }
-function instantPay(item) {
-    window.location.href = payMeLink;
+async function instantPay() {
+   await store.instantPay();
 }
 function onLoanSelected(val) {
   const id = normalizeLoanId(val);
