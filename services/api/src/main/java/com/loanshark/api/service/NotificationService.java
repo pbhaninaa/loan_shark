@@ -21,7 +21,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final CurrentUserService currentUserService;
-    private final EmailNotificationService emailNotificationService;
+    private final SendGridEmailService emailNotificationService;
     private final SimpMessagingTemplate messagingTemplate;
     private final BusinessContactService businessContactService;
     private final SupportEmailService supportEmailService;
@@ -29,7 +29,7 @@ public class NotificationService {
     public NotificationService(
             NotificationRepository notificationRepository,
             CurrentUserService currentUserService,
-            EmailNotificationService emailNotificationService,
+            SendGridEmailService emailNotificationService,
             SimpMessagingTemplate messagingTemplate,
             BusinessContactService businessContactService, SupportEmailService supportEmailService
     ) {
