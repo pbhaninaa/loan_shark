@@ -42,7 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final CurrentUserService currentUserService;
-    private final EmailNotificationService emailNotificationService;
+    private final SendGridEmailService emailNotificationService;
     private final int tokenValidHours;
     private final String passwordResetBaseUrl;
 
@@ -56,7 +56,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             CurrentUserService currentUserService,
-            EmailNotificationService emailNotificationService,
+            SendGridEmailService emailNotificationService,
             Environment environment, // Spring Environment
             @Value("${app.password-reset.token-valid-hours:24}") int tokenValidHours) {
 
