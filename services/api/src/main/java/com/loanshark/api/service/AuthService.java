@@ -42,7 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final CurrentUserService currentUserService;
-    private final EmailNotificationService emailNotificationService;
+    private final SendGridEmailService sendGridEmailService;
     private final int tokenValidHours;
     private final String passwordResetBaseUrl;
 
@@ -55,8 +55,7 @@ public class AuthService {
             PasswordResetTokenRepository passwordResetTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            CurrentUserService currentUserService,
-            EmailNotificationService emailNotificationService,
+            CurrentUserService currentUserService, SendGridEmailService sendGridEmailService,
             Environment environment, // Spring Environment
             @Value("${app.password-reset.token-valid-hours:24}") int tokenValidHours) {
 
@@ -67,7 +66,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.currentUserService = currentUserService;
-        this.emailNotificationService = emailNotificationService;
+        this.sendGridEmailService = sendGridEmailService;
         this.environment = environment;
         this.tokenValidHours = tokenValidHours;
 
@@ -206,7 +205,7 @@ public class AuthService {
                 email = user.getEmail();
             }
             if (email != null && !email.isBlank()) {
-                emailNotificationService.send(
+                sendGridEmailService.send(
                     email,
                     "Password reset – Loan Shark",
                     "Use this link to reset your password (valid for " + tokenValidHours + " hours):\n\n" + resetLink + "\n\nIf you did not request this, ignore this email."

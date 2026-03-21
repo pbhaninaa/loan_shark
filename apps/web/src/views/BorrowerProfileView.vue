@@ -9,12 +9,13 @@
       {{ error }}
     </v-alert>
 
-    <v-card>
+    <v-card v-if="profile">
       <v-card-title>Client Profile</v-card-title>
       <v-divider />
-      <v-card-text v-if="profile">
+      <v-card-text>
         <div class="text-h6">{{ profile.firstName }} {{ profile.lastName }}</div>
         <div class="text-body-2 text-medium-emphasis mb-4">Client #{{ profile.id }}</div>
+
         <v-list density="comfortable">
           <v-list-item title="Phone" :subtitle="profile.phone" />
           <v-list-item title="Email" :subtitle="profile.email || 'None'" />
@@ -22,6 +23,7 @@
           <v-list-item title="Employment" :subtitle="profile.employmentStatus" />
           <v-list-item title="Monthly Income" :subtitle="formatCurrency(profile.monthlyIncome)" />
         </v-list>
+
         <div class="d-flex ga-2 flex-wrap mt-4">
           <v-chip :color="profile.status === 'BLACKLISTED' ? 'error' : 'success'" variant="tonal">
             {{ profile.status }}
@@ -29,23 +31,28 @@
           <v-chip color="info" variant="tonal">Risk Score: {{ profile.riskScore ?? "N/A" }}</v-chip>
           <v-chip color="warning" variant="tonal">To update profile contact admin</v-chip>
         </div>
+
         <p class="text-caption text-medium-emphasis mt-3 mb-0">
           To receive password reset links by email, add or update your email in
           <router-link to="/account">My account</router-link>.
         </p>
       </v-card-text>
     </v-card>
+
+    <v-skeleton-loader v-else type="card" />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import AppPageHeader from "../components/ui/AppPageHeader.vue";
 import { useAppStore } from "../store";
 import { formatCurrency } from "../utils/formatters";
 
 const store = useAppStore();
 const error = ref("");
+
+// Computed reactive profile
 const profile = computed(() => store.borrowerProfile);
 
 onMounted(async () => {

@@ -21,24 +21,21 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final CurrentUserService currentUserService;
-    private final EmailNotificationService emailNotificationService;
     private final SimpMessagingTemplate messagingTemplate;
     private final BusinessContactService businessContactService;
-    private final SupportEmailService supportEmailService;
+    private final SendGridEmailService sendGridEmailService;
 
     public NotificationService(
             NotificationRepository notificationRepository,
             CurrentUserService currentUserService,
-            EmailNotificationService emailNotificationService,
             SimpMessagingTemplate messagingTemplate,
-            BusinessContactService businessContactService, SupportEmailService supportEmailService
+            BusinessContactService businessContactService,  SendGridEmailService sendGridEmailService
     ) {
         this.notificationRepository = notificationRepository;
         this.currentUserService = currentUserService;
-        this.emailNotificationService = emailNotificationService;
         this.messagingTemplate = messagingTemplate;
         this.businessContactService = businessContactService;
-        this.supportEmailService = supportEmailService;
+        this.sendGridEmailService = sendGridEmailService;
     }
 
     // ------------------- Messaging -------------------
@@ -116,7 +113,7 @@ public class NotificationService {
                 "Thank you for choosing Loan Shark. If you have any questions, feel free to contact us." +
                 getCompanySignature();
 
-        emailNotificationService.send(
+        sendGridEmailService.send(
                 borrower.getEmail(),
                 "Your Loan Shark Profile Has Been Created",
                 emailBody
@@ -142,7 +139,7 @@ public class NotificationService {
                 "If you have already paid or have questions regarding your payment, feel free to contact us.\n\n" +
                 getCompanySignature();
 
-        emailNotificationService.send(
+        sendGridEmailService.send(
                 borrower.getEmail(),
                 "Reminder: Upcoming Loan Payment Due",
                 emailBody
@@ -159,7 +156,7 @@ public class NotificationService {
                 "If you did not make these changes, please contact our support team immediately." +
                 getCompanySignature();
 
-        emailNotificationService.send(
+        sendGridEmailService.send(
                 borrower.getEmail(),
                 "Your Loan Shark Profile Has Been Updated",
                 emailBody
@@ -178,7 +175,7 @@ public class NotificationService {
                 "If you have any questions about this change, please get in touch with us." +
                 getCompanySignature();
 
-        emailNotificationService.send(
+        sendGridEmailService.send(
                 borrower.getEmail(),
                 "Update: Your Client Profile Status Has Changed",
                 emailBody
@@ -198,7 +195,7 @@ public class NotificationService {
                 "If you believe this was a mistake or have any concerns, please contact our support team." +
                 getCompanySignature();
 
-        emailNotificationService.send(
+        sendGridEmailService.send(
                 borrower.getEmail(),
                 "Your Client Profile Has Been Removed",
                 emailBody
@@ -222,7 +219,7 @@ public class NotificationService {
                 getCompanySignature();
 
         // Send email
-        emailNotificationService.send(
+        sendGridEmailService.send(
                 borrower.getEmail(),
                 "Urgent: Your Loan is Overdue",
                 emailBody
@@ -257,7 +254,7 @@ public class NotificationService {
                 loan.getDueDate() != null ? loan.getDueDate().toString() : "—"
         ) + getCompanySignature();
 
-        emailNotificationService.send(
+        sendGridEmailService.send(
                 borrower.getEmail(),
                 "Your Loan Has Been Approved",
                 emailBody

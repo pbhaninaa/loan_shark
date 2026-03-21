@@ -264,12 +264,32 @@ export const useAppStore = defineStore("app", {
       const { data } = await api.get("/loans/my", { params });
       this.applyPagedResult("loans", "loansPage", data);
     },
-    async fetchMyBorrower() {
-      const { data } = await api.get("/borrowers/me");
-      this.bpaymentLinkorrowerProfile = data;
-      this.setBorrowerStatus(data.status);
-      return data;
-    },
+   async fetchMyBorrower() {
+  // Check sessionStorage first
+  const stored = sessionStorage.getItem("borrowerProfile");
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === "object") {
+        this.borrowerProfile = parsed;
+        this.setBorrowerStatus(parsed.status);
+        return parsed;
+      }
+    } catch (err) {
+      console.warn("Invalid sessionStorage profile, ignoring");
+    }
+  }
+
+  try {
+    const { data } = await api.get("/borrowers/me");
+    this.borrowerProfile = data;               // ✅ fixed typo
+    sessionStorage.setItem("borrowerProfile", JSON.stringify(data)); // save in session
+    this.setBorrowerStatus(data.status);
+    return data;
+  } catch (err) {
+    throw err;
+  }
+},
     async fetchMyVerification() {
       const { data } = await api.get("/verifications/me");
       this.verification = data;
