@@ -454,6 +454,12 @@ If merchant is:
 
 ---
 
+## 20. Beep Sound when theres a new action need
+* When theres a message as shown on the nav Items 
+* I need the new messages to pop up without the user interaction eg like 
+in WhatsApp the messages gets in without you refreshing the page toi get new messages
+* I need beep sound when there a new message to notifie the User that there s anew action needed that must play along with the message notification shown on the Nav Items.
+
 ## ✅ Deliverables Expected
 
 * Subscription system implementation
