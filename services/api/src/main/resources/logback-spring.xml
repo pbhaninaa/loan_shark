@@ -5,6 +5,8 @@
     <property name="LOG_PATH" value="${LOG_PATH:-logs}"/>
     <property name="LOG_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+    <property name="AUDIT_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - ACTION: %msg%n"/>
 
     <!-- ================= Console Appender ================= -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -17,12 +19,9 @@
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/loan-shark-api.log</file>
 
-        <!-- Roll files daily -->
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- log file pattern -->
-            <fileNamePattern>${LOG_PATH}/loan-shark-api.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <!-- keep 5 days of logs -->
-            <maxHistory>5</maxHistory>
+            <fileNamePattern>${LOG_PATH}/loan-shark-api.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory> <!-- keep 30 days of logs -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
 
@@ -31,13 +30,34 @@
         </encoder>
     </appender>
 
+    <!-- ================= Audit Log Appender ================= -->
+    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/audit.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/audit.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>90</maxHistory> <!-- Keep 90 days for audit -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>${AUDIT_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
     <!-- ================= Root Logger ================= -->
     <root level="INFO">
-        <appender-ref ref="CONSOLE" />
-        <appender-ref ref="FILE" />
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
     </root>
 
     <!-- ================= Package-specific logging ================= -->
     <logger name="com.loanshark.api" level="INFO"/>
     <logger name="org.springframework.web" level="WARN"/>
+
+    <!-- ================= Audit Logger ================= -->
+    <logger name="com.loanshark.api.audit" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT_FILE"/>
+    </logger>
+
 </configuration>
